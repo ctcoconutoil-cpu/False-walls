@@ -29,7 +29,7 @@ Sample walls are labelled demo content (`is_sample`, null author) and cannot be 
 ## Run locally
 1. `npm install`
 2. Create a Supabase project, then copy `.env.example` to `.env.local` and fill in the values (below).
-3. Apply migrations `supabase/migrations/0001` to `0008` in order (SQL editor, or `supabase link` then `supabase db push`).
+3. Apply migrations `supabase/migrations/0001` to `0009` in order (SQL editor, or `supabase link` then `supabase db push`).
 4. In Supabase Auth: enable Email provider; set Site URL to `http://localhost:3000` and add redirect `http://localhost:3000/auth/callback`.
 5. `npm run dev`.
 6. Make yourself admin after signing up: `update profiles set role = 'admin' where username = 'yourname';`
@@ -46,7 +46,7 @@ Sample walls are labelled demo content (`is_sample`, null author) and cannot be 
 No secret is in the code. `.env.local` is git-ignored.
 
 ## Migrations
-0001 core profiles/settings · 0002 content · 0003 social (follows, blocks, chains, badges, notifications) · 0004 moderation · 0005 functions/RPCs · 0006 RLS · 0007 storage buckets and policies · 0008 seed (areas, badges, prompts, blocked terms, sample walls). See `docs/SCHEMA.md`.
+0001 core profiles/settings · 0002 content · 0003 social (follows, blocks, chains, badges, notifications) · 0004 moderation · 0005 functions/RPCs · 0006 RLS · 0007 storage buckets and policies · 0008 seed (areas, badges, prompts, blocked terms, sample walls) · 0009 revokes member/staff RPCs from signed-out users. See `docs/SCHEMA.md`.
 
 ## Deployment prep
 Deploy to Vercel (or any Node host): set the env vars, set the Supabase Site URL and redirect URLs to the production domain, run migrations on the production project, configure SMTP in Supabase Auth (the default mailer is rate-limited), and connect an image-moderation provider before opening to the public. Security headers are set in `next.config.ts`.

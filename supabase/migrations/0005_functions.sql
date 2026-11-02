@@ -544,7 +544,7 @@ begin
     if public.is_blocked_between(uid, parent_author) then raise exception 'not_found'; end if;
   end if;
   perform public.check_rate_limit('reply', 40, interval '1 hour');
-  if exists (select 1 from replies where author_id = uid and lower(v_body) = lower(v_body)
+  if exists (select 1 from replies where author_id = uid and lower(body) = lower(v_body)
              and created_at > now() - interval '1 day') then raise exception 'duplicate'; end if;
   sev := public.screen_text(v_body);
   insert into replies (post_id, answer_id, parent_reply_id, author_id, body)

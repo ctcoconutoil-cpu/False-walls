@@ -22,7 +22,7 @@ create unique index reports_one_open_per_reporter on public.reports (reporter_id
 
 create table public.moderation_actions (
   id uuid primary key default gen_random_uuid(),
-  moderator_id uuid not null references public.profiles (id) on delete set null,
+  moderator_id uuid references public.profiles (id) on delete set null,
   action text not null check (action in ('remove_content','restore_content','suspend_user','restore_user','dismiss_report','view_sender','set_role','manage_badge','manage_prompt','hide_trending')),
   target_type text not null,
   target_id text not null,
