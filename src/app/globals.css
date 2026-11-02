@@ -1,26 +1,114 @@
 @import "tailwindcss";
 
+/* FALSE WALLS design tokens.
+   Ground is a deep indigo night; every wall brings its own colour. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --night: #14112a;
+  --night-2: #1d1a3a;
+  --night-3: #2a2650;
+  --chalk: #f3f2fb;
+  --chalk-dim: #b9b6d6;
+  --coral: #f2573f;
+  --mustard: #f7b538;
+  --teal: #19b5a5;
+  --violet: #8c5cf5;
+  --sky: #5db7ff;
+  --lime: #b5e04a;
+  --rose: #ff7ba9;
+  --danger: #ff6b6b;
+  --radius-card: 14px;
+  --font-display: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", "Nunito", system-ui, sans-serif;
+  --font-note: "Segoe Print", "Bradley Hand", "Noteworthy", "Chalkboard SE", ui-serif, Georgia, serif;
+  --dock: 68px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-night: var(--night);
+  --color-night-2: var(--night-2);
+  --color-night-3: var(--night-3);
+  --color-chalk: var(--chalk);
+  --color-chalk-dim: var(--chalk-dim);
+  --color-coral: var(--coral);
+  --color-mustard: var(--mustard);
+  --color-teal: var(--teal);
+  --color-violet: var(--violet);
+  --color-sky: var(--sky);
+  --color-lime: var(--lime);
+  --color-rose: var(--rose);
+  --font-display: var(--font-display);
+  --font-note: var(--font-note);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html { color-scheme: dark; -webkit-tap-highlight-color: transparent; }
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--night);
+  color: var(--chalk);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.5;
+  overscroll-behavior-y: none;
 }
+h1, h2, h3, .display { font-family: var(--font-display); font-weight: 900; letter-spacing: -0.02em; line-height: 1.05; }
+.note { font-family: var(--font-note); }
+:focus-visible { outline: 3px solid var(--mustard); outline-offset: 2px; border-radius: 6px; }
+::selection { background: var(--mustard); color: #1a1200; }
+
+/* ---------- wall textures: a mask draws the joints, the wall colour fills behind ---------- */
+.wall {
+  --wall: #b4503a; --mortar: #7c3425; --face: #8c3d2b;
+  position: relative;
+  background-color: var(--wall);
+  isolation: isolate;
+}
+.wall::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background-color: var(--mortar);
+  -webkit-mask-repeat: repeat; mask-repeat: repeat;
+}
+.wall-brick::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Cpath d='M0 0h28v2H0zM0 14h28v2H0z M0 0h2v14H0z M14 14h2v14h-2z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Cpath d='M0 0h28v2H0zM0 14h28v2H0z M0 0h2v14H0z M14 14h2v14h-2z'/%3E%3C/svg%3E");
+}
+.wall-tile::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Cpath d='M0 0h28v2H0zM0 0h2v28H0z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Cpath d='M0 0h28v2H0zM0 0h2v28H0z'/%3E%3C/svg%3E");
+}
+.wall-slab::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='112' height='56'%3E%3Cpath d='M0 0h112v3H0zM0 28h112v2H0z M0 0h3v28H0z M56 28h3v28h-3z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='112' height='56'%3E%3Cpath d='M0 0h112v3H0zM0 28h112v2H0z M0 0h3v28H0z M56 28h3v28h-3z'/%3E%3C/svg%3E");
+}
+.wall-oddbrick::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='20'%3E%3Cpath d='M0 0h40v3H0zM0 10h40v2H0z M0 0h3v10H0z M20 10h3v10h-3z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='20'%3E%3Cpath d='M0 0h40v3H0zM0 10h40v2H0z M0 0h3v10H0z M20 10h3v10h-3z'/%3E%3C/svg%3E");
+}
+/* top-face highlight and a south face that makes each wall tile look extruded */
+.wall-tile3d { box-shadow: inset 0 3px 0 rgba(255,255,255,0.2), inset 0 -4px 0 rgba(0,0,0,0.18), 0 16px 0 var(--face); }
+
+.floor { background-color: var(--floor, #2b2540); }
+.floor::before {
+  content: ""; position: absolute; inset: 0; opacity: .5; pointer-events: none;
+  background-image: radial-gradient(rgba(255,255,255,.08) 1.5px, transparent 1.8px); background-size: 28px 28px;
+}
+
+/* paper pieces pinned on walls */
+.paper { box-shadow: 0 2px 0 rgba(0,0,0,.25), 0 8px 14px -6px rgba(0,0,0,.5); }
+.tape::after {
+  content: ""; position: absolute; top: -7px; left: 50%; width: 38px; height: 14px; transform: translateX(-50%) rotate(-3deg);
+  background: rgba(255,255,255,.45); box-shadow: 0 1px 0 rgba(0,0,0,.15);
+}
+
+/* ---------- false wall clues ---------- */
+@keyframes glowpulse { 0%,100% { box-shadow: inset 0 0 14px 2px var(--glow), 0 0 14px 1px var(--glow); } 50% { box-shadow: inset 0 0 26px 6px var(--glow), 0 0 26px 5px var(--glow); } }
+.clue-glow { animation: glowpulse 2.6s ease-in-out infinite; }
+@keyframes sheen { 0% { transform: translateX(-120%); } 60%,100% { transform: translateX(220%); } }
+
+/* ---------- misc ---------- */
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 0px); }
+.btn-press { transition: transform .08s ease, box-shadow .08s ease; }
+.btn-press:active { transform: translateY(3px); box-shadow: 0 0 0 var(--btn-shadow, #000) !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+  .clue-glow { animation: none; box-shadow: inset 0 0 18px 3px var(--glow), 0 0 16px 2px var(--glow); }
+}
+html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-motion="reduced"] *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }

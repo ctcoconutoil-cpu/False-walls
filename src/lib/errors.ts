@@ -1,0 +1,58 @@
+const MESSAGES: Record<string, string> = {
+  not_authenticated: "Log in to do that.",
+  not_found: "That wall is no longer available.",
+  rate_limited: "You're going a little fast. Try again in a bit.",
+  contact_info: "Remove emails and phone numbers. Private contact details can't go on the wall.",
+  too_many_links: "Use at most one link.",
+  spam_pattern: "That looks like spam. Try rewording it.",
+  content_not_allowed: "That message breaks the community guidelines.",
+  duplicate: "You already sent that.",
+  title_required: "Add a title of at least 3 characters.",
+  clue_required: "Add a clue of at least 3 characters.",
+  hidden_required: "Add the hidden part.",
+  image_required: "Add at least one picture.",
+  body_required: "Write at least a few words.",
+  prompt_required: "Pick a prompt to answer.",
+  poll_options: "A poll needs 2 to 4 options.",
+  wall_style_required: "Choose what's behind the wall and how it looks.",
+  too_many_images: "Up to 4 pictures per wall.",
+  invalid_media: "That upload couldn't be attached.",
+  invalid_area: "That area doesn't take this kind of wall.",
+  chains_disabled: "The creator turned off related walls for this post.",
+  chain_visibility: "A related wall can't be more public than the wall it connects to.",
+  chain_parent_unavailable: "The original wall isn't available.",
+  chain_answer_invalid: "That answer can't be linked.",
+  followers_only: "Only followers can open this wall.",
+  anonymous_disabled: "This person isn't taking anonymous questions.",
+  identified_disabled: "This person isn't taking questions right now.",
+  own_post: "You can't send a question to your own wall.",
+  own_content: "You can't react to your own wall.",
+  not_askable: "Questions can't be sent to this wall.",
+  too_many_to_recipient: "You've sent this person a lot of questions today. Try again tomorrow.",
+  invalid_length: "That message is too short or too long.",
+  replies_disabled: "Replies are turned off here.",
+  invalid_reaction: "Pick one of the five reactions.",
+  username_taken: "That username is taken.",
+  username_reserved: "That username is reserved.",
+  under_age: "FALSE WALLS is for people aged 13 and over.",
+  invalid_birth_date: "Enter a valid date of birth.",
+  already_onboarded: "Your profile is already set up.",
+  forbidden: "You don't have permission to do that.",
+  last_image: "A picture wall needs at least one picture. Delete the whole post instead.",
+  reveal_first: "Open the wall first.",
+  invalid_option: "Pick one of the options.",
+  invalid_image: "That file isn't a valid JPEG, PNG or WebP image.",
+  image_too_large: "That image is too large. Pictures can be up to 5 MB, profile pictures up to 2 MB.",
+  image_flagged: "That image can't be posted because it may break the community guidelines.",
+  invalid_input: "Check the form and try again.",
+  no_report: "A sender can only be looked up for a reported question.",
+};
+
+export function friendlyError(raw: unknown): string {
+  const msg = typeof raw === "string" ? raw : raw && typeof raw === "object" && "message" in raw ? String((raw as { message: unknown }).message) : "";
+  if (MESSAGES[msg]) return MESSAGES[msg];
+  if (/row-level security/i.test(msg)) return "You don't have permission to do that.";
+  if (/duplicate key/i.test(msg)) return "That already exists.";
+  if (/violates check constraint/i.test(msg)) return "Something in that entry isn't allowed. Check the limits and try again.";
+  return "Something went wrong. Try again.";
+}
