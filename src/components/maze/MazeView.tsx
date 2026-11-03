@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { animate, motion, useMotionValue, useReducedMotion, useTransform } from "framer-motion";
+import { animate, motion, useMotionValue, useReducedMotion } from "framer-motion";
 import { AREAS, AREA_ORDER, POST_TYPES } from "@/lib/constants";
 import { FACE, SIZE, TILE, buildSection, findPath, standingTile, step, type Dir, type Point } from "@/lib/maze/layout";
 import type { AreaSlug, AuthorLite, Post } from "@/lib/types";
@@ -51,7 +51,6 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
   const [toast, setToast] = useState<string | null>(null);
   const x = useMotionValue(0), y = useMotionValue(0);
   const px = useMotionValue(m.start.x * TILE), py = useMotionValue(m.start.y * TILE);
-  const lightX = useTransform(px, (v) => v + TILE / 2 - 900), lightY = useTransform(py, (v) => v + TILE / 2 - 900);
   const dragged = useRef(false);
   const walkId = useRef(0);
   const { go, overlay } = useCurtainNav();
@@ -177,12 +176,14 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
     if (!n) {
       const it = byFace.get(`${posRef.current.x + (dir === "e" ? 1 : dir === "w" ? -1 : 0)},${posRef.current.y + (dir === "s" ? 1 : dir === "n" ? -1 : 0)}`);
       setBump((b) => b + 1);
+      // Bumping into a False Wall cracks it open.
+      if (it && it.post.type === "false_wall") { revealFalseWall(it); return; }
       setStatus(it ? `A wall to the ${NAMES[dir]} has something on it: ${label(it.post)}.` : `A solid wall to the ${NAMES[dir]}. You cannot go that way.`);
       return;
     }
     setDetached(false); setPos(n); posRef.current = n;
     setStatus(`Walked ${NAMES[dir]}.`);
-  }, [m, byFace]);
+  }, [m, byFace, revealFalseWall]);
 
   const onKey = (e: React.KeyboardEvent) => {
     const map: Record<string, Dir> = { ArrowUp: "n", ArrowDown: "s", ArrowLeft: "w", ArrowRight: "e", w: "n", s: "s", a: "w", d: "e" };
@@ -261,8 +262,6 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
               </div>
             )}
 
-            {/* a pool of light that follows the player; the far corridors fall into shadow */}
-            <motion.div aria-hidden className="pointer-events-none absolute left-0 top-0 z-20" style={{ x: lightX, y: lightY, width: 1800, height: 1800, background: "radial-gradient(circle closest-side, rgba(8,5,22,0) 0%, rgba(8,5,22,0) 18%, rgba(8,5,22,.42) 40%, rgba(8,5,22,.66) 100%)" }} />
           </motion.div>
 
           {items.length === 0 && (
