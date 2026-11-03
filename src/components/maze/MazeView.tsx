@@ -39,7 +39,7 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
   const viewport = useRef<HTMLDivElement>(null);
   const [vp, setVp] = useState({ w: 360, h: 560 });
   const [userZoom, setUserZoom] = useState<number | null>(null);
-  const zoom = userZoom ?? (vp.w < 480 ? 1 : 1.25);
+  const zoom = userZoom ?? (vp.w < 480 ? 1.3 : 1.5);
   const zoomRef = useRef(zoom);
   const router = useRouter();
   const [ready, setReady] = useState(false);
@@ -342,13 +342,13 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
             </div>
             <div className="pointer-events-auto flex flex-col items-end gap-1.5">
               {adjacentItems[0] && !selected && <Button tone="mustard" size="sm" onClick={() => activate(adjacentItems[0])}>{adjacentItems[0].post.type === "false_wall" ? "Look closer" : "Open this wall"}</Button>}
-              <div className="flex overflow-hidden rounded-xl bg-night/85 shadow-[0_3px_0_#0d0b1f]" role="group" aria-label="Zoom">
-                <button type="button" data-testid="zoom-out" aria-label="Zoom out" onClick={() => zoomTo(zoom / 1.2)} className="grid h-10 w-11 place-items-center text-xl font-bold active:bg-night-3">−</button>
-                <button type="button" data-testid="zoom-in" aria-label="Zoom in" onClick={() => zoomTo(zoom * 1.2)} className="grid h-10 w-11 place-items-center border-l border-night-3 text-xl font-bold active:bg-night-3">+</button>
+              <div className={cx("flex overflow-hidden rounded-xl shadow-[0_3px_0_#0d0b1f]", detached ? "bg-mustard text-[#2c1e02]" : "bg-night/85 text-chalk")} role="group" aria-label="View controls">
+                <button type="button" data-testid="zoom-out" aria-label="Zoom out" onClick={() => zoomTo(zoom / 1.2)} className="grid h-10 w-10 place-items-center text-xl font-bold active:bg-black/20">−</button>
+                <button type="button" data-testid="recenter" onClick={recenter} aria-label="Recenter on your position" className="flex min-h-10 items-center gap-1.5 border-x border-black/25 px-3 text-sm font-bold active:bg-black/20">
+                  <span aria-hidden>◎</span>Recenter
+                </button>
+                <button type="button" data-testid="zoom-in" aria-label="Zoom in" onClick={() => zoomTo(zoom * 1.2)} className="grid h-10 w-10 place-items-center text-xl font-bold active:bg-black/20">+</button>
               </div>
-              <button type="button" data-testid="recenter" onClick={recenter} aria-label="Recenter on your position" className={cx("flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-bold shadow-[0_3px_0_#0d0b1f]", detached ? "bg-mustard text-[#2c1e02]" : "bg-night/85 text-chalk")}>
-                <span aria-hidden>◎</span>Recenter
-              </button>
             </div>
           </div>
         </div>
