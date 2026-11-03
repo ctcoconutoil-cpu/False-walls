@@ -82,11 +82,6 @@ export function MazeView({ area, section, sectionCount, items: rawItems, tab, lo
       setShuffleKey(k);
     } catch { setShuffleKey(Math.random().toString(36).slice(2)); }
   }, []);
-  const reshuffle = () => {
-    const k = Math.random().toString(36).slice(2);
-    try { sessionStorage.setItem("fw-shuffle", k); } catch { /* ignore */ }
-    setShuffleKey(k); setZoomOpen(false); setStatus("The walls have been shuffled.");
-  };
   useEffect(() => { posRef.current = pos; zoomRef.current = zoom; }, [pos, zoom]);
 
   // Come back to the last wall you were at, not the start: restore the section and tile from this device.
@@ -298,7 +293,6 @@ export function MazeView({ area, section, sectionCount, items: rawItems, tab, lo
                 <div role="group" aria-label="Zoom" className="absolute right-0 top-12 z-50 w-44 rounded-2xl bg-night-2 p-2 shadow-[0_8px_24px_rgba(0,0,0,.5)] ring-1 ring-night-3">
                   <button type="button" data-testid="zoom-in" onClick={() => zoomTo(zoom * 1.2)} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left font-bold active:bg-night-3"><span aria-hidden className="w-5 text-center text-xl">+</span>Zoom in</button>
                   <button type="button" data-testid="zoom-out" onClick={() => zoomTo(zoom / 1.2)} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left font-bold active:bg-night-3"><span aria-hidden className="w-5 text-center text-xl">−</span>Zoom out</button>
-                  <button type="button" data-testid="shuffle" onClick={reshuffle} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left font-bold active:bg-night-3"><span aria-hidden className="w-5 text-center text-lg">🔀</span>Shuffle walls</button>
                 </div>
               )}
             </div>
