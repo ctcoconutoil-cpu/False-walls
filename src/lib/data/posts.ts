@@ -50,14 +50,15 @@ export async function getAreaItems(area: AreaSlug, section: number, tab: "trendi
     return { items: ordered.slice(0, SLOTS_PER_SECTION).map((post, i) => ({ slot: from + i, post })), hasMore: ordered.length > SLOTS_PER_SECTION };
   }
 
-  const { data } = await supabase.from("wall_locations")
-    .select(`slot_index, post:posts!inner(${POST_SELECT})`)
-    .eq("area_slug", area).gte("slot_index", from).lt("slot_index", from + SLOTS_PER_SECTION).order("slot_index");
+  const [{ data }, { data: last }] = await Promise.all([
+    supabase.from("wall_locations")
+      .select(`slot_index, post:posts!inner(${POST_SELECT})`)
+      .eq("area_slug", area).gte("slot_index", from).lt("slot_index", from + SLOTS_PER_SECTION).order("slot_index"),
+    supabase.from("wall_locations").select("slot_index").eq("area_slug", area).order("slot_index", { ascending: false }).limit(1),
+  ]);
   const rows = ((data ?? []) as unknown as { slot_index: number; post: Row }[]).filter((r) => r.post.visibility === "public");
   const posts = await hydratePosts(supabase, rows.map((r) => r.post));
   const items: AreaItem[] = rows.map((r, i) => ({ slot: r.slot_index, post: posts[i] }));
-  const { data: last } = await supabase.from("wall_locations").select("slot_index").eq("area_slug", area)
-    .order("slot_index", { ascending: false }).limit(1);
   const maxSlot = (last?.[0]?.slot_index as number | undefined) ?? 0;
   return { items, hasMore: maxSlot >= from + SLOTS_PER_SECTION };
 }

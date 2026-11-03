@@ -19,13 +19,16 @@ export default async function AreaPage({ params, searchParams }: { params: Promi
   const section = Math.min(Math.max(parseInt(sp.section ?? "0", 10) || 0, 0), 500);
   const tab = sp.tab === "newest" ? "newest" : "trending";
   const slug = area as AreaSlug;
-  const [{ items, hasMore }, viewer] = await Promise.all([getAreaItems(slug, section, tab), getViewer()]);
-
+  const supabase = await createClient();
+  // Everything this page needs is fetched at once instead of one query after another.
+  const [{ items, hasMore }, viewer, last] = await Promise.all([
+    getAreaItems(slug, section, tab),
+    getViewer(),
+    slug === "trending" ? Promise.resolve(null) : supabase.from("wall_locations").select("slot_index").eq("area_slug", slug).order("slot_index", { ascending: false }).limit(1),
+  ]);
   let sectionCount = section + (hasMore ? 2 : 1);
-  if (slug !== "trending") {
-    const supabase = await createClient();
-    const { data } = await supabase.from("wall_locations").select("slot_index").eq("area_slug", slug).order("slot_index", { ascending: false }).limit(1);
-    const max = (data?.[0]?.slot_index as number | undefined) ?? 0;
+  if (last) {
+    const max = (last.data?.[0]?.slot_index as number | undefined) ?? 0;
     sectionCount = Math.max(1, Math.ceil((max + 1) / SLOTS_PER_SECTION), section + 1);
   }
   return (

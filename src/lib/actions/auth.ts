@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/claims";
 import { friendlyError } from "@/lib/errors";
 import { processImage, moderateImage } from "@/lib/images";
 import { AVATAR_COLORS, AVATAR_STYLES, INTERESTS } from "@/lib/constants";
@@ -53,7 +54,7 @@ const onboardingSchema = z.object({
 
 export async function completeOnboarding(_: FormState, fd: FormData): Promise<FormState> {
   const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
+  const auth = { user: await getAuthUser(supabase) };
   if (!auth.user) redirect("/login");
   const parsed = onboardingSchema.safeParse({
     username: fd.get("username"), display_name: fd.get("display_name") || undefined, birth_date: fd.get("birth_date"),
@@ -101,7 +102,7 @@ export async function completeOnboarding(_: FormState, fd: FormData): Promise<Fo
 
 export async function updateProfile(_: FormState, fd: FormData): Promise<FormState> {
   const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
+  const auth = { user: await getAuthUser(supabase) };
   if (!auth.user) redirect("/login");
   const display = String(fd.get("display_name") ?? "").trim();
   const bio = String(fd.get("bio") ?? "").trim();

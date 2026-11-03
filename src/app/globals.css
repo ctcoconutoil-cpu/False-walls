@@ -132,3 +132,9 @@ html[data-motion="reduced"] .fw-false, html[data-motion="reduced"] .fw-false .fw
   .clue-glow { animation: none; box-shadow: inset 0 0 18px 3px var(--glow), 0 0 16px 2px var(--glow); }
 }
 html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-motion="reduced"] *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+
+/* Loading placeholders */
+.fw-skel { background: linear-gradient(100deg, #1c1836 30%, #2a2450 50%, #1c1836 70%); background-size: 200% 100%; animation: fw-skel 1.2s linear infinite; }
+@keyframes fw-skel { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .fw-skel { animation: none; } }
+:root[data-motion="reduced"] .fw-skel { animation: none; }

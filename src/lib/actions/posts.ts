@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/claims";
 import { friendlyError } from "@/lib/errors";
 import { processImage, moderateImage } from "@/lib/images";
 import { LIMITS, FALSE_WALL_KINDS, CLUE_STYLES, WALL_COLORS } from "@/lib/constants";
@@ -15,7 +16,7 @@ const text = (fd: FormData, k: string, max: number) => {
 
 export async function createPost(fd: FormData): Promise<ActionResult<{ id: string }>> {
   const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
+  const auth = { user: await getAuthUser(supabase) };
   if (!auth.user) return { ok: false, error: friendlyError("not_authenticated") };
 
   const type = String(fd.get("type")) as PostType;
@@ -170,7 +171,7 @@ export async function deleteReply(postId: string, id: string): Promise<ActionRes
 
 export async function toggleSave(postId: string, save: boolean): Promise<ActionResult> {
   const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
+  const auth = { user: await getAuthUser(supabase) };
   if (!auth.user) return { ok: false, error: friendlyError("not_authenticated") };
   const { error } = save
     ? await supabase.from("saved_posts").insert({ user_id: auth.user.id, post_id: postId })

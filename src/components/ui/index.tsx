@@ -69,12 +69,17 @@ export function Sheet({ open, onClose, title, children, tone = "night" }: { open
   const reduce = useReducedMotion();
   const id = useId();
   const ref = useRef<HTMLDivElement>(null);
+  // Keep the latest onClose in a ref. Callers pass a new function on every render; if it were an effect
+  // dependency, each keystroke in a field inside the sheet would re-run the effect, pull focus out of the
+  // field and dismiss the phone keyboard.
+  const closeRef = useRef(onClose);
+  useEffect(() => { closeRef.current = onClose; });
   useEffect(() => {
     if (!open) return;
     const prev = document.activeElement as HTMLElement | null;
     ref.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") closeRef.current();
       if (e.key === "Tab" && ref.current) {
         const f = ref.current.querySelectorAll<HTMLElement>("a[href],button:not([disabled]),input,textarea,select,[tabindex]:not([tabindex='-1'])");
         if (!f.length) return;
@@ -87,7 +92,7 @@ export function Sheet({ open, onClose, title, children, tone = "night" }: { open
     const o = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = o; prev?.focus(); };
-  }, [open, onClose]);
+  }, [open]);
   return (
     <AnimatePresence>
       {open && (

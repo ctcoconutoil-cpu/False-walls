@@ -1,13 +1,14 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/claims";
 import { friendlyError } from "@/lib/errors";
 import type { ActionResult, Settings } from "@/lib/types";
 
 async function me() {
   const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
-  return { supabase, uid: data.user?.id ?? null };
+  const user = await getAuthUser(supabase);
+  return { supabase, uid: user?.id ?? null };
 }
 
 export async function sendQuestion(postId: string, body: string, anonymous: boolean): Promise<ActionResult> {

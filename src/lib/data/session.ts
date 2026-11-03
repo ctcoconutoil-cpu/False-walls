@@ -2,16 +2,19 @@ import "server-only";
 import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/claims";
 import type { Profile, Settings } from "@/lib/types";
 
 export const getViewer = cache(async () => {
   const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
-  const user = data.user;
+  const user = await getAuthUser(supabase);
   if (!user) return { user: null, profile: null as Profile | null, settings: null as Settings | null };
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+  // Profile and settings are independent, so fetch them together.
+  const [{ data: profile }, { data: settings }] = await Promise.all([
+    supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
+    supabase.from("user_settings").select("*").eq("user_id", user.id).maybeSingle(),
+  ]);
   if (!profile) return { user, profile: null as Profile | null, settings: null as Settings | null };
-  const { data: settings } = await supabase.from("user_settings").select("*").eq("user_id", user.id).maybeSingle();
   return { user, profile: profile as Profile, settings: (settings ?? null) as Settings | null };
 });
 

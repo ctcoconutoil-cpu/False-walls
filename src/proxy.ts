@@ -19,9 +19,10 @@ export async function proxy(request: NextRequest) {
       },
     },
   });
-  const { data } = await supabase.auth.getUser();
+  // getClaims verifies the token locally (and refreshes it when expired) instead of calling Supabase on every request.
+  const { data } = await supabase.auth.getClaims();
   const path = request.nextUrl.pathname;
-  if (!data.user && MEMBER_ONLY.some((p) => path === p || path.startsWith(p + "/"))) {
+  if (!data?.claims?.sub && MEMBER_ONLY.some((p) => path === p || path.startsWith(p + "/"))) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = `?next=${encodeURIComponent(path)}`;
