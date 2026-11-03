@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { POST_SELECT, hydratePosts } from "@/lib/data/posts";
 import { Avatar, Empty } from "@/components/ui";
-import { WallItem } from "@/components/wall/WallItem";
+import { WallItem } from "@/components/maze/WallItem";
 import { AREAS, AREA_ORDER, POST_TYPES } from "@/lib/constants";
 import type { AreaSlug, Post, PostType } from "@/lib/types";
 import { cx } from "@/lib/utils";

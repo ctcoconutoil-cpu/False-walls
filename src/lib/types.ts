@@ -27,7 +27,6 @@ export type Post = {
   false_wall_kind: FalseWallKind | null;
   clue_style: ClueStyle | null;
   wall_color: WallColor;
-  wall_icon: string | null;
   visibility: "public" | "followers";
   reveal_mode: "anyone" | "followers";
   allow_anonymous_questions: boolean;

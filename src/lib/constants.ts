@@ -24,12 +24,6 @@ export const POST_TYPES: Record<PostType, { label: string; blurb: string; icon: 
   prompt_response: { label: "Random Prompt", blurb: "Answer a conversation prompt from the platform.", icon: "!" },
   false_wall: { label: "Build a False Wall", blurb: "Conceal a question, photo, story, poll or conversation behind a wall.", icon: "▤" },
 };
-/** Icons an author can pin on their wall. Defaults come from the wall type when none is chosen. */
-export const WALL_ICONS = ["🧱", "❓", "🔥", "👀", "💬", "🏆", "💡", "❤️", "⭐", "🌙", "🎵", "🎨", "📸", "🎮", "📚", "⚽", "🍜", "☕", "🌍", "🦋", "🔮", "🗝️", "🎭", "🌈"] as const;
-export const DEFAULT_ICON: Record<PostType, string> = { ask_me: "❓", hidden_thought: "💬", picture: "📸", prompt_response: "💡", false_wall: "👀" };
-export const iconFor = (post: { type: PostType; wall_icon?: string | null }) =>
-  post.wall_icon && (WALL_ICONS as readonly string[]).includes(post.wall_icon) ? post.wall_icon : DEFAULT_ICON[post.type];
-
 export const CREATE_ROUTES: Record<string, PostType> = {
   "ask-me": "ask_me", "hidden-thought": "hidden_thought", "picture-wall": "picture",
   "random-prompt": "prompt_response", "false-wall": "false_wall",

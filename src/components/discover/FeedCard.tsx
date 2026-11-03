@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AREAS, POST_TYPES } from "@/lib/constants";
 import type { Post } from "@/lib/types";
 import { Avatar, SampleTag } from "@/components/ui";
-import { WallItem } from "@/components/wall/WallItem";
+import { WallItem } from "@/components/maze/WallItem";
 import { timeAgo } from "@/lib/utils";
 
 /** One post in the Discover feed. Concealed text is never shown here: a False Wall shows only its clue. */

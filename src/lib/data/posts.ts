@@ -2,7 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import type { AreaSlug, Post, ReactionKind } from "@/lib/types";
-export const SLOTS_PER_SECTION = 16;
+import { SLOTS_PER_SECTION } from "@/lib/maze/layout";
 
 export const POST_SELECT =
   "*, author:profiles!posts_author_id_fkey(id,username,display_name,avatar_style,avatar_color,avatar_url), media:post_media(storage_path,width,height,alt_text,is_hidden), prompt:random_prompts(text)";

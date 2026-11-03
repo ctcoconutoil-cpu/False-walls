@@ -4,9 +4,9 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Button, Field, Notice, inputCls } from "@/components/ui";
 import { ImagePicker } from "@/components/ui/ImagePicker";
-import { WallItem } from "@/components/wall/WallItem";
+import { WallItem } from "@/components/maze/WallItem";
 import { createPost } from "@/lib/actions/posts";
-import { CLUE_STYLES, FALSE_WALL_KINDS, LIMITS, POST_TYPES, WALL_COLORS, WALL_ICONS } from "@/lib/constants";
+import { CLUE_STYLES, FALSE_WALL_KINDS, LIMITS, POST_TYPES, WALL_COLORS } from "@/lib/constants";
 import type { ClueStyle, FalseWallKind, Post, PostType, WallColor } from "@/lib/types";
 import { cx } from "@/lib/utils";
 
@@ -34,17 +34,16 @@ export function CreateForm({ type, label, prompts, isTeen, anonymousAllowed, cha
   const [visibility, setVisibility] = useState<"public" | "followers">(isTeen ? "followers" : "public");
   const [reveal, setReveal] = useState<"anyone" | "followers">("anyone");
   const [images, setImages] = useState(0);
-  const [icon, setIcon] = useState<string>("");
   const needsImages = type === "picture" || (type === "false_wall" && kind === "photo");
   const concealed = type === "hidden_thought" || type === "false_wall";
 
   const preview: Post = useMemo(() => ({
     id: "preview", author_id: null, type, title: title || (type === "picture" ? "Your question goes here" : type === "ask_me" ? "Ask me something…" : null),
     body: type === "prompt_response" ? body || "Your answer goes here" : type === "hidden_thought" ? body || "Something you're thinking" : body || null,
-    clue: clue || (concealed ? "Your clue appears here" : null), prompt_id: null, false_wall_kind: kind, clue_style: style, wall_color: color, wall_icon: icon || null,
+    clue: clue || (concealed ? "Your clue appears here" : null), prompt_id: null, false_wall_kind: kind, clue_style: style, wall_color: color,
     visibility, reveal_mode: reveal, allow_anonymous_questions: true, allow_replies: true, allow_chains: true, area_slug: "main", is_sample: false, status: "active",
     created_at: new Date().toISOString(), author: null, media: [],
-  }), [type, title, body, clue, kind, style, color, visibility, reveal, concealed, icon]);
+  }), [type, title, body, clue, kind, style, color, visibility, reveal, concealed]);
 
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -176,20 +175,6 @@ export function CreateForm({ type, label, prompts, isTeen, anonymousAllowed, cha
         </>
       )}
 
-      <fieldset><legend className="mb-1 text-sm font-semibold">Wall icon</legend>
-        <p className="mb-2 text-sm text-chalk-dim">The icon people see on your wall. Leave it on the default if you like.</p>
-        <div className="flex flex-wrap gap-2">
-          <label className={cx("grid h-12 min-w-12 cursor-pointer place-items-center rounded-xl border-2 px-2 text-xs font-bold", icon === "" ? "border-mustard bg-night-3" : "border-night-3")}>
-            <input type="radio" name="wall_icon" value="" checked={icon === ""} onChange={() => setIcon("")} className="sr-only" />Default
-          </label>
-          {WALL_ICONS.map((ic) => (
-            <label key={ic} className={cx("grid h-12 w-12 cursor-pointer place-items-center rounded-xl border-2 text-2xl", icon === ic ? "border-mustard bg-night-3" : "border-night-3")}>
-              <input type="radio" name="wall_icon" value={ic} checked={icon === ic} onChange={() => setIcon(ic)} className="sr-only" /><span aria-hidden>{ic}</span><span className="sr-only">Icon {ic}</span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
-
       <fieldset><legend className="mb-2 text-sm font-semibold">Wall colour</legend>
         <div className="flex flex-wrap gap-2">
           {(Object.keys(WALL_COLORS) as WallColor[]).map((c) => (
@@ -202,7 +187,7 @@ export function CreateForm({ type, label, prompts, isTeen, anonymousAllowed, cha
 
       <section aria-labelledby="preview" className="space-y-2">
         <h2 id="preview" className="text-lg">Preview</h2>
-        <div className="mx-auto h-44 w-64"><WallItem post={preview} compact /></div>
+        <div className="mx-auto h-40 w-40"><WallItem post={preview} compact /></div>
       </section>
 
       <section aria-labelledby="settings" className="space-y-4 rounded-2xl bg-night-2 p-4">

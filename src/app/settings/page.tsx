@@ -42,7 +42,7 @@ export default async function Settings() {
           { key: "notify_chains", label: "Wall Chain activity" }, { key: "notify_badges", label: "Badges I earn" }, { key: "notify_discoveries", label: "Relevant discoveries" },
         ]} />
       </Section>
-      <Section title="Accessibility"><MotionPref /><p className="text-xs text-chalk-dim">The Wall scrolls sideways with swipes, arrow keys or on-screen arrows, available from the top of every maze area.</p></Section>
+      <Section title="Accessibility"><MotionPref /><p className="text-xs text-chalk-dim">The Wall also has a plain list view and on-screen arrows, available from the top of every maze area.</p></Section>
       <Section title="Blocked and muted"><BlockedList rows={(blocks ?? []) as BlockRow[]} /></Section>
       <Section title="Account">
         <p className="text-sm text-chalk-dim">Signed in as {user.email}. Your email is never shown to anyone.</p>

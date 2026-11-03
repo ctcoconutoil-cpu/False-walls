@@ -5,11 +5,11 @@ import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/data/session";
 import { getPostById, getThread } from "@/lib/data/posts";
 import { Avatar, Empty, Notice, SampleTag } from "@/components/ui";
-import { WallItem } from "@/components/wall/WallItem";
+import { WallItem } from "@/components/maze/WallItem";
 import { RevealPanel } from "@/components/wall/RevealPanel";
 import { ChainStrip } from "@/components/wall/ChainStrip";
 import { AnswerActions, AskBox, DiscoveryPing, OwnerTools, PostToolbar, ReactionBar, ReplyActions, ReplyBox } from "@/components/wall/Interactions";
-import { CurtainOpen } from "@/components/wall/Curtain";
+import { CurtainOpen } from "@/components/maze/Curtain";
 import { AREAS, POST_TYPES } from "@/lib/constants";
 import { isUuid, timeAgo } from "@/lib/utils";
 import type { Revealed } from "@/lib/actions/posts";
@@ -114,11 +114,11 @@ export default async function BehindTheWall({ params }: { params: Promise<{ id: 
                   {post.media.length ? post.media.map((m) => m.url && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img key={m.storage_path} src={m.url} alt={m.alt_text ?? post.title ?? "Picture"} width={m.width ?? undefined} height={m.height ?? undefined} loading="lazy" decoding="async" className="w-full rounded-2xl bg-night-2 object-contain" />
-                  )) : <div className="mx-auto h-44 w-64"><WallItem post={post} compact /></div>}
+                  )) : <div className="mx-auto h-48 w-48"><WallItem post={post} compact /></div>}
                   {post.body && <p className="whitespace-pre-wrap">{post.body}</p>}
                 </div>
               ) : post.type === "ask_me" ? (
-                <div className="space-y-2"><div className="mx-auto h-44 w-64"><WallItem post={post} compact /></div><p className="display text-2xl">{post.title}</p>{post.body && <p className="whitespace-pre-wrap text-chalk">{post.body}</p>}</div>
+                <div className="space-y-2"><div className="mx-auto h-44 w-44"><WallItem post={post} compact /></div><p className="display text-2xl">{post.title}</p>{post.body && <p className="whitespace-pre-wrap text-chalk">{post.body}</p>}</div>
               ) : (
                 <blockquote className="display rounded-2xl p-5 text-2xl" style={{ background: "#1d1a3a" }}>“{post.body}”</blockquote>
               )}

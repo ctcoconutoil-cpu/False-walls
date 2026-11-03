@@ -4,7 +4,7 @@ import { getViewer } from "@/lib/data/session";
 import { createClient } from "@/lib/supabase/server";
 import { POST_SELECT, hydratePosts } from "@/lib/data/posts";
 import { Avatar, Empty, LinkButton } from "@/components/ui";
-import { WallItem } from "@/components/wall/WallItem";
+import { WallItem } from "@/components/maze/WallItem";
 import { ProfileActions } from "@/components/profile/ProfileActions";
 import { signOut } from "@/lib/actions/auth";
 import type { AuthorLite, Post } from "@/lib/types";
@@ -112,7 +112,7 @@ export default async function Profile({ params }: { params: Promise<{ username: 
 function Grid({ posts }: { posts: Post[] }) {
   return (
     <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-      {posts.map((post) => <li key={post.id} className="h-36"><Link href={`/post/${post.id}`} className="block h-full" aria-label={post.title ?? post.clue ?? post.body ?? "Open wall"}><WallItem post={post} compact /></Link></li>)}
+      {posts.map((post) => <li key={post.id} className="h-40"><Link href={`/post/${post.id}`} className="block h-full" aria-label={post.title ?? post.clue ?? post.body ?? "Open wall"}><WallItem post={post} compact /></Link></li>)}
     </ul>
   );
 }

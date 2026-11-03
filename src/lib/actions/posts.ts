@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { friendlyError } from "@/lib/errors";
 import { processImage, moderateImage } from "@/lib/images";
-import { LIMITS, FALSE_WALL_KINDS, CLUE_STYLES, WALL_COLORS, WALL_ICONS } from "@/lib/constants";
+import { LIMITS, FALSE_WALL_KINDS, CLUE_STYLES, WALL_COLORS } from "@/lib/constants";
 import type { ActionResult, FalseWallKind, PostType, ReactionKind } from "@/lib/types";
 import { isUuid } from "@/lib/utils";
 
@@ -31,8 +31,6 @@ export async function createPost(fd: FormData): Promise<ActionResult<{ id: strin
   if (kind && !(kind in FALSE_WALL_KINDS)) return { ok: false, error: friendlyError("invalid_input") };
   if (style && !(style in CLUE_STYLES)) return { ok: false, error: friendlyError("invalid_input") };
   if (!(color in WALL_COLORS)) return { ok: false, error: friendlyError("invalid_input") };
-  const iconRaw = String(fd.get("wall_icon") ?? "");
-  if (iconRaw && !(WALL_ICONS as readonly string[]).includes(iconRaw)) return { ok: false, error: friendlyError("invalid_input") };
   const promptId = String(fd.get("prompt_id") ?? "");
   const chainParent = String(fd.get("chain_parent") ?? "");
   const chainAnswer = String(fd.get("chain_answer") ?? "");
@@ -78,7 +76,6 @@ export async function createPost(fd: FormData): Promise<ActionResult<{ id: strin
     if (uploaded.length) await supabase.storage.from("post-media").remove(uploaded);
     return { ok: false, error: friendlyError(error) };
   }
-  if (iconRaw) await supabase.rpc("set_post_icon", { p_id: data as string, p_icon: iconRaw });
   revalidatePath("/wall", "layout");
   revalidatePath("/profile", "layout");
   return { ok: true, id: data as string };
