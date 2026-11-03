@@ -37,7 +37,7 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
 
   const viewport = useRef<HTMLDivElement>(null);
   const [vp, setVp] = useState({ w: 360, h: 560 });
-  const zoom = vp.w < 480 ? 1 : 1.25;
+  const zoom = vp.w < 480 ? 1.3 : 1.5;
   const [pos, setPos] = useState<Point>(m.start);
   const posRef = useRef(pos);
   const [look, setLook] = useState<Dir>("s");
@@ -239,7 +239,7 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
               const isFalse = it.post.type === "false_wall";
               return (
                 <button key={it.post.id} data-wall data-post={it.post.id} data-type={it.post.type} type="button" onClick={() => onItem(it)}
-                  className="absolute z-10 block text-left" style={{ left: f.x * TILE, top: f.y * TILE, width: TILE, height: TILE, padding: isFalse ? 8 : 9 }}
+                  className="absolute z-10 block text-left" style={{ left: f.x * TILE, top: f.y * TILE, width: TILE, height: TILE, padding: isFalse ? 8 : 5 }}
                   aria-label={`${POST_TYPES[it.post.type].label}: ${label(it.post)}${it.post.is_sample ? " (sample)" : ""}`}>
                   <WallMarker post={it.post} near={nearIds.has(it.post.id)} />
                   {it.post.is_sample && <span className="absolute -bottom-1 -right-1 z-20 scale-75"><SampleTag /></span>}

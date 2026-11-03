@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { POST_TYPES, WALL_COLORS } from "@/lib/constants";
+import { WALL_COLORS } from "@/lib/constants";
 import type { Post } from "@/lib/types";
 
 function tilt(id: string) {
@@ -28,18 +28,24 @@ export function WallMarker({ post, near }: { post: Post; near: boolean }) {
   if (post.type === "false_wall") return <FalseWall post={post} near={near} />;
 
   const style: CSSProperties = { transform: `rotate(${tilt(post.id)}deg)` };
+  const text = (v: string | null | undefined, fb: string) => (v && v.trim() ? v : fb);
+
+  // Hidden Thought: a sticky note. A hint of the thought is readable; the rest is blacked out.
   if (post.type === "hidden_thought") {
     return (
-      <div className="paper tape relative flex h-full w-full flex-col justify-center gap-1 rounded-[3px] bg-[#FFE98A] p-1.5" style={style}>
-        <i className="h-1.5 w-full rounded-sm bg-[#2b2200]" /><i className="h-1.5 w-3/4 rounded-sm bg-[#2b2200]" /><i className="h-1.5 w-5/6 rounded-sm bg-[#2b2200]" />
+      <div className="paper tape relative flex h-full w-full flex-col justify-between overflow-hidden rounded-[3px] bg-[#FFE98A] p-[5px] text-[#2b2200]" style={style}>
+        <p className="note line-clamp-2 text-[8.5px] leading-[1.15]">{text(post.body, "A thought")}</p>
+        <div aria-hidden className="space-y-[2px]"><i className="block h-[4px] w-full rounded-sm bg-[#2b2200]" /><i className="block h-[4px] w-4/5 rounded-sm bg-[#2b2200]" /></div>
+        <p className="note line-clamp-2 text-[8.5px] font-bold leading-[1.1]">{text(post.clue, "")}</p>
       </div>
     );
   }
+  // Picture: a small framed photo with its question underneath.
   if (post.type === "picture") {
     const img = post.media[0]?.url;
     return (
-      <div className="paper relative h-full w-full rounded-[3px] bg-[#fbf9f2] p-[3px] pb-2.5" style={style}>
-        <div className="h-full w-full overflow-hidden rounded-[2px]" style={{ background: `linear-gradient(135deg, ${c.base}, ${c.dark})` }}>
+      <div className="paper relative flex h-full w-full flex-col overflow-hidden rounded-[3px] bg-[#fbf9f2] p-[3px] text-[#1c1830]" style={style}>
+        <div className="min-h-0 flex-1 overflow-hidden rounded-[2px]" style={{ background: `linear-gradient(135deg, ${c.base}, ${c.dark})` }}>
           {img ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={img} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
@@ -47,14 +53,24 @@ export function WallMarker({ post, near }: { post: Post; near: boolean }) {
             <svg aria-hidden viewBox="0 0 40 30" className="h-full w-full opacity-70"><circle cx="12" cy="10" r="4" fill="#fff" /><path d="M0 30 14 16l8 8 6-6 12 12z" fill="#fff" opacity=".7" /></svg>
           )}
         </div>
+        <p className="mt-[2px] line-clamp-2 text-[8px] font-bold leading-[1.1]">{text(post.title, "Picture")}</p>
       </div>
     );
   }
-  const glyph = post.type === "prompt_response" ? "“" : POST_TYPES[post.type].icon;
+  // Random Prompt: a coloured card with the start of the answer.
+  if (post.type === "prompt_response") {
+    return (
+      <div className="paper flex h-full w-full flex-col overflow-hidden rounded-lg p-[5px]" style={{ ...style, background: c.base, color: c.ink }}>
+        <span aria-hidden className="display text-[16px] leading-[0.8] opacity-70">“</span>
+        <p className="line-clamp-4 text-[8.5px] font-semibold leading-[1.15]">{text(post.body, "")}</p>
+      </div>
+    );
+  }
+  // Ask Me: a poster with the question.
   return (
-    <div className="paper relative grid h-full w-full place-items-center rounded-md" style={{ ...style, background: c.base, color: c.ink }}>
-      <span className="display text-[34px] leading-none">{glyph}</span>
-      <span aria-hidden className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-black/25" />
+    <div className="paper relative flex h-full w-full flex-col justify-between overflow-hidden rounded-md p-[5px]" style={{ ...style, background: c.base, color: c.ink }}>
+      <span aria-hidden className="display text-[15px] leading-none">?</span>
+      <p className="line-clamp-3 text-[9px] font-bold leading-[1.12]">{text(post.title, "Ask me something")}</p>
     </div>
   );
 }
