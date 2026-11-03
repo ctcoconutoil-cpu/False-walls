@@ -6,6 +6,6 @@ export const metadata = { title: "Set up your profile" };
 export default async function Onboarding() {
   const { user, profile } = await getViewer();
   if (!user) redirect("/login?next=/onboarding");
-  if (profile) redirect("/maze");
+  if (profile) redirect("/wall");
   return <OnboardingForm />;
 }

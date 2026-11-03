@@ -82,7 +82,7 @@ export default async function BehindTheWall({ params }: { params: Promise<{ id: 
       {!owner && me && <DiscoveryPing kind="wall_explored" id={post.id} />}
       <header className="wall wall-brick relative overflow-hidden px-4 pb-6 pt-4" style={{ ["--wall" as string]: area.wall, ["--mortar" as string]: area.mortar }}>
         <div className="relative z-10 mx-auto max-w-2xl">
-          <Link href={`/maze/${post.area_slug}`} className="inline-flex min-h-11 items-center rounded-xl bg-black/45 px-3 text-sm font-bold">‹ Back to the {area.name}</Link>
+          <Link href={`/wall/${post.area_slug}`} className="inline-flex min-h-11 items-center rounded-xl bg-black/45 px-3 text-sm font-bold">‹ Back to the {area.name}</Link>
           <p className="display mt-4 text-4xl uppercase leading-none drop-shadow-[0_3px_0_rgba(0,0,0,.45)] sm:text-5xl">Behind the wall</p>
         </div>
       </header>

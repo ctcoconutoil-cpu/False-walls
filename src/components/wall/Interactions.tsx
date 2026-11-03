@@ -199,7 +199,7 @@ export function OwnerTools({ post, hiddenText, media }: { post: { id: string; ty
       <Sheet open={del} onClose={() => setDel(false)} title="Delete this wall?">
         <p className="mb-4 text-chalk-dim">This removes the wall, its pictures, answers and replies for good.</p>
         {err && <Notice tone="error">{err}</Notice>}
-        <div className="mt-3 flex gap-2"><Button tone="danger" disabled={pending} onClick={() => start(async () => { const r = await deletePost(post.id); if (r.ok) router.push("/maze"); else setErr(r.error); })}>Delete wall</Button><Button tone="ghost" onClick={() => setDel(false)}>Keep it</Button></div>
+        <div className="mt-3 flex gap-2"><Button tone="danger" disabled={pending} onClick={() => start(async () => { const r = await deletePost(post.id); if (r.ok) router.push("/wall"); else setErr(r.error); })}>Delete wall</Button><Button tone="ghost" onClick={() => setDel(false)}>Keep it</Button></div>
       </Sheet>
     </div>
   );
