@@ -23,7 +23,7 @@ export async function answerQuestion(questionId: string, body: string, isPublic:
   const { error } = await supabase.rpc("answer_question", { p_question: questionId, p_body: body, p_public: isPublic });
   if (error) return { ok: false, error: friendlyError(error) };
   revalidatePath("/inbox");
-  revalidatePath("/maze", "layout");
+  revalidatePath("/wall", "layout");
   return { ok: true };
 }
 

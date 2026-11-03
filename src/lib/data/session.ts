@@ -16,7 +16,7 @@ export const getViewer = cache(async () => {
 });
 
 /** Pages for signed-in members with a finished profile. */
-export async function requireMember(next = "/maze") {
+export async function requireMember(next = "/wall") {
   const v = await getViewer();
   if (!v.user) redirect(`/login?next=${encodeURIComponent(next)}`);
   if (!v.profile) redirect("/onboarding");

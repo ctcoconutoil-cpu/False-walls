@@ -7,7 +7,7 @@ export const metadata = { title: "Account suspended" };
 export default async function Suspended() {
   const { profile } = await getViewer();
   if (!profile) redirect("/");
-  if (profile.status !== "suspended") redirect("/maze");
+  if (profile.status !== "suspended") redirect("/wall");
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-4 px-5">
       <h1 className="text-3xl">Your account is suspended</h1>

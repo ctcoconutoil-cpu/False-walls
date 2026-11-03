@@ -13,7 +13,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <header className="border-b-4 border-mustard bg-night-2 px-4 py-3">
         <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3">
           <p className="display text-xl">Moderation <span className="text-sm font-normal text-chalk-dim">({profile.role})</span></p>
-          <Link href="/maze" className="text-sm underline">Back to the maze</Link>
+          <Link href="/wall" className="text-sm underline">Back to the Wall</Link>
         </div>
         <nav aria-label="Admin sections" className="scrollbar-none mx-auto mt-2 flex max-w-4xl gap-2 overflow-x-auto">
           {tabs.map(([h, l]) => <Link key={h} href={h} className="shrink-0 rounded-full bg-night-3 px-3.5 py-2 text-sm font-bold">{l}</Link>)}

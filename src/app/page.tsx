@@ -6,7 +6,7 @@ import { TAGLINE } from "@/lib/constants";
 
 export default async function Welcome() {
   const { user, profile } = await getViewer();
-  if (user && profile) redirect("/maze");
+  if (user && profile) redirect("/wall");
   return (
     <main data-nopad className="wall wall-brick relative min-h-dvh overflow-hidden" style={{ ["--wall" as string]: "#2a2450", ["--mortar" as string]: "#1d1a3a" }}>
       <div aria-hidden className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_50%_20%,rgba(242,87,63,.28),transparent_60%)]" />
@@ -19,7 +19,7 @@ export default async function Welcome() {
         <section className="space-y-4">
           <p className="text-lg text-chalk">Explore walls, uncover conversations and discover what people have to say.</p>
           <div className="grid gap-3">
-            <LinkButton href="/maze" tone="mustard" size="lg">Enter the Wall</LinkButton>
+            <LinkButton href="/wall" tone="mustard" size="lg">Enter the Wall</LinkButton>
             <div className="grid grid-cols-2 gap-3">
               <LinkButton href="/signup" tone="coral">Create Account</LinkButton>
               <LinkButton href="/login" tone="ghost">Log In</LinkButton>

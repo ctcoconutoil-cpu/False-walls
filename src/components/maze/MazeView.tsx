@@ -1,12 +1,14 @@
 "use client";
 import Link from "next/link";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { animate, useMotionValue, motion, useReducedMotion } from "framer-motion";
-import { AREAS, AREA_ORDER, POST_TYPES, TYPE_TO_ROUTE } from "@/lib/constants";
-import { SIZE, TILE, buildSection, findPath, standingTile, step, type Dir, type MazeSection, type Point } from "@/lib/maze/layout";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { animate, motion, useMotionValue, useReducedMotion, useTransform } from "framer-motion";
+import { AREAS, AREA_ORDER, POST_TYPES } from "@/lib/constants";
+import { FACE, SIZE, TILE, buildSection, findPath, standingTile, step, type Dir, type Point } from "@/lib/maze/layout";
 import type { AreaSlug, AuthorLite, Post } from "@/lib/types";
-import { Avatar, AvatarArt, Button, SampleTag, Sheet } from "@/components/ui";
-import { WallItem } from "./WallItem";
+import { Button, SampleTag, Sheet } from "@/components/ui";
+import { MazeWorld } from "./MazeWorld";
+import { PlayerMarker } from "./PlayerMarker";
+import { EyeMark, WallMarker } from "./WallMarker";
 import { RevealPanel } from "@/components/wall/RevealPanel";
 import { useCurtainNav } from "./Curtain";
 import { recordDiscovery } from "@/lib/actions/posts";
@@ -18,37 +20,9 @@ type Props = {
   loggedIn: boolean; me: AuthorLite | null;
 };
 
-const textureFor = (a: AreaSlug) => (a === "picture" ? "wall-tile" : a === "hidden" || a === "trending" ? "wall-slab" : "wall-brick");
-
-const Walls = memo(function Walls({ m, byFace, areaSlug, onItem, onDoor }: {
-  m: MazeSection; byFace: Map<string, Item>; areaSlug: AreaSlug; onItem: (i: Item) => void; onDoor: () => void;
-}) {
-  const A = AREAS[areaSlug];
-  const door = m.doors[0];
-  const out: React.ReactNode[] = [];
-  for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
-    if (!m.walls[y][x]) continue;
-    const item = byFace.get(`${x},${y}`);
-    const isDoor = door && door.x === x && door.y === y;
-    out.push(
-      <div key={`${x},${y}`} className={cx("wall wall-tile3d absolute", textureFor(areaSlug))}
-        style={{ left: x * TILE, top: y * TILE, width: TILE, height: TILE, ["--wall" as string]: A.wall, ["--mortar" as string]: A.mortar, ["--face" as string]: `color-mix(in srgb, ${A.wall} 60%, #000)` }}>
-        {item && (
-          <button data-wall type="button" onClick={() => onItem(item)} className="absolute inset-[9px] z-10 block text-left" aria-label={`${POST_TYPES[item.post.type].label}: ${item.post.title ?? item.post.clue ?? item.post.body ?? "wall"}${item.post.is_sample ? " (sample)" : ""}`}>
-            <WallItem post={item.post} />
-            {item.post.is_sample && <span className="absolute -bottom-1 -right-1 z-20"><SampleTag /></span>}
-          </button>
-        )}
-        {isDoor && (
-          <button data-wall type="button" onClick={onDoor} className="absolute inset-[10px] z-10 grid place-items-center rounded-t-[40px] rounded-b-md" aria-label="A strange seam in the wall. Tap to look closer." style={{ background: "linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.55))", boxShadow: `inset 0 0 0 2px ${A.accent}55` }}>
-            <span aria-hidden className="absolute right-3 top-1/2 h-2.5 w-2.5 rounded-full" style={{ background: A.accent, boxShadow: `0 0 12px 3px ${A.accent}` }} />
-          </button>
-        )}
-      </div>,
-    );
-  }
-  return <>{out}</>;
-});
+const STEP = 140; // ms per tile; the marker and camera glide at the same speed
+const NAMES = { n: "north", e: "east", s: "south", w: "west" } as const;
+const label = (p: Post) => p.title ?? p.clue ?? p.body ?? "wall";
 
 export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me }: Props) {
   const reduce = useReducedMotion();
@@ -59,26 +33,25 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
     items.forEach((it) => { const f = m.faces[it.slot % m.faces.length]; if (f) map.set(`${f.x},${f.y}`, it); });
     return map;
   }, [items, m]);
-  const faceOf = useMemo(() => {
-    const map = new Map<string, { x: number; y: number; dir: Dir }>();
-    m.faces.forEach((f) => map.set(`${f.x},${f.y}`, f));
-    m.doors.forEach((d) => map.set(`${d.x},${d.y}`, d));
-    return map;
-  }, [m]);
+  const faceOf = useCallback((it: Item) => m.faces[it.slot % m.faces.length], [m]);
 
   const viewport = useRef<HTMLDivElement>(null);
-  const [vp, setVp] = useState({ w: 360, h: 640 });
-  const zoom = vp.w < 480 ? 0.8 : 1;
+  const [vp, setVp] = useState({ w: 360, h: 560 });
+  const zoom = vp.w < 480 ? 1 : 1.25;
   const [pos, setPos] = useState<Point>(m.start);
   const posRef = useRef(pos);
-  const [flip, setFlip] = useState(false);
+  const [look, setLook] = useState<Dir>("s");
   const [moving, setMoving] = useState(false);
+  const [bump, setBump] = useState(0);
   const [detached, setDetached] = useState(false);
   const [selected, setSelected] = useState<Item | null>(null);
+  const [revealing, setRevealing] = useState<Item | null>(null);
   const [listMode, setListMode] = useState(false);
   const [status, setStatus] = useState("");
   const [toast, setToast] = useState<string | null>(null);
   const x = useMotionValue(0), y = useMotionValue(0);
+  const px = useMotionValue(m.start.x * TILE), py = useMotionValue(m.start.y * TILE);
+  const lightX = useTransform(px, (v) => v + TILE / 2 - 900), lightY = useTransform(py, (v) => v + TILE / 2 - 900);
   const dragged = useRef(false);
   const walkId = useRef(0);
   const { go, overlay } = useCurtainNav();
@@ -91,21 +64,27 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
     return () => ro.disconnect();
   }, [listMode]);
   useEffect(() => { posRef.current = pos; }, [pos]);
-  useEffect(() => { setPos(m.start); setDetached(false); setSelected(null); walkId.current++; }, [m]);
 
   // First visit to an area counts toward the Explorer badge.
   useEffect(() => { if (loggedIn) void recordDiscovery("area_visited", area); }, [area, loggedIn]);
 
   const W = SIZE * TILE * zoom;
   const clamp = useCallback((cx_: number, cy_: number) => ({
-    x: W <= vp.w ? (vp.w - W) / 2 : Math.min(60, Math.max(vp.w - W - 60, cx_)),
-    y: W <= vp.h ? (vp.h - W) / 2 : Math.min(90, Math.max(vp.h - W - 90, cy_)),
-  }), [W, vp.w, vp.h]);
+    x: W <= vp.w ? (vp.w - W) / 2 : Math.min(0, Math.max(vp.w - W, cx_)),
+    y: W <= vp.h ? (vp.h - W) / 2 : Math.min(0, Math.max(vp.h - W - FACE * zoom, cy_)),
+  }), [W, vp.w, vp.h, zoom]);
   const follow = useCallback((p: Point, instant = false) => {
     const c = clamp(vp.w / 2 - (p.x + 0.5) * TILE * zoom, vp.h * 0.46 - (p.y + 0.5) * TILE * zoom);
     if (instant || reduce) { x.set(c.x); y.set(c.y); }
-    else { animate(x, c.x, { duration: 0.2, ease: "linear" }); animate(y, c.y, { duration: 0.2, ease: "linear" }); }
+    else { animate(x, c.x, { duration: STEP / 1000, ease: "linear" }); animate(y, c.y, { duration: STEP / 1000, ease: "linear" }); }
   }, [clamp, vp.w, vp.h, zoom, reduce, x, y]);
+
+  // The marker glides to each new tile; the camera follows unless the person has dragged away.
+  useEffect(() => {
+    const d = reduce ? 0 : STEP / 1000;
+    if (d) { animate(px, pos.x * TILE, { duration: d, ease: "linear" }); animate(py, pos.y * TILE, { duration: d, ease: "linear" }); }
+    else { px.set(pos.x * TILE); py.set(pos.y * TILE); }
+  }, [pos, reduce, px, py]);
   useEffect(() => { if (!detached) follow(pos); }, [pos, detached, follow]);
   useEffect(() => { follow(m.start, true); }, [m, vp.w, vp.h]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -119,10 +98,10 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
     const tick = () => {
       if (id !== walkId.current) return;
       if (i >= path.length) { setMoving(false); then?.(); return; }
-      const p = path[i++];
-      setFlip(p.x < posRef.current.x ? true : p.x > posRef.current.x ? false : false);
+      const p = path[i++], from = posRef.current;
+      setLook(p.x > from.x ? "e" : p.x < from.x ? "w" : p.y > from.y ? "s" : "n");
       setPos(p); posRef.current = p;
-      window.setTimeout(tick, reduce ? 50 : 130);
+      window.setTimeout(tick, reduce ? 40 : STEP);
     };
     tick();
   }, [reduce]);
@@ -132,16 +111,29 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
     for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) { const it = byFace.get(`${pos.x + dx},${pos.y + dy}`); if (it) out.push(it); }
     return out;
   }, [pos, byFace]);
+  // False Walls glow a little brighter when you are close enough to have noticed them.
+  const nearIds = useMemo(() => {
+    const s = new Set<string>();
+    items.forEach((it) => { const f = faceOf(it); if (f && Math.abs(f.x - pos.x) <= 2 && Math.abs(f.y - pos.y) <= 2) s.add(it.post.id); });
+    return s;
+  }, [items, pos, faceOf]);
 
   const openItem = useCallback((it: Item) => { setSelected(it); }, []);
+  // A False Wall splits open, then the existing Behind the Wall screen takes over.
+  const revealFalseWall = useCallback((it: Item) => {
+    if (reduce) { go(`/post/${it.post.id}`); return; }
+    setRevealing(it); setStatus("The wall splits open.");
+    window.setTimeout(() => go(`/post/${it.post.id}`), 650);
+    window.setTimeout(() => setRevealing(null), 1500);
+  }, [reduce, go]);
+  const activate = useCallback((it: Item) => { if (it.post.type === "false_wall") revealFalseWall(it); else openItem(it); }, [openItem, revealFalseWall]);
+
   const onItem = useCallback((it: Item) => {
     if (dragged.current) return;
-    const f = faceOf.get(`${m.faces[it.slot % m.faces.length].x},${m.faces[it.slot % m.faces.length].y}`)!;
-    const stand = standingTile(m, f);
-    const p = findPath(m, posRef.current, stand);
-    if (!p) { openItem(it); return; }
-    walk(p, () => openItem(it));
-  }, [faceOf, m, walk, openItem]);
+    const p = findPath(m, posRef.current, standingTile(m, faceOf(it)));
+    if (!p) { activate(it); return; }
+    walk(p, () => activate(it));
+  }, [faceOf, m, walk, activate]);
 
   const onDoor = useCallback(() => {
     if (dragged.current) return;
@@ -150,12 +142,12 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
     const arrive = async () => {
       if (loggedIn) await recordDiscovery("door_found", d.key);
       showToast(`You found a hidden door. It leads to the ${AREAS[d.to].name}.`);
-      window.setTimeout(() => go(`/maze/${d.to}`), 900);
+      window.setTimeout(() => go(`/wall/${d.to}`), 900);
     };
     if (!p) void arrive(); else walk(p, () => void arrive());
   }, [m, walk, loggedIn, showToast, go]);
 
-  // Drag to look around. Taps (movement under 6px) walk the avatar instead.
+  // Drag to look around. Taps (movement under 6px) walk the marker instead.
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
     dragged.current = false;
@@ -180,98 +172,128 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
 
   const move1 = useCallback((dir: Dir) => {
     walkId.current++; setMoving(false);
+    setLook(dir);
     const n = step(m, posRef.current, dir);
-    const names = { n: "north", e: "east", s: "south", w: "west" };
     if (!n) {
       const it = byFace.get(`${posRef.current.x + (dir === "e" ? 1 : dir === "w" ? -1 : 0)},${posRef.current.y + (dir === "s" ? 1 : dir === "n" ? -1 : 0)}`);
-      setStatus(it ? `A wall to the ${names[dir]} has something on it: ${it.post.title ?? it.post.clue ?? "a note"}.` : `A blank wall to the ${names[dir]}.`);
+      setBump((b) => b + 1);
+      setStatus(it ? `A wall to the ${NAMES[dir]} has something on it: ${label(it.post)}.` : `A solid wall to the ${NAMES[dir]}. You cannot go that way.`);
       return;
     }
-    if (dir === "w") setFlip(true); if (dir === "e") setFlip(false);
     setDetached(false); setPos(n); posRef.current = n;
-    setStatus(`Walked ${names[dir]}.`);
+    setStatus(`Walked ${NAMES[dir]}.`);
   }, [m, byFace]);
 
   const onKey = (e: React.KeyboardEvent) => {
     const map: Record<string, Dir> = { ArrowUp: "n", ArrowDown: "s", ArrowLeft: "w", ArrowRight: "e", w: "n", s: "s", a: "w", d: "e" };
     if (e.key in map) { e.preventDefault(); move1(map[e.key]); }
-    if ((e.key === "Enter" || e.key === " ") && adjacentItems[0] && e.target === e.currentTarget) { e.preventDefault(); openItem(adjacentItems[0]); }
+    if ((e.key === "Enter" || e.key === " ") && adjacentItems[0] && e.target === e.currentTarget) { e.preventDefault(); activate(adjacentItems[0]); }
   };
 
   const setList = (v: boolean) => { setListMode(v); try { localStorage.setItem("fw-list-mode", v ? "1" : "0"); } catch { /* ignore */ } };
-  const avatarUser = me ?? { username: "guest", display_name: null, avatar_style: "blob", avatar_color: "#F2573F", avatar_url: null };
-  const base = `/maze/${area}`;
+  const recenter = () => { setDetached(false); follow(posRef.current); };
+  const base = `/wall/${area}`;
   const qs = (s: number, t = tab) => `${base}?section=${s}${area === "trending" ? `&tab=${t}` : ""}`;
+  const door = m.doors[0];
+  const rf = revealing ? faceOf(revealing) : null;
 
   return (
-    <div className="relative flex h-[calc(100dvh-var(--dock))] flex-col overflow-hidden" style={{ background: A.floor }}>
+    <div className="relative flex h-[calc(100dvh-var(--dock))] flex-col overflow-hidden bg-[#0c0919]">
       {overlay}
-      <header className="relative z-40 shrink-0 bg-night/92 px-3 pb-2 pt-3 backdrop-blur">
-        <div className="mb-2 flex items-center justify-between gap-2">
+      <header className="relative z-40 shrink-0 bg-night/95 px-3 pb-1.5 pt-2 backdrop-blur">
+        <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <h1 className="truncate text-2xl" style={{ color: A.accent }}>{A.name}</h1>
-            <p className="truncate text-xs text-chalk-dim">{A.blurb}</p>
+            <h1 className="truncate text-xl leading-tight" style={{ color: A.accent }}>{A.name}</h1>
+            <p className="hidden truncate text-xs text-chalk-dim sm:block">{A.blurb}</p>
           </div>
           <div className="flex shrink-0 gap-1.5">
-            <Link href="/search" aria-label="Search" className="grid h-11 w-11 place-items-center rounded-xl bg-night-3 text-lg">⌕</Link>
-            <button onClick={() => setList(!listMode)} aria-pressed={listMode} className="min-h-11 rounded-xl bg-night-3 px-3 text-sm font-bold">{listMode ? "Maze view" : "List view"}</button>
+            <Link href="/search" aria-label="Search" className="grid h-10 w-10 place-items-center rounded-xl bg-night-3 text-lg">⌕</Link>
+            <button onClick={() => setList(!listMode)} aria-pressed={listMode} className="min-h-10 rounded-xl bg-night-3 px-3 text-sm font-bold">{listMode ? "Back to the Wall" : "List view"}</button>
           </div>
         </div>
-        <nav aria-label="Maze areas" className="scrollbar-none -mx-3 flex gap-1.5 overflow-x-auto px-3">
+        <nav aria-label="Wall areas" className="scrollbar-none -mx-3 mt-1.5 flex gap-1.5 overflow-x-auto px-3">
           {AREA_ORDER.map((a) => (
-            <Link key={a} href={`/maze/${a}`} aria-current={a === area ? "page" : undefined} className={cx("display shrink-0 rounded-full px-3.5 py-2 text-sm font-black", a === area ? "text-[#1a1200]" : "bg-night-3 text-chalk")} style={a === area ? { background: AREAS[a].accent } : undefined}>{AREAS[a].name}</Link>
+            <Link key={a} href={`/wall/${a}`} aria-current={a === area ? "page" : undefined} className={cx("display shrink-0 rounded-full px-3 py-1.5 text-[13px] font-black", a === area ? "text-[#1a1200]" : "bg-night-3 text-chalk")} style={a === area ? { background: AREAS[a].accent } : undefined}>{AREAS[a].name}</Link>
           ))}
         </nav>
         {area === "trending" && (
-          <div role="tablist" aria-label="Trending or newest" className="mt-2 flex gap-1.5">
+          <div role="tablist" aria-label="Trending or newest" className="mt-1.5 flex gap-1.5">
             {(["trending", "newest"] as const).map((t) => (
-              <Link key={t} role="tab" aria-selected={tab === t} href={`${base}?tab=${t}`} className={cx("rounded-lg px-3 py-1.5 text-sm font-bold", tab === t ? "bg-chalk text-night" : "bg-night-3")}>{t === "trending" ? "Trending" : "Newest"}</Link>
+              <Link key={t} role="tab" aria-selected={tab === t} href={`${base}?tab=${t}`} className={cx("rounded-lg px-3 py-1 text-sm font-bold", tab === t ? "bg-chalk text-night" : "bg-night-3")}>{t === "trending" ? "Trending" : "Newest"}</Link>
             ))}
           </div>
         )}
       </header>
 
       {listMode ? (
-        <ListView items={items} area={area} door={m.doors[0]} onItem={openItem} onDoor={onDoor} tab={tab} />
+        <ListView items={items} area={area} door={door} onItem={openItem} onDoor={onDoor} tab={tab} />
       ) : (
-        <div ref={viewport} className="relative min-h-0 flex-1 touch-none select-none overflow-hidden outline-none" role="group" aria-label={`${A.name} maze. Use the arrow keys or the on-screen arrows to walk. Tap a wall to open it.`} tabIndex={0} onKeyDown={onKey} onPointerDown={onPointerDown}>
-          <motion.div className="absolute left-0 top-0 origin-top-left will-change-transform" style={{ x, y, width: SIZE * TILE, height: SIZE * TILE, scale: zoom }} onClick={onWorldClick}>
-            <div className="floor absolute inset-0" style={{ ["--floor" as string]: A.floor }} />
-            <Walls m={m} byFace={byFace} areaSlug={area} onItem={onItem} onDoor={onDoor} />
-            <div aria-hidden className="pointer-events-none absolute z-30" style={{ left: pos.x * TILE, top: pos.y * TILE, width: TILE, height: TILE, transition: reduce ? "none" : "left .13s linear, top .13s linear" }}>
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" style={{ transform: `translate(-50%, -50%) scaleX(${flip ? -1 : 1})` }}>
-                <motion.div animate={moving && !reduce ? { y: [0, -6, 0] } : { y: 0 }} transition={{ repeat: moving ? Infinity : 0, duration: 0.26 }} className="overflow-hidden rounded-full shadow-[0_6px_0_rgba(0,0,0,.35)]" style={{ width: 56, height: 56, outline: "3px solid #f3f2fb" }}>
-                  {me ? <Avatar user={me} size={56} /> : <AvatarArt style="blob" color="#F2573F" size={56} />}
-                </motion.div>
+        <div ref={viewport} data-testid="wall-viewport" className="relative min-h-0 flex-1 touch-none select-none overflow-hidden outline-none" role="group" aria-label={`${A.name}. Use the arrow keys or the on-screen arrows to walk. Tap a wall to open it. Drag to look around.`} tabIndex={0} onKeyDown={onKey} onPointerDown={onPointerDown}>
+          <motion.div data-testid="wall-world" className="absolute left-0 top-0 origin-top-left will-change-transform" style={{ x, y, width: SIZE * TILE, height: SIZE * TILE, scale: zoom }} onClick={onWorldClick}>
+            <MazeWorld m={m} area={area} />
+
+            {/* posts and the hidden door, pinned to wall tiles */}
+            {items.map((it) => {
+              const f = faceOf(it); if (!f) return null;
+              const isFalse = it.post.type === "false_wall";
+              return (
+                <button key={it.post.id} data-wall data-post={it.post.id} data-type={it.post.type} type="button" onClick={() => onItem(it)}
+                  className="absolute z-10 block text-left" style={{ left: f.x * TILE, top: f.y * TILE, width: TILE, height: TILE, padding: isFalse ? 8 : 9 }}
+                  aria-label={`${POST_TYPES[it.post.type].label}: ${label(it.post)}${it.post.is_sample ? " (sample)" : ""}`}>
+                  <WallMarker post={it.post} near={nearIds.has(it.post.id)} />
+                  {it.post.is_sample && <span className="absolute -bottom-1 -right-1 z-20 scale-75"><SampleTag /></span>}
+                </button>
+              );
+            })}
+            {door && (
+              <button data-wall data-door type="button" onClick={onDoor} aria-label="A strange seam in the wall. Tap to look closer."
+                className="fw-door absolute z-10 grid place-items-center rounded-t-[26px] rounded-b-sm" style={{ left: door.x * TILE + 12, top: door.y * TILE + 6, width: TILE - 24, height: TILE - 6, background: "linear-gradient(180deg, rgba(8,4,20,.7), rgba(8,4,20,.9))", ["--glow" as string]: A.accent }}>
+                <EyeMark color={A.accent} size={13} />
+              </button>
+            )}
+
+            <PlayerMarker px={px} py={py} color={me?.avatar_color ?? "#F2573F"} look={look} moving={moving} bump={bump} tile={pos} />
+
+            {rf && revealing && (
+              <div aria-hidden className="pointer-events-none absolute z-40" style={{ left: rf.x * TILE, top: rf.y * TILE, width: TILE, height: TILE }}>
+                <motion.span className="absolute left-1/2 top-1/2 block h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ background: "radial-gradient(circle, #fff 0%, #ffe9b0 25%, transparent 70%)" }} initial={{ scale: 0.3, opacity: 1 }} animate={{ scale: 9, opacity: 0 }} transition={{ duration: 0.75, ease: "easeOut" }} />
+                <motion.span className="absolute inset-0 block rounded-sm" style={{ boxShadow: "inset 0 0 0 3px #fff" }} initial={{ scale: 1, opacity: 1 }} animate={{ scale: 2.4, opacity: 0 }} transition={{ duration: 0.6 }} />
               </div>
-            </div>
+            )}
+
+            {/* a pool of light that follows the player; the far corridors fall into shadow */}
+            <motion.div aria-hidden className="pointer-events-none absolute left-0 top-0 z-20" style={{ x: lightX, y: lightY, width: 1800, height: 1800, background: "radial-gradient(circle closest-side, rgba(8,5,22,0) 0%, rgba(8,5,22,0) 18%, rgba(8,5,22,.42) 40%, rgba(8,5,22,.66) 100%)" }} />
           </motion.div>
 
           {items.length === 0 && (
-            <div className="pointer-events-none absolute inset-x-4 top-4 z-30 rounded-2xl bg-night/90 p-4 text-center">
-              <p className="display text-lg">{area === "trending" && tab === "trending" ? "Nothing is trending yet" : "This wall is blank"}</p>
-              <p className="mt-1 text-sm text-chalk-dim">{area === "trending" && tab === "trending" ? "Walls rise here when several different people react and reply. Check Newest, or start a conversation." : "Be the first to put something here."}</p>
+            <div className="pointer-events-none absolute inset-x-4 top-3 z-30 rounded-2xl bg-night/90 p-3 text-center">
+              <p className="display text-base">{area === "trending" && tab === "trending" ? "Nothing is trending yet" : "This wall is blank"}</p>
+              <p className="mt-0.5 text-sm text-chalk-dim">{area === "trending" && tab === "trending" ? "Walls rise here when several different people react and reply. Check Newest, or start a conversation." : "Be the first to put something here."}</p>
             </div>
           )}
 
-          <div className="pointer-events-none absolute inset-x-0 bottom-3 z-40 flex items-end justify-between px-3">
-            <div className="pointer-events-auto grid grid-cols-3 gap-1" role="group" aria-label="Walk">
+          {sectionCount > 1 && (
+            <div className="pointer-events-auto absolute right-2 top-2 z-40 flex items-center gap-1 rounded-full bg-night/85 p-1 text-xs backdrop-blur">
+              <Link aria-label="Earlier section" aria-disabled={section === 0} tabIndex={section === 0 ? -1 : 0} href={qs(Math.max(0, section - 1))} className={cx("grid h-8 w-8 place-items-center rounded-full bg-night-3 font-bold", section === 0 && "pointer-events-none opacity-40")}>‹</Link>
+              <span className="px-1 text-chalk-dim" aria-live="polite">Section {section + 1}/{sectionCount}</span>
+              <Link aria-label="Newer section" aria-disabled={section + 1 >= sectionCount} tabIndex={section + 1 >= sectionCount ? -1 : 0} href={qs(section + 1)} className={cx("grid h-8 w-8 place-items-center rounded-full bg-night-3 font-bold", section + 1 >= sectionCount && "pointer-events-none opacity-40")}>›</Link>
+            </div>
+          )}
+
+          <div className="pointer-events-none absolute inset-x-0 bottom-2 z-40 flex items-end justify-between px-2.5">
+            <div className="pointer-events-auto grid grid-cols-3 gap-[3px] opacity-90" role="group" aria-label="Walk">
               <span /><Pad label="Walk north" glyph="▲" onPress={() => move1("n")} /><span />
               <Pad label="Walk west" glyph="◀" onPress={() => move1("w")} /><Pad label="Walk south" glyph="▼" onPress={() => move1("s")} /><Pad label="Walk east" glyph="▶" onPress={() => move1("e")} />
             </div>
-            <div className="pointer-events-auto flex flex-col items-end gap-2">
-              {detached && <Button tone="ghost" size="sm" onClick={() => { setDetached(false); follow(posRef.current); }}>Recenter</Button>}
-              {adjacentItems[0] && !selected && <Button tone="mustard" size="sm" onClick={() => openItem(adjacentItems[0])}>Open this wall</Button>}
+            <div className="pointer-events-auto flex flex-col items-end gap-1.5">
+              {adjacentItems[0] && !selected && <Button tone="mustard" size="sm" onClick={() => activate(adjacentItems[0])}>{adjacentItems[0].post.type === "false_wall" ? "Look closer" : "Open this wall"}</Button>}
+              <button type="button" data-testid="recenter" onClick={recenter} aria-label="Recenter on your position" className={cx("flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-bold shadow-[0_3px_0_#0d0b1f]", detached ? "bg-mustard text-[#2c1e02]" : "bg-night/85 text-chalk")}>
+                <span aria-hidden>◎</span>Recenter
+              </button>
             </div>
           </div>
         </div>
       )}
-
-      <footer className="relative z-40 flex shrink-0 items-center justify-center gap-2 bg-night/92 px-3 py-2 text-sm">
-        <Link aria-disabled={section === 0} tabIndex={section === 0 ? -1 : 0} href={qs(Math.max(0, section - 1))} className={cx("min-h-11 rounded-xl bg-night-3 px-4 py-2.5 font-bold", section === 0 && "pointer-events-none opacity-40")}>‹ Earlier</Link>
-        <span className="min-w-28 text-center text-chalk-dim" aria-live="polite">Section {section + 1} of {sectionCount}</span>
-        <Link aria-disabled={section + 1 >= sectionCount} tabIndex={section + 1 >= sectionCount ? -1 : 0} href={qs(section + 1)} className={cx("min-h-11 rounded-xl bg-night-3 px-4 py-2.5 font-bold", section + 1 >= sectionCount && "pointer-events-none opacity-40")}>Newer ›</Link>
-      </footer>
 
       <p className="sr-only" aria-live="polite">{status}</p>
       {toast && <p role="status" className="fixed inset-x-4 top-24 z-[70] mx-auto max-w-sm rounded-xl bg-mustard px-4 py-3 text-center font-bold text-[#2c1e02]">{toast}</p>}
@@ -284,7 +306,7 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
 }
 
 function Pad({ label, glyph, onPress }: { label: string; glyph: string; onPress: () => void }) {
-  return <button type="button" aria-label={label} onClick={onPress} className="grid h-12 w-12 place-items-center rounded-xl bg-night/85 text-lg text-chalk shadow-[0_3px_0_#0d0b1f] active:translate-y-0.5">{glyph}</button>;
+  return <button type="button" aria-label={label} onClick={onPress} className="grid h-10 w-10 place-items-center rounded-xl bg-night/80 text-base text-chalk shadow-[0_3px_0_#0d0b1f] backdrop-blur active:translate-y-0.5">{glyph}</button>;
 }
 
 function Peek({ item, loggedIn, go }: { item: Item; loggedIn: boolean; go: (href: string) => void }) {
@@ -320,7 +342,7 @@ function Peek({ item, loggedIn, go }: { item: Item; loggedIn: boolean; go: (href
 
 function ListView({ items, area, door, onItem, onDoor, tab }: { items: Item[]; area: AreaSlug; door?: { to: AreaSlug }; onItem: (i: Item) => void; onDoor: () => void; tab: string }) {
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto bg-night px-3 py-3">
+    <div className="min-h-0 flex-1 overflow-y-auto bg-night px-3 py-3" data-testid="wall-list">
       <p className="mb-3 text-sm text-chalk-dim">Every wall in this section, as a plain list. Choose one to open it.</p>
       {items.length === 0 && <p className="rounded-xl border-2 border-dashed border-night-3 p-6 text-center text-chalk-dim">{area === "trending" && tab === "trending" ? "Nothing is trending yet. Try the Newest tab." : "No walls in this section yet."}</p>}
       <ul className="space-y-2">
@@ -329,7 +351,7 @@ function ListView({ items, area, door, onItem, onDoor, tab }: { items: Item[]; a
             <button onClick={() => onItem(it)} className="flex w-full items-center gap-3 rounded-2xl bg-night-2 p-3 text-left">
               <span aria-hidden className="grid h-12 w-12 shrink-0 place-items-center rounded-xl text-xl font-black text-[#1a1200]" style={{ background: AREAS[area].accent }}>{POST_TYPES[it.post.type].icon}</span>
               <span className="min-w-0">
-                <span className="block text-xs font-bold uppercase tracking-wide text-chalk-dim">{POST_TYPES[it.post.type].label}{it.post.is_sample ? " · sample" : ""}</span>
+                <span className="block text-xs font-bold text-chalk-dim">{POST_TYPES[it.post.type].label}{it.post.is_sample ? " · sample" : ""}</span>
                 <span className="block truncate font-semibold">{it.post.title ?? it.post.clue ?? it.post.body}</span>
               </span>
             </button>
@@ -343,5 +365,3 @@ function ListView({ items, area, door, onItem, onDoor, tab }: { items: Item[]; a
     </div>
   );
 }
-
-export { TYPE_TO_ROUTE };

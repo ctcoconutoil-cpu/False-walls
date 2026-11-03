@@ -76,7 +76,7 @@ export async function createPost(fd: FormData): Promise<ActionResult<{ id: strin
     if (uploaded.length) await supabase.storage.from("post-media").remove(uploaded);
     return { ok: false, error: friendlyError(error) };
   }
-  revalidatePath("/maze", "layout");
+  revalidatePath("/wall", "layout");
   revalidatePath("/profile", "layout");
   return { ok: true, id: data as string };
 }
@@ -86,7 +86,7 @@ export async function editPost(id: string, v: { title: string; body: string; clu
   const { error } = await supabase.rpc("edit_post", { p_id: id, p_title: v.title, p_body: v.body, p_clue: v.clue, p_hidden_text: v.hidden });
   if (error) return { ok: false, error: friendlyError(error) };
   revalidatePath(`/post/${id}`);
-  revalidatePath("/maze", "layout");
+  revalidatePath("/wall", "layout");
   return { ok: true };
 }
 
@@ -97,7 +97,7 @@ export async function deletePost(id: string): Promise<ActionResult> {
   if (error || !count) return { ok: false, error: friendlyError(error ?? "forbidden") };
   const paths = (media ?? []).map((m) => m.storage_path as string);
   if (paths.length) await supabase.storage.from("post-media").remove(paths);
-  revalidatePath("/maze", "layout");
+  revalidatePath("/wall", "layout");
   revalidatePath("/profile", "layout");
   return { ok: true };
 }

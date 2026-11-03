@@ -5,6 +5,6 @@ import { getViewer } from "@/lib/data/session";
 export const metadata = { title: "Create account" };
 export default async function Signup() {
   const { user, profile } = await getViewer();
-  if (user) redirect(profile ? "/maze" : "/onboarding");
+  if (user) redirect(profile ? "/wall" : "/onboarding");
   return <AuthForm mode="signup" />;
 }
