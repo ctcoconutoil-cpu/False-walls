@@ -2,7 +2,7 @@
 
 *Look closer. There's more behind the wall.*
 
-A mobile-first social network disguised as a maze game. Members walk the Wall (the maze), find walls (questions, hidden thoughts, pictures, prompts, false walls), reveal what is behind them, and start conversations.
+A mobile-first social network built around the Wall: a sideways-scrolling row of brick walls. Members swipe along it, find walls (questions, hidden thoughts, pictures, prompts, false walls), reveal what is behind them, and start conversations.
 
 Stack: Next.js 16 (App Router, TypeScript), Tailwind, Framer Motion, Supabase (Auth, PostgreSQL, Storage).
 
@@ -15,7 +15,8 @@ Stack: Next.js 16 (App Router, TypeScript), Tailwind, Framer Motion, Supabase (A
 
 **Not verified end to end** (no live Supabase project was available while building)
 - Sign-up/sign-in/email confirmation, PostgREST joins, storage uploads and signed URLs, and every logged-in flow were type-checked and SQL-tested but not clicked through against a real project. Expect to fix small integration issues on first run. Work through the 20-flow checklist in `docs/TESTING.md`.
-- The Wall (movement, wall blocking, section travel, False Wall reveal, drag + Recenter, List View, hidden door) was exercised in a browser at 320, 390, 768 and 1280px widths with a temporary harness using fake posts; live Supabase flows were not testable from the build sandbox.
+- The Wall (sideways swipe, mouse wheel and arrow buttons, no vertical scroll, tapping a wall opens its content, False Wall reveal) was exercised in a browser at 320, 390 and 1280px with a temporary harness using fake posts; live Supabase flows were not testable from the build sandbox. The maze has been removed.
+- Each wall can carry an author-chosen icon (migration 0010, `posts.wall_icon`, `set_post_icon`).
 - Navigation: Wall / Discover / Create / Inbox / Me. Wall and Discover show the same public-only content; Discover is the conventional feed with New and Trending filters.
 
 **Not implemented**

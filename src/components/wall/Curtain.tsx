@@ -5,7 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 const KEY = "fw-curtain";
 
-/** Brick shutters that close over the maze before a conversation opens, then part on the other side. */
+/** Brick shutters that close over the Wall before a conversation opens, then part on the other side. */
 export function useCurtainNav() {
   const router = useRouter();
   const reduce = useReducedMotion();

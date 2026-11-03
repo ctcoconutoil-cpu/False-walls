@@ -3,7 +3,7 @@ import { requireMember } from "@/lib/data/session";
 import { createClient } from "@/lib/supabase/server";
 import { getPostsByIds } from "@/lib/data/posts";
 import { Empty } from "@/components/ui";
-import { WallItem } from "@/components/maze/WallItem";
+import { WallItem } from "@/components/wall/WallItem";
 
 export const metadata = { title: "Saved walls" };
 export default async function Saved() {
