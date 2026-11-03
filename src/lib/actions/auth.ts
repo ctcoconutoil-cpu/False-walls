@@ -96,7 +96,7 @@ export async function completeOnboarding(_: FormState, fd: FormData): Promise<Fo
     return { error: friendlyError(error) };
   }
   revalidatePath("/", "layout");
-  redirect("/wall");
+  redirect("/maze");
 }
 
 export async function updateProfile(_: FormState, fd: FormData): Promise<FormState> {

@@ -35,7 +35,7 @@ export async function getAreaItems(area: AreaSlug, section: number, tab: "trendi
 
   if (area === "trending") {
     if (tab === "newest") {
-      const { data } = await supabase.from("posts").select(POST_SELECT).eq("status", "active").eq("visibility", "public")
+      const { data } = await supabase.from("posts").select(POST_SELECT).eq("status", "active")
         .order("created_at", { ascending: false }).range(from, from + SLOTS_PER_SECTION);
       const posts = await hydratePosts(supabase, (data ?? []) as unknown as Row[]);
       return { items: posts.slice(0, SLOTS_PER_SECTION).map((post, i) => ({ slot: from + i, post })), hasMore: posts.length > SLOTS_PER_SECTION };
@@ -45,47 +45,20 @@ export async function getAreaItems(area: AreaSlug, section: number, tab: "trendi
     if (!ids.length) return { items: [] as AreaItem[], hasMore: false };
     const { data } = await supabase.from("posts").select(POST_SELECT).in("id", ids);
     const byId = new Map(((await hydratePosts(supabase, (data ?? []) as unknown as Row[]))).map((p) => [p.id, p]));
-    // Only publicly discoverable posts appear in the Wall; followers-only posts stay on profiles and in threads.
-    const ordered = (ids.map((id) => byId.get(id)).filter(Boolean) as Post[]).filter((p) => p.visibility === "public");
+    const ordered = ids.map((id) => byId.get(id)).filter(Boolean) as Post[];
     return { items: ordered.slice(0, SLOTS_PER_SECTION).map((post, i) => ({ slot: from + i, post })), hasMore: ordered.length > SLOTS_PER_SECTION };
   }
 
   const { data } = await supabase.from("wall_locations")
     .select(`slot_index, post:posts!inner(${POST_SELECT})`)
     .eq("area_slug", area).gte("slot_index", from).lt("slot_index", from + SLOTS_PER_SECTION).order("slot_index");
-  const rows = ((data ?? []) as unknown as { slot_index: number; post: Row }[]).filter((r) => r.post.visibility === "public");
+  const rows = (data ?? []) as unknown as { slot_index: number; post: Row }[];
   const posts = await hydratePosts(supabase, rows.map((r) => r.post));
   const items: AreaItem[] = rows.map((r, i) => ({ slot: r.slot_index, post: posts[i] }));
   const { data: last } = await supabase.from("wall_locations").select("slot_index").eq("area_slug", area)
     .order("slot_index", { ascending: false }).limit(1);
   const maxSlot = (last?.[0]?.slot_index as number | undefined) ?? 0;
   return { items, hasMore: maxSlot >= from + SLOTS_PER_SECTION };
-}
-
-export type DiscoverFilter = "new" | "trending";
-export const DISCOVER_PAGE = 12;
-
-/**
- * The Discover feed. It reads the same posts as the Wall, through the same row-level security, and applies
- * the same "publicly discoverable only" rule, so the two screens can never disagree about what is visible.
- */
-export async function getDiscoverFeed(filter: DiscoverFilter, type: string | null, page: number) {
-  const supabase = await createClient();
-  const from = page * DISCOVER_PAGE;
-  if (filter === "trending") {
-    const { data: ranked } = await supabase.rpc("trending_posts", { p_limit: DISCOVER_PAGE + 1, p_offset: from, p_area: null, p_type: type });
-    const ids = ((ranked ?? []) as { post_id: string }[]).map((r) => r.post_id);
-    if (!ids.length) return { posts: [] as Post[], hasMore: false };
-    const { data } = await supabase.from("posts").select(POST_SELECT).in("id", ids);
-    const byId = new Map((await hydratePosts(supabase, (data ?? []) as unknown as Row[])).map((p) => [p.id, p]));
-    const ordered = (ids.map((id) => byId.get(id)).filter(Boolean) as Post[]).filter((p) => p.visibility === "public");
-    return { posts: ordered.slice(0, DISCOVER_PAGE), hasMore: ids.length > DISCOVER_PAGE };
-  }
-  let q = supabase.from("posts").select(POST_SELECT).eq("status", "active").eq("visibility", "public");
-  if (type) q = q.eq("type", type);
-  const { data } = await q.order("created_at", { ascending: false }).range(from, from + DISCOVER_PAGE);
-  const posts = await hydratePosts(supabase, (data ?? []) as unknown as Row[]);
-  return { posts: posts.slice(0, DISCOVER_PAGE), hasMore: posts.length > DISCOVER_PAGE };
 }
 
 export async function getPostById(id: string) {

@@ -100,26 +100,6 @@ h1, h2, h3, .display { font-family: var(--font-display); font-weight: 900; lette
 .clue-glow { animation: glowpulse 2.6s ease-in-out infinite; }
 @keyframes sheen { 0% { transform: translateX(-120%); } 60%,100% { transform: translateX(220%); } }
 
-
-/* ---------- the Wall (maze): False Wall cues and the player ---------- */
-@keyframes fwcrack { 0%,100% { opacity: .55; filter: drop-shadow(0 0 1.5px var(--glow)); } 50% { opacity: 1; filter: drop-shadow(0 0 5px var(--glow)); } }
-@keyframes fwdistort { 0%,100% { transform: translateX(0) skewX(0); } 46% { transform: translateX(0) skewX(0); } 50% { transform: translateX(.6px) skewX(-1.2deg); } 54% { transform: translateX(-.6px) skewX(1deg); } 58% { transform: none; } }
-.fw-false { animation: fwdistort 7s ease-in-out infinite; }
-.fw-false .fw-crack { animation: fwcrack 3.2s ease-in-out infinite; }
-.fw-false .fw-eye { opacity: .6; transition: opacity .3s; filter: drop-shadow(0 0 2px var(--glow)); }
-.fw-false[data-near="1"] .fw-crack { animation-duration: 1.4s; }
-.fw-false[data-near="1"] .fw-eye { opacity: 1; }
-@keyframes fwbob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-2.5px); } }
-@keyframes fwbobfast { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-@keyframes fwping { 0% { transform: translate(-50%,-50%) scale(.7); opacity: .7; } 100% { transform: translate(-50%,-50%) scale(1.9); opacity: 0; } }
-.fw-bob { animation: fwbob 2.4s ease-in-out infinite; }
-.fw-bob-fast { animation: fwbobfast .28s ease-in-out infinite; }
-.fw-ping { animation: fwping 2.4s ease-out infinite; }
-@keyframes fwdoor { 0%,100% { box-shadow: inset 0 0 0 2px var(--glow), 0 0 8px 1px var(--glow); } 50% { box-shadow: inset 0 0 0 2px var(--glow), 0 0 18px 4px var(--glow); } }
-.fw-door { animation: fwdoor 3s ease-in-out infinite; }
-html[data-motion="reduced"] .fw-false, html[data-motion="reduced"] .fw-false .fw-crack, html[data-motion="reduced"] .fw-bob, html[data-motion="reduced"] .fw-bob-fast, html[data-motion="reduced"] .fw-ping, html[data-motion="reduced"] .fw-door { animation: none; }
-@media (prefers-reduced-motion: reduce) { .fw-false, .fw-false .fw-crack, .fw-bob, .fw-bob-fast, .fw-ping, .fw-door { animation: none; } .fw-false .fw-crack { opacity: .9; } }
-
 /* ---------- misc ---------- */
 .scrollbar-none { scrollbar-width: none; }
 .scrollbar-none::-webkit-scrollbar { display: none; }

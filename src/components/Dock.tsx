@@ -20,11 +20,11 @@ export function Dock({ username, unread }: { username: string | null; unread: nu
   return (
     <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-[60] border-t-2 border-night-3 bg-night/95 backdrop-blur safe-bottom">
       <div className="mx-auto flex max-w-xl items-end px-2">
-        {item("/wall", "Wall", "▦", path.startsWith("/wall"))}
-        {item("/discover", "Discover", "✦", path.startsWith("/discover") || path.startsWith("/search"))}
+        {item("/maze/main", "Maze", "▦", path.startsWith("/maze") && !path.startsWith("/maze/trending"))}
+        {item("/maze/trending", "Trending", "✦", path.startsWith("/maze/trending"))}
         <Link href="/create" aria-label="Create: put something on the wall" className="relative -mt-5 mb-1.5 grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-coral text-3xl font-black text-[#2a0d08] shadow-[0_5px_0_#8f2c1b] btn-press [--btn-shadow:#8f2c1b]">+</Link>
         {item("/inbox", "Inbox", "✉", path.startsWith("/inbox"), unread)}
-        {item(username ? `/profile/${username}` : "/login", "Me", "☻", path.startsWith("/profile") || path === "/settings")}
+        {item(username ? `/profile/${username}` : "/login", username ? "Me" : "Log in", "☻", path.startsWith("/profile") || path === "/settings")}
       </div>
     </nav>
   );

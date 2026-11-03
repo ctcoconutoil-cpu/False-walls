@@ -22,7 +22,7 @@ export function ProfileActions({ userId, following, allowFollows, loggedIn }: { 
       <Sheet open={open} onClose={() => setOpen(false)} title="Manage this person">
         <div className="space-y-3">
           <Button tone="ghost" className="w-full" disabled={pending} onClick={() => start(async () => { await setBlock(userId, "mute"); setOpen(false); router.refresh(); })}>Mute. Hide their walls from you quietly.</Button>
-          <Button tone="danger" className="w-full" disabled={pending} onClick={() => start(async () => { await setBlock(userId, "block"); setOpen(false); router.push("/wall"); })}>Block. You can't see or contact each other.</Button>
+          <Button tone="danger" className="w-full" disabled={pending} onClick={() => start(async () => { await setBlock(userId, "block"); setOpen(false); router.push("/maze"); })}>Block. You can't see or contact each other.</Button>
           <div className="text-center"><ReportButton type="user" id={userId} label="Report this person" /></div>
         </div>
       </Sheet>

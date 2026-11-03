@@ -41,7 +41,7 @@ export function OnboardingForm() {
           <h2 id="look" className="text-xl">Your avatar</h2>
           <div className="flex items-center gap-4">
             <Avatar user={{ username: name || "you", avatar_style: style, avatar_color: color, avatar_url: null }} size={88} ring="#f3f2fb" />
-            <p className="text-sm text-chalk-dim">This is your marker on the Wall.</p>
+            <p className="text-sm text-chalk-dim">This is you in the maze.</p>
           </div>
           <input type="hidden" name="avatar_style" value={style} /><input type="hidden" name="avatar_color" value={color} />
           <fieldset><legend className="mb-1 text-sm font-semibold">Shape</legend>
@@ -81,7 +81,7 @@ export function OnboardingForm() {
 
         <Notice>Under-18 accounts start private: not listed in search and not open to anonymous questions from adults. You can review every setting later.</Notice>
         {state?.error && <Notice tone="error">{state.error}</Notice>}
-        <Button type="submit" size="lg" disabled={pending} className="w-full">{pending ? "Building your profile…" : "Enter the Wall"}</Button>
+        <Button type="submit" size="lg" disabled={pending} className="w-full">{pending ? "Building your profile…" : "Enter the maze"}</Button>
       </form>
     </main>
   );

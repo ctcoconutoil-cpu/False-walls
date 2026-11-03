@@ -16,7 +16,7 @@ export default async function Saved() {
   return (
     <main className="mx-auto max-w-2xl px-4 py-6">
       <h1 className="mb-4 text-3xl">Saved walls</h1>
-      {posts.length === 0 ? <Empty title="Nothing saved yet" action={<Link href="/wall" className="font-bold text-mustard underline">Explore the Wall</Link>}>Use Save on any wall to keep it here. Walls that are removed or hidden won't appear.</Empty> : (
+      {posts.length === 0 ? <Empty title="Nothing saved yet" action={<Link href="/maze" className="font-bold text-mustard underline">Explore the maze</Link>}>Use Save on any wall to keep it here. Walls that are removed or hidden won't appear.</Empty> : (
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">{posts.map((p) => <li key={p.id} className="h-40"><Link href={`/post/${p.id}`} className="block h-full"><WallItem post={p} compact /></Link></li>)}</ul>
       )}
     </main>

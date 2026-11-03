@@ -9,7 +9,7 @@ import type { AreaSlug } from "@/lib/types";
 
 export async function generateMetadata({ params }: { params: Promise<{ area: string }> }) {
   const { area } = await params;
-  return { title: AREAS[area as AreaSlug]?.name ?? "Wall" };
+  return { title: AREAS[area as AreaSlug]?.name ?? "Maze" };
 }
 
 export default async function AreaPage({ params, searchParams }: { params: Promise<{ area: string }>; searchParams: Promise<{ section?: string; tab?: string }> }) {

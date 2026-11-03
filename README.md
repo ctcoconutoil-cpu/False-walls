@@ -2,7 +2,7 @@
 
 *Look closer. There's more behind the wall.*
 
-A mobile-first social network disguised as a maze game. Members walk the Wall (the maze), find walls (questions, hidden thoughts, pictures, prompts, false walls), reveal what is behind them, and start conversations.
+A mobile-first social network disguised as a maze. Members walk a maze, find walls (questions, hidden thoughts, pictures, prompts, false walls), reveal what is behind them, and start conversations.
 
 Stack: Next.js 16 (App Router, TypeScript), Tailwind, Framer Motion, Supabase (Auth, PostgreSQL, Storage).
 
@@ -11,12 +11,11 @@ Stack: Next.js 16 (App Router, TypeScript), Tailwind, Framer Motion, Supabase (A
 **Built and verified**
 - `npm run build`, `tsc --noEmit` and `npm run lint` pass (lint: 0 errors, 7 warnings).
 - The database layer (schema, RLS, RPCs, triggers, seed) runs on a real PostgreSQL engine (PGlite) with 99 passing assertions: `node scripts/test-db.mjs`.
-- Public pages (welcome, signup, guidelines, privacy, Wall shell) render on mobile and desktop widths with no console errors.
+- Public pages (welcome, signup, guidelines, privacy, maze shell) render on mobile and desktop widths with no console errors.
 
 **Not verified end to end** (no live Supabase project was available while building)
 - Sign-up/sign-in/email confirmation, PostgREST joins, storage uploads and signed URLs, and every logged-in flow were type-checked and SQL-tested but not clicked through against a real project. Expect to fix small integration issues on first run. Work through the 20-flow checklist in `docs/TESTING.md`.
-- The Wall (movement, wall blocking, section travel, False Wall reveal, drag + Recenter, List View, hidden door) was exercised in a browser at 320, 390, 768 and 1280px widths with a temporary harness using fake posts; live Supabase flows were not testable from the build sandbox.
-- Navigation: Wall / Discover / Create / Inbox / Me. Wall and Discover show the same public-only content; Discover is the conventional feed with New and Trending filters.
+- Maze interaction (drag, swipe, hidden doors, curtain transition) was not exercised with seeded data in a browser here.
 
 **Not implemented**
 - Email and push notifications (in-app notifications only).

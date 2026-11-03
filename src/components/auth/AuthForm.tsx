@@ -31,7 +31,7 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next?: stri
       </form>
       <p className="text-sm text-chalk-dim">
         {mode === "login" ? <>New here? <Link className="font-bold text-mustard underline" href="/signup">Create an account</Link></> : <>Already have an account? <Link className="font-bold text-mustard underline" href="/login">Log in</Link></>}
-        {" "}Or <Link className="underline" href="/wall">look around first</Link>.
+        {" "}Or <Link className="underline" href="/maze">look around first</Link>.
       </p>
     </main>
   );
