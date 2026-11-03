@@ -43,6 +43,7 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
   const zoomRef = useRef(zoom);
   const router = useRouter();
   const [ready, setReady] = useState(false);
+  const [zoomOpen, setZoomOpen] = useState(false);
   const [pos, setPos] = useState<Point>(m.start);
   const posRef = useRef(pos);
   const [look, setLook] = useState<Dir>("s");
@@ -51,7 +52,6 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
   const [detached, setDetached] = useState(false);
   const [selected, setSelected] = useState<Item | null>(null);
   const [revealing, setRevealing] = useState<Item | null>(null);
-  const [listMode, setListMode] = useState(false);
   const [status, setStatus] = useState("");
   const [toast, setToast] = useState<string | null>(null);
   const x = useMotionValue(0), y = useMotionValue(0);
@@ -60,13 +60,12 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
   const walkId = useRef(0);
   const { go, overlay } = useCurtainNav();
 
-  useEffect(() => { try { setListMode(localStorage.getItem("fw-list-mode") === "1"); } catch { /* ignore */ } }, []);
   useEffect(() => {
     const el = viewport.current; if (!el) return;
     const ro = new ResizeObserver(() => setVp({ w: el.clientWidth, h: el.clientHeight }));
     ro.observe(el); setVp({ w: el.clientWidth, h: el.clientHeight });
     return () => ro.disconnect();
-  }, [listMode]);
+  }, []);
   useEffect(() => { posRef.current = pos; zoomRef.current = zoom; }, [pos, zoom]);
 
   // Come back to the last wall you were at, not the start: restore the section and tile from this device.
@@ -117,6 +116,14 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
   }, [vp.w, vp.h, x, y]);
   useEffect(() => { if (detached) { const c = clamp(x.get(), y.get()); x.set(c.x); y.set(c.y); } }, [zoom]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!zoomOpen) return;
+    const close = (e: Event) => { if (!(e.target as HTMLElement).closest("[data-testid=telescope],[aria-label=Zoom]")) setZoomOpen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setZoomOpen(false); };
+    window.addEventListener("pointerdown", close); window.addEventListener("keydown", esc);
+    return () => { window.removeEventListener("pointerdown", close); window.removeEventListener("keydown", esc); };
+  }, [zoomOpen]);
+
   // Pinch with two fingers, or Ctrl + wheel, to zoom.
   const pinching = useRef(false);
   useEffect(() => {
@@ -130,7 +137,7 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
     el.addEventListener("touchstart", ts, { passive: true }); el.addEventListener("touchmove", tm, { passive: false });
     el.addEventListener("touchend", te); el.addEventListener("wheel", wh, { passive: false });
     return () => { el.removeEventListener("touchstart", ts); el.removeEventListener("touchmove", tm); el.removeEventListener("touchend", te); el.removeEventListener("wheel", wh); };
-  }, [zoomTo, listMode]);
+  }, [zoomTo]);
 
   // The marker glides to each new tile; the camera follows unless the person has dragged away.
   useEffect(() => {
@@ -247,7 +254,6 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
     if ((e.key === "Enter" || e.key === " ") && adjacentItems[0] && e.target === e.currentTarget) { e.preventDefault(); activate(adjacentItems[0]); }
   };
 
-  const setList = (v: boolean) => { setListMode(v); try { localStorage.setItem("fw-list-mode", v ? "1" : "0"); } catch { /* ignore */ } };
   const recenter = () => { setDetached(false); follow(posRef.current); };
   const base = `/wall/${area}`;
   const qs = (s: number, t = tab) => `${base}?section=${s}${area === "trending" ? `&tab=${t}` : ""}`;
@@ -265,7 +271,15 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
           </div>
           <div className="flex shrink-0 gap-1.5">
             <Link href="/search" aria-label="Search" className="grid h-10 w-10 place-items-center rounded-xl bg-night-3 text-lg">⌕</Link>
-            <button onClick={() => setList(!listMode)} aria-pressed={listMode} className="min-h-10 rounded-xl bg-night-3 px-3 text-sm font-bold">{listMode ? "Back to the Wall" : "List view"}</button>
+            <div className="relative">
+              <button type="button" data-testid="telescope" onClick={() => setZoomOpen((o) => !o)} aria-expanded={zoomOpen} aria-haspopup="true" aria-label="Zoom" className={cx("grid h-10 w-10 place-items-center rounded-xl text-xl", zoomOpen ? "bg-mustard" : "bg-night-3")}><span aria-hidden>🔭</span></button>
+              {zoomOpen && (
+                <div role="group" aria-label="Zoom" className="absolute right-0 top-12 z-50 w-44 rounded-2xl bg-night-2 p-2 shadow-[0_8px_24px_rgba(0,0,0,.5)] ring-1 ring-night-3">
+                  <button type="button" data-testid="zoom-in" onClick={() => zoomTo(zoom * 1.2)} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left font-bold active:bg-night-3"><span aria-hidden className="w-5 text-center text-xl">+</span>Zoom in</button>
+                  <button type="button" data-testid="zoom-out" onClick={() => zoomTo(zoom / 1.2)} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left font-bold active:bg-night-3"><span aria-hidden className="w-5 text-center text-xl">−</span>Zoom out</button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
         <nav aria-label="Wall areas" className="scrollbar-none -mx-3 mt-1.5 flex gap-1.5 overflow-x-auto px-3">
@@ -282,9 +296,6 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
         )}
       </header>
 
-      {listMode ? (
-        <ListView items={items} area={area} door={door} onItem={openItem} onDoor={onDoor} tab={tab} />
-      ) : (
         <div ref={viewport} data-testid="wall-viewport" className="relative min-h-0 flex-1 touch-none select-none overflow-hidden outline-none" role="group" aria-label={`${A.name}. Use the arrow keys or the on-screen arrows to walk. Tap a wall to open it. Drag to look around.`} tabIndex={0} onKeyDown={onKey} onPointerDown={onPointerDown}>
           <motion.div data-testid="wall-world" className="absolute left-0 top-0 origin-top-left will-change-transform" style={{ x, y, width: SIZE * TILE, height: SIZE * TILE, scale: zoom }} onClick={onWorldClick}>
             <MazeWorld m={m} area={area} />
@@ -342,17 +353,12 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
             </div>
             <div className="pointer-events-auto flex flex-col items-end gap-1.5">
               {adjacentItems[0] && !selected && <Button tone="mustard" size="sm" onClick={() => activate(adjacentItems[0])}>{adjacentItems[0].post.type === "false_wall" ? "Look closer" : "Open this wall"}</Button>}
-              <div className={cx("flex overflow-hidden rounded-xl shadow-[0_3px_0_#0d0b1f]", detached ? "bg-mustard text-[#2c1e02]" : "bg-night/85 text-chalk")} role="group" aria-label="View controls">
-                <button type="button" data-testid="zoom-out" aria-label="Zoom out" onClick={() => zoomTo(zoom / 1.2)} className="grid h-10 w-10 place-items-center text-xl font-bold active:bg-black/20">−</button>
-                <button type="button" data-testid="recenter" onClick={recenter} aria-label="Recenter on your position" className="flex min-h-10 items-center gap-1.5 border-x border-black/25 px-3 text-sm font-bold active:bg-black/20">
-                  <span aria-hidden>◎</span>Recenter
-                </button>
-                <button type="button" data-testid="zoom-in" aria-label="Zoom in" onClick={() => zoomTo(zoom * 1.2)} className="grid h-10 w-10 place-items-center text-xl font-bold active:bg-black/20">+</button>
-              </div>
+              <button type="button" data-testid="recenter" onClick={recenter} aria-label="Recenter on your position" className={cx("flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-bold shadow-[0_3px_0_#0d0b1f]", detached ? "bg-mustard text-[#2c1e02]" : "bg-night/85 text-chalk")}>
+                <span aria-hidden>◎</span>Recenter
+              </button>
             </div>
           </div>
         </div>
-      )}
 
       <p className="sr-only" aria-live="polite">{status}</p>
       {toast && <p role="status" className="fixed inset-x-4 top-24 z-[70] mx-auto max-w-sm rounded-xl bg-mustard px-4 py-3 text-center font-bold text-[#2c1e02]">{toast}</p>}
@@ -395,32 +401,6 @@ function Peek({ item, loggedIn, go }: { item: Item; loggedIn: boolean; go: (href
         </>
       )}
       <Button tone="teal" className="w-full" onClick={() => go(`/post/${p.id}`)}>Go behind the wall</Button>
-    </div>
-  );
-}
-
-function ListView({ items, area, door, onItem, onDoor, tab }: { items: Item[]; area: AreaSlug; door?: { to: AreaSlug }; onItem: (i: Item) => void; onDoor: () => void; tab: string }) {
-  return (
-    <div className="min-h-0 flex-1 overflow-y-auto bg-night px-3 py-3" data-testid="wall-list">
-      <p className="mb-3 text-sm text-chalk-dim">Every wall in this section, as a plain list. Choose one to open it.</p>
-      {items.length === 0 && <p className="rounded-xl border-2 border-dashed border-night-3 p-6 text-center text-chalk-dim">{area === "trending" && tab === "trending" ? "Nothing is trending yet. Try the Newest tab." : "No walls in this section yet."}</p>}
-      <ul className="space-y-2">
-        {items.map((it) => (
-          <li key={it.post.id}>
-            <button onClick={() => onItem(it)} className="flex w-full items-center gap-3 rounded-2xl bg-night-2 p-3 text-left">
-              <span aria-hidden className="grid h-12 w-12 shrink-0 place-items-center rounded-xl text-xl font-black text-[#1a1200]" style={{ background: AREAS[area].accent }}>{POST_TYPES[it.post.type].icon}</span>
-              <span className="min-w-0">
-                <span className="block text-xs font-bold text-chalk-dim">{POST_TYPES[it.post.type].label}{it.post.is_sample ? " · sample" : ""}</span>
-                <span className="block truncate font-semibold">{it.post.title ?? it.post.clue ?? it.post.body}</span>
-              </span>
-            </button>
-          </li>
-        ))}
-        {door && (
-          <li><button onClick={onDoor} className="w-full rounded-2xl border-2 border-dashed border-night-3 p-3 text-left text-chalk-dim">A strange seam in the wall. Look closer.</button></li>
-        )}
-      </ul>
-      <p className="mt-4 text-center text-xs text-chalk-dim"><Link href={`/create`} className="underline">Put something on the wall</Link></p>
     </div>
   );
 }
