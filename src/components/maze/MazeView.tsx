@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { animate, motion, useMotionValue, useReducedMotion } from "framer-motion";
 import { AREAS, AREA_ORDER, POST_TYPES } from "@/lib/constants";
@@ -37,7 +38,11 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
 
   const viewport = useRef<HTMLDivElement>(null);
   const [vp, setVp] = useState({ w: 360, h: 560 });
-  const zoom = vp.w < 480 ? 1.3 : 1.5;
+  const [userZoom, setUserZoom] = useState<number | null>(null);
+  const zoom = userZoom ?? (vp.w < 480 ? 1 : 1.25);
+  const zoomRef = useRef(zoom);
+  const router = useRouter();
+  const [ready, setReady] = useState(false);
   const [pos, setPos] = useState<Point>(m.start);
   const posRef = useRef(pos);
   const [look, setLook] = useState<Dir>("s");
@@ -62,7 +67,30 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
     ro.observe(el); setVp({ w: el.clientWidth, h: el.clientHeight });
     return () => ro.disconnect();
   }, [listMode]);
-  useEffect(() => { posRef.current = pos; }, [pos]);
+  useEffect(() => { posRef.current = pos; zoomRef.current = zoom; }, [pos, zoom]);
+
+  // Come back to the last wall you were at, not the start: restore the section and tile from this device.
+  useEffect(() => {
+    try {
+      const z = parseFloat(localStorage.getItem("fw-zoom") ?? "");
+      if (z >= 0.55 && z <= 2) setUserZoom(z);
+      const v = JSON.parse(localStorage.getItem(`fw-last:${area}`) ?? "null") as { s: number; x: number; y: number } | null;
+      const explicit = new URLSearchParams(window.location.search).has("section");
+      if (v && !explicit && typeof v.s === "number" && v.s !== section && v.s > 0 && v.s < sectionCount) {
+        router.replace(`/wall/${area}?section=${v.s}${area === "trending" ? `&tab=${tab}` : ""}`);
+        return;
+      }
+      if (v && v.s === section && Number.isInteger(v.x) && Number.isInteger(v.y) && m.walls[v.y]?.[v.x] === false) {
+        const p = { x: v.x, y: v.y };
+        setPos(p); posRef.current = p; px.set(p.x * TILE); py.set(p.y * TILE);
+      } else localStorage.setItem(`fw-last:${area}`, JSON.stringify({ s: section, x: m.start.x, y: m.start.y }));
+    } catch { /* storage may be unavailable */ }
+    setReady(true);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!ready) return;
+    try { localStorage.setItem(`fw-last:${area}`, JSON.stringify({ s: section, x: pos.x, y: pos.y })); } catch { /* ignore */ }
+  }, [pos, area, section, ready]);
 
   // First visit to an area counts toward the Explorer badge.
   useEffect(() => { if (loggedIn) void recordDiscovery("area_visited", area); }, [area, loggedIn]);
@@ -78,6 +106,32 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
     else { animate(x, c.x, { duration: STEP / 1000, ease: "linear" }); animate(y, c.y, { duration: STEP / 1000, ease: "linear" }); }
   }, [clamp, vp.w, vp.h, zoom, reduce, x, y]);
 
+  // Zoom in or out. The view stays on the player, or on the middle of the screen if you have dragged away.
+  const zoomTo = useCallback((next: number) => {
+    const z = Math.min(2, Math.max(0.55, Math.round(next * 100) / 100)), old = zoomRef.current;
+    if (z === old) return;
+    const k = z / old, cx = vp.w / 2, cy = vp.h / 2;
+    x.set(cx - (cx - x.get()) * k); y.set(cy - (cy - y.get()) * k);
+    zoomRef.current = z; setUserZoom(z);
+    try { localStorage.setItem("fw-zoom", String(z)); } catch { /* ignore */ }
+  }, [vp.w, vp.h, x, y]);
+  useEffect(() => { if (detached) { const c = clamp(x.get(), y.get()); x.set(c.x); y.set(c.y); } }, [zoom]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Pinch with two fingers, or Ctrl + wheel, to zoom.
+  const pinching = useRef(false);
+  useEffect(() => {
+    const el = viewport.current; if (!el) return;
+    let d0 = 0, z0 = 1;
+    const dist = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const ts = (e: TouchEvent) => { if (e.touches.length === 2) { pinching.current = true; dragged.current = true; d0 = dist(e.touches); z0 = zoomRef.current; } };
+    const tm = (e: TouchEvent) => { if (e.touches.length === 2 && d0) { e.preventDefault(); zoomTo(z0 * (dist(e.touches) / d0)); } };
+    const te = (e: TouchEvent) => { if (e.touches.length < 2) { d0 = 0; window.setTimeout(() => { pinching.current = false; dragged.current = false; }, 150); } };
+    const wh = (e: WheelEvent) => { if (e.ctrlKey) { e.preventDefault(); zoomTo(zoomRef.current * (e.deltaY < 0 ? 1.1 : 1 / 1.1)); } };
+    el.addEventListener("touchstart", ts, { passive: true }); el.addEventListener("touchmove", tm, { passive: false });
+    el.addEventListener("touchend", te); el.addEventListener("wheel", wh, { passive: false });
+    return () => { el.removeEventListener("touchstart", ts); el.removeEventListener("touchmove", tm); el.removeEventListener("touchend", te); el.removeEventListener("wheel", wh); };
+  }, [zoomTo, listMode]);
+
   // The marker glides to each new tile; the camera follows unless the person has dragged away.
   useEffect(() => {
     const d = reduce ? 0 : STEP / 1000;
@@ -85,7 +139,7 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
     else { px.set(pos.x * TILE); py.set(pos.y * TILE); }
   }, [pos, reduce, px, py]);
   useEffect(() => { if (!detached) follow(pos); }, [pos, detached, follow]);
-  useEffect(() => { follow(m.start, true); }, [m, vp.w, vp.h]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { follow(posRef.current, true); }, [m, vp.w, vp.h]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const showToast = useCallback((t: string) => { setToast(t); window.setTimeout(() => setToast(null), 2600); }, []);
 
@@ -153,7 +207,7 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
     const sx = e.clientX, sy = e.clientY, ox = x.get(), oy = y.get();
     const move = (ev: PointerEvent) => {
       const dx = ev.clientX - sx, dy = ev.clientY - sy;
-      if (!dragged.current && Math.hypot(dx, dy) < 6) return;
+      if (pinching.current || (!dragged.current && Math.hypot(dx, dy) < 6)) return;
       dragged.current = true; setDetached(true);
       const c = clamp(ox + dx, oy + dy); x.set(c.x); y.set(c.y);
     };
@@ -188,6 +242,8 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
   const onKey = (e: React.KeyboardEvent) => {
     const map: Record<string, Dir> = { ArrowUp: "n", ArrowDown: "s", ArrowLeft: "w", ArrowRight: "e", w: "n", s: "s", a: "w", d: "e" };
     if (e.key in map) { e.preventDefault(); move1(map[e.key]); }
+    if (e.key === "+" || e.key === "=") zoomTo(zoom * 1.2);
+    if (e.key === "-" || e.key === "_") zoomTo(zoom / 1.2);
     if ((e.key === "Enter" || e.key === " ") && adjacentItems[0] && e.target === e.currentTarget) { e.preventDefault(); activate(adjacentItems[0]); }
   };
 
@@ -286,6 +342,10 @@ export function MazeView({ area, section, sectionCount, items, tab, loggedIn, me
             </div>
             <div className="pointer-events-auto flex flex-col items-end gap-1.5">
               {adjacentItems[0] && !selected && <Button tone="mustard" size="sm" onClick={() => activate(adjacentItems[0])}>{adjacentItems[0].post.type === "false_wall" ? "Look closer" : "Open this wall"}</Button>}
+              <div className="flex overflow-hidden rounded-xl bg-night/85 shadow-[0_3px_0_#0d0b1f]" role="group" aria-label="Zoom">
+                <button type="button" data-testid="zoom-out" aria-label="Zoom out" onClick={() => zoomTo(zoom / 1.2)} className="grid h-10 w-11 place-items-center text-xl font-bold active:bg-night-3">−</button>
+                <button type="button" data-testid="zoom-in" aria-label="Zoom in" onClick={() => zoomTo(zoom * 1.2)} className="grid h-10 w-11 place-items-center border-l border-night-3 text-xl font-bold active:bg-night-3">+</button>
+              </div>
               <button type="button" data-testid="recenter" onClick={recenter} aria-label="Recenter on your position" className={cx("flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-bold shadow-[0_3px_0_#0d0b1f]", detached ? "bg-mustard text-[#2c1e02]" : "bg-night/85 text-chalk")}>
                 <span aria-hidden>◎</span>Recenter
               </button>
