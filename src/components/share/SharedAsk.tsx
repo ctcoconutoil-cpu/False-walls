@@ -19,8 +19,8 @@ export function SharedAsk({ token, template, options, allowAnonymous, loggedIn, 
   const [pending, start] = useTransition();
   const next = encodeURIComponent(`/w/${token}`);
   const sentKey = `fw-sent:${token}`;
-  // A Pick a number wall takes one pick per person, so remember on this device that it was used.
-  useEffect(() => { if (template === "pick_number") try { if (localStorage.getItem(sentKey)) setDone(true); } catch { /* ignore */ } }, [template, sentKey]);
+  // A private wall takes one message per person, so remember on this device that it was used.
+  useEffect(() => { try { if (localStorage.getItem(sentKey)) setDone(true); } catch { /* ignore */ } }, [sentKey]);
 
   if (done) {
     return (
@@ -34,7 +34,7 @@ export function SharedAsk({ token, template, options, allowAnonymous, loggedIn, 
   const body = template === "pick_number" ? (pick ? `Pick ${pick}: ${options[pick - 1]}` : "") : text.trim();
   const send = (e: React.FormEvent) => {
     e.preventDefault(); setErr(null);
-    start(async () => { const r = loggedIn ? await sendQuestionViaLink(token, body, anon && allowAnonymous) : await sendGuestQuestion(token, body); if (r.ok || r.error.includes("already picked")) { if (template === "pick_number") try { localStorage.setItem(sentKey, "1"); } catch { /* ignore */ } setDone(true); } else setErr(r.error); });
+    start(async () => { const r = loggedIn ? await sendQuestionViaLink(token, body, anon && allowAnonymous) : await sendGuestQuestion(token, body); if (r.ok || r.error.includes("already sent")) { try { localStorage.setItem(sentKey, "1"); } catch { /* ignore */ } setDone(true); } else setErr(r.error); });
   };
 
   return (
