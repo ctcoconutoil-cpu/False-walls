@@ -26,7 +26,6 @@ export function SharedAsk({ token, template, options, allowAnonymous, loggedIn, 
     return (
       <div className="space-y-3 text-center">
         <Notice tone="ok">Sent. They'll see it in their inbox{anon && allowAnonymous ? ", without your name" : ""}.</Notice>
-        {template !== "pick_number" && <Button tone="ghost" onClick={() => { setDone(false); setPick(null); setText(""); }}>Send another</Button>}
         <p className="text-sm text-chalk-dim">Want your own wall people can send questions to? <Link href="/create/private" className="font-bold text-mustard underline">Make one</Link></p>
       </div>
     );
