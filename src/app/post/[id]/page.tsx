@@ -144,9 +144,6 @@ export default async function BehindTheWall({ params }: { params: Promise<{ id: 
               <ShareButton label="Share my wall" path={`/w/${post.share_token}`} imagePath={`/w/${post.share_token}/card`} title="Share your wall" text={`${post.title ?? "Send me a message"} — send me an anonymous message`} />
             </div>
           )}
-          {post.visibility === "public" && !post.is_sample && post.status === "active" && (
-            <ShareButton path={`/post/${post.id}`} imagePath={`/post/${post.id}/card`} title="Share this wall" text={post.type === "false_wall" || post.type === "hidden_thought" ? "Look closer. There's something behind this wall." : post.title ?? "Take a look at this wall"} />
-          )}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <PostToolbar postId={post.id} saved={thread.saved} loggedIn={loggedIn} isPublic={post.visibility === "public" && !post.is_sample} owner={owner} />
             {canAsk && <AskBox postId={post.id} loggedIn={loggedIn} allowAnonymous={post.allow_anonymous_questions} canAsk />}

@@ -33,41 +33,28 @@ export function ReactionBar({ type, id, counts, mine, loggedIn, own }: { type: "
     setState({ counts: c, mine: next }); setMsg(null);
     start(async () => { const r = await setReaction(type, id, next); if (!r.ok) { setState(prev); setMsg(r.error); } });
   }
-  const [showAll, setShowAll] = useState(false);
-  // The coloured stack shows which reactions this wall has received, biggest first, with the total.
+  // The coloured icons beside the buttons show which reactions this wall has received, most popular first. No numbers.
   const used = REACTIONS.filter((r) => (state.counts[r.kind] ?? 0) > 0).sort((x, y) => (state.counts[y.kind] ?? 0) - (state.counts[x.kind] ?? 0));
-  const total = used.reduce((n, r) => n + (state.counts[r.kind] ?? 0), 0);
   return (
     <div>
       <div className="flex items-center gap-1">
-        <div role="group" aria-label="React" className="flex items-center gap-0.5">
+        <div role="group" aria-label="React" className="flex items-center">
           {REACTIONS.map((r) => {
             const on = state.mine === r.kind;
             return (
               <button key={r.kind} type="button" aria-pressed={on} aria-label={r.label} title={r.label} onClick={() => press(r.kind)}
-                className={cx("grid h-11 w-11 place-items-center rounded-full text-[22px] leading-none transition active:scale-90", on ? "bg-night-3 ring-2 ring-mustard" : "opacity-70 grayscale brightness-[1.9] hover:opacity-100 hover:brightness-100 hover:grayscale-0")}>
+                className={cx("grid h-11 w-11 place-items-center bg-transparent text-[24px] leading-none transition-transform active:scale-90", on ? "scale-125" : "opacity-60 grayscale brightness-[1.9]")}>
                 <span aria-hidden>{r.glyph}</span>
               </button>
             );
           })}
         </div>
-        {total > 0 && (
-          <button type="button" onClick={() => setShowAll((v) => !v)} aria-expanded={showAll} aria-label={`${total} reaction${total === 1 ? "" : "s"}. Show breakdown`} className="ml-1 flex min-h-11 items-center gap-1.5 rounded-full px-1.5 active:bg-night-3">
-            <span aria-hidden className="flex items-center">
-              {used.slice(0, 4).map((r, i) => (
-                <span key={r.kind} className="grid h-7 w-7 place-items-center rounded-full bg-chalk text-[15px] leading-none shadow-[0_1px_3px_rgba(0,0,0,.45)]" style={{ marginLeft: i ? -8 : 0, zIndex: 10 - i }}>{r.glyph}</span>
-              ))}
-            </span>
-            <span className="text-sm font-bold text-chalk-dim">{total}</span>
-            <span aria-hidden className={cx("text-chalk-dim transition-transform", showAll && "rotate-90")}>›</span>
-          </button>
+        {used.length > 0 && (
+          <span className="ml-2 flex items-center" role="img" aria-label={`Reactions received: ${used.map((r) => r.label).join(", ")}`}>
+            {used.slice(0, 5).map((r, i) => <span key={r.kind} aria-hidden className="text-[20px] leading-none" style={{ marginLeft: i ? -6 : 0, zIndex: 10 - i }}>{r.glyph}</span>)}
+          </span>
         )}
       </div>
-      {showAll && used.length > 0 && (
-        <ul className="mt-1 flex flex-wrap gap-2 text-sm" aria-label="Reactions breakdown">
-          {used.map((r) => <li key={r.kind} className="flex items-center gap-1.5 rounded-full bg-night-3 px-3 py-1"><span aria-hidden>{r.glyph}</span><span className="font-bold">{state.counts[r.kind]}</span><span className="sr-only">{r.label}</span></li>)}
-        </ul>
-      )}
       {msg && <p role="status" className="mt-1 text-xs text-[#ffb4b4]">{msg}</p>}
     </div>
   );
