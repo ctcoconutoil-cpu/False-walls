@@ -20,7 +20,7 @@ const TONES = {
   mustard: "bg-mustard text-[#2c1e02] [--btn-shadow:#a87a14] shadow-[0_5px_0_#a87a14]",
   teal: "bg-teal text-[#04201c] [--btn-shadow:#0b6a60] shadow-[0_5px_0_#0b6a60]",
   violet: "bg-violet text-white [--btn-shadow:#4a2a9c] shadow-[0_5px_0_#4a2a9c]",
-  danger: "bg-danger text-[#3a0808] [--btn-shadow:#a03030] shadow-[0_5px_0_#a03030]",
+  danger: "bg-[#2a1a2e] text-[#ff6b6b] [--btn-shadow:#a03030] shadow-[0_5px_0_#a03030]",
   ghost: "bg-night-3 text-chalk [--btn-shadow:#0d0b1f] shadow-[0_4px_0_#0d0b1f]",
 };
 const SIZES = { sm: "px-3 py-1.5 text-sm", md: "px-5 py-2.5 text-base", lg: "px-7 py-3.5 text-lg" };
