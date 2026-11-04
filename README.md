@@ -61,3 +61,11 @@ Supabase (required); SMTP provider (recommended for production email); image-mod
 - Concealed content is stored in `post_secrets` and only returned by the `reveal_post` function; hidden media uses signed URLs gated by reveals.
 - Rate limits, contact-info and link screening, blocked terms, auto-flagging, report queue, auto-hide on 5 distinct established reporters, suspension.
 - Trending: self-engagement excluded, at least 2 distinct engaged users, log-damped, time-decayed, report-penalised, staff overrides.
+
+## Private link walls and sharing
+
+- **Private link wall** (`/create/private`): an Ask Me wall that is never listed on the Wall, Discover or search. Only people holding its unguessable link (`/w/<token>`) can open it. Styles: *Pick a number* (3 to 10 editable numbered prompts) or a plain question box.
+- Visitors need a free account to send; messages can be anonymous and go to the owner's inbox like any other question.
+- **Sharing:** every private wall, every public wall and every anonymous inbox question has a Share sheet (system share menu, WhatsApp, X, Telegram, Facebook, email, SMS, copy link, downloadable 1080x1920 story image). Instagram, Snapchat and TikTok do not accept links posted from websites, so for those the person saves the story image and adds the link as a sticker or in their bio.
+- **Link previews:** `/w/<token>`, `/q/<token>` and public `/post/<id>` pages serve Open Graph and Twitter card images (`/card` routes, 1200x630). Concealed content never appears in a preview; only the clue does.
+- Set `NEXT_PUBLIC_SITE_URL` to your live address so shared links and previews point at the right domain.

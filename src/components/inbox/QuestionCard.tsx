@@ -4,6 +4,8 @@ import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { Avatar, Button, Field, Notice, Sheet, inputCls } from "@/components/ui";
 import { ReportButton } from "@/components/wall/Interactions";
+import { ShareSheet } from "@/components/share/ShareSheet";
+import { shareQuestion } from "@/lib/actions/share";
 import { answerQuestion, blockQuestionSender, deleteQuestion, rejectQuestion, markNotificationsRead } from "@/lib/actions/social";
 import { LIMITS } from "@/lib/constants";
 import { timeAgo } from "@/lib/utils";
@@ -21,6 +23,9 @@ export function QuestionCard({ q }: { q: QuestionRow }) {
   const [pub, setPub] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [shareToken, setShareToken] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const share = () => { setErr(null); if (shareToken) { setShareOpen(true); return; } start(async () => { const r = await shareQuestion(q.id); if (r.ok) { setShareToken(r.token); setShareOpen(true); } else setErr(r.error); }); };
   const run = (fn: () => Promise<{ ok: boolean; error?: string }>) => start(async () => { const r = await fn(); if (!r.ok) setErr(r.error ?? "Something went wrong."); else router.refresh(); });
   const about = q.post ? q.post.title ?? q.post.clue ?? q.post.body ?? "a wall" : "a wall";
   return (
@@ -42,6 +47,10 @@ export function QuestionCard({ q }: { q: QuestionRow }) {
           <ReportButton type="question" id={q.id} />
         </div>
       ) : <p className="text-xs font-bold uppercase tracking-wide text-chalk-dim">{q.status}</p>}
+      {q.is_anonymous && (q.status === "pending" || q.status === "answered") && (
+        <div><Button size="sm" tone="ghost" disabled={pending} onClick={share}>↗ Share this question</Button></div>
+      )}
+      {shareToken && <ShareSheet open={shareOpen} onClose={() => setShareOpen(false)} path={`/q/${shareToken}`} imagePath={`/q/${shareToken}/card`} title="Share this question" text="Send me anonymous questions too" />}
       <Sheet open={open} onClose={() => setOpen(false)} title="Answer this question">
         <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); setErr(null); start(async () => { const r = await answerQuestion(q.id, text, pub); if (!r.ok) setErr(r.error); else { setOpen(false); router.refresh(); } }); }}>
           <p className="rounded-xl bg-night-3 p-3">{q.body}</p>

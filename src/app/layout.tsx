@@ -2,10 +2,12 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Suspense } from "react";
 import { Dock } from "@/components/Dock";
+import { siteUrl } from "@/lib/site";
 import { getViewer } from "@/lib/data/session";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl()),
   title: { default: "FALSE WALLS", template: "%s · FALSE WALLS" },
   description: "Explore walls, uncover conversations and discover what people have to say.",
 };

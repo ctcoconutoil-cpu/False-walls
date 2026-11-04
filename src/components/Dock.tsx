@@ -8,7 +8,7 @@ const HIDE = ["/", "/login", "/signup", "/onboarding", "/suspended"];
 
 export function Dock({ username, unread }: { username: string | null; unread: number }) {
   const path = usePathname();
-  const hidden = HIDE.includes(path) || path.startsWith("/admin") || path.startsWith("/auth");
+  const hidden = HIDE.includes(path) || path.startsWith("/admin") || path.startsWith("/auth") || path.startsWith("/w/") || path.startsWith("/q/");
   useEffect(() => { document.documentElement.style.setProperty("--dock", hidden ? "0px" : "68px"); }, [hidden]);
   if (hidden) return null;
   const item = (href: string, label: string, glyph: string, active: boolean, badge?: number) => (

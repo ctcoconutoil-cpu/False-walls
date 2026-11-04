@@ -210,5 +210,41 @@ ok("private profile masks bio", (await as(U.b, "select public.get_profile_public
 ok("rate_limit_events not readable", !!(await as(U.b, "select * from public.rate_limit_events")).error || (await as(U.b, "select * from public.rate_limit_events")).rows.length === 0);
 await expectErr("internal helper not callable", U.b, "select public.notify($1,'badge',null,null,'{}')", [U.a]);
 
+// ---- private link walls, Pick a number, share links (0011) ----
+await db.exec(`reset role; update public.user_settings set allow_anonymous_questions = true, allow_identified_questions = true where user_id in ('${U.a}','${U.b}')`);
+const lpw = await as(U.a, "select public.create_private_wall($1,$2,'pick_number',$3::jsonb,'violet','🔥',true) r", ["Pick a number! I'll be real", "No overthinking", JSON.stringify(["Something I still think about", "A mistake that still affects me", "A truth I never said out loud"])]);
+ok("create private Pick a number wall", !lpw.error, lpw.error);
+const PW = lpw.rows[0]?.r ?? {};
+ok("private wall returns id and token", !!PW.id && PW.token?.length >= 32);
+await expectErr("private wall needs 3+ options", U.a, "select public.create_private_wall('Pick one now',null,'pick_number','[\"only one\"]'::jsonb,'coral',null,true)", [], "invalid_options");
+await expectErr("private wall needs a title", U.a, "select public.create_private_wall('x',null,null,null,'coral',null,true)", [], "title_required");
+await expectErr("private wall rejects contact info", U.a, "select public.create_private_wall('text me on 08012345678',null,null,null,'coral',null,true)", [], "contact_info");
+ok("link wall is invisible to other members", (await as(U.b, "select count(*)::int n from public.posts where id=$1", [PW.id])).rows[0].n === 0);
+ok("link wall is invisible to signed-out visitors", (await as(null, "select count(*)::int n from public.posts where id=$1", [PW.id])).rows[0].n === 0);
+ok("author can still see their link wall", (await as(U.a, "select count(*)::int n from public.posts where id=$1", [PW.id])).rows[0].n === 1);
+ok("link wall has no spot on the public Wall", (await as(U.a, "select count(*)::int n from public.wall_locations where post_id=$1", [PW.id])).rows[0].n === 0);
+const lsw = await as(null, "select public.get_shared_wall($1) w", [PW.token]);
+ok("share token shows the wall to a signed-out visitor", lsw.rows[0]?.w?.title === "Pick a number! I'll be real" && lsw.rows[0].w.options.length === 3);
+ok("wrong token shows nothing", (await as(null, "select public.get_shared_wall('nope') w")).rows[0].w === null);
+ok("shared wall never exposes the author's id or email", !JSON.stringify(lsw.rows[0].w).match(/11111111|@x\.test/));
+await expectErr("asking by post id alone is refused", U.b, "select public.send_question($1,'hello there',true)", [PW.id], "not_found");
+await expectErr("signed-out visitors cannot ask", null, "select public.send_question_via_link($1,'hello there',true)", [PW.token], "not_authenticated");
+const lvq = await as(U.b, "select public.send_question_via_link($1,'Pick 2: A mistake that still affects me',true) q", [PW.token]);
+ok("member can ask through the share link", !lvq.error, lvq.error);
+const lqid = lvq.rows[0]?.q;
+ok("recipient receives it, sender hidden", (await as(U.a, "select count(*)::int n from public.questions where id=$1 and asker_id is null and is_anonymous", [lqid])).rows[0].n === 1);
+await expectErr("own link wall cannot be asked by its author", U.a, "select public.send_question_via_link($1,'me asking me',true)", [PW.token], "own_post");
+await expectErr("only the recipient can share a question", U.b, "select public.share_question($1)", [lqid], "not_found");
+const lsq = await as(U.a, "select public.share_question($1) t", [lqid]);
+ok("recipient can share an anonymous question", !lsq.error && lsq.rows[0].t?.length >= 32, lsq.error);
+const lgq = await as(null, "select public.get_shared_question($1) g", [lsq.rows[0].t]);
+ok("shared question page data has text and author, no sender", lgq.rows[0].g?.question?.startsWith("Pick 2") && lgq.rows[0].g.author.username === "alice" && !JSON.stringify(lgq.rows[0].g).includes("22222222"));
+ok("shared question points back to the link wall", lgq.rows[0].g?.wall_token === PW.token);
+const lidq = await as(U.b, "select public.send_question($1,'a named question here',false) q", [askId]);
+ok("named question sent", !lidq.error, lidq.error);
+await expectErr("questions from named people cannot be shared", U.a, "select public.share_question($1)", [lidq.rows[0]?.q], "not_shareable");
+ok("unanswered shared question hides any answer", lgq.rows[0].g.answer === null);
+await expectErr("others cannot set an icon on someone else's wall", U.b, "select public.set_post_icon($1,'🔥')", [PW.id], "not_found");
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

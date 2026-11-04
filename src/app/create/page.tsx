@@ -29,6 +29,12 @@ export default async function CreateMenu({ searchParams }: { searchParams: Promi
             </li>
           );
         })}
+        <li>
+          <Link href="/create/private" className="btn-press flex items-center gap-4 rounded-2xl border-2 border-dashed border-mustard bg-night-2 p-4">
+            <span aria-hidden className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-night-3 text-3xl">🔒</span>
+            <span><span className="display block text-xl">Private link wall</span><span className="block text-sm font-medium text-chalk-dim">Not listed anywhere. Share the link on Instagram, WhatsApp, X, Snapchat or TikTok and get questions. Includes “Pick a number”.</span></span>
+          </Link>
+        </li>
       </ul>
     </main>
   );

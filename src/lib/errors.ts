@@ -1,6 +1,8 @@
 const MESSAGES: Record<string, string> = {
   not_authenticated: "Log in to do that.",
   not_found: "That wall is no longer available.",
+  invalid_options: "Add between 3 and 10 numbered options.",
+  not_shareable: "Only anonymous questions can be shared.",
   rate_limited: "You're going a little fast. Try again in a bit.",
   contact_info: "Remove emails and phone numbers. Private contact details can't go on the wall.",
   too_many_links: "Use at most one link.",

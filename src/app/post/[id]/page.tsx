@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/data/session";
 import { getPostById, getThread } from "@/lib/data/posts";
 import { Avatar, Empty, Notice, SampleTag } from "@/components/ui";
+import { ShareButton } from "@/components/share/ShareSheet";
 import { WallItem } from "@/components/maze/WallItem";
 import { RevealPanel } from "@/components/wall/RevealPanel";
 import { ChainStrip } from "@/components/wall/ChainStrip";
@@ -20,7 +21,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const p = await getPostById(id);
   // Concealed content never appears in page titles.
   const t = p && p.type !== "false_wall" && p.type !== "hidden_thought" ? p.title ?? p.body?.slice(0, 60) : null;
-  return { title: t ? `${t}` : "Behind the Wall" };
+  const title = t ? `${t}` : "Behind the Wall";
+  if (!p || p.visibility !== "public" || p.is_sample) return { title, robots: { index: false, follow: false } };
+  // Public walls get a link-preview image. Concealed content never appears in it, only the clue.
+  const description = p.type === "false_wall" || p.type === "hidden_thought" ? "There's something behind this wall. Look closer." : (p.body ?? "Open the wall and join the conversation.").slice(0, 160);
+  const image = `/post/${id}/card`;
+  return {
+    title, description,
+    openGraph: { title, description, type: "article", siteName: "FALSE WALLS", images: [{ url: image, width: 1200, height: 630, alt: title }] },
+    twitter: { card: "summary_large_image", title, description, images: [image] },
+  };
 }
 
 type Reply = { id: string; answer_id: string | null; parent_reply_id: string | null; body: string; created_at: string; author_id: string; author: { username: string; display_name: string | null; avatar_style: string; avatar_color: string; avatar_url: string | null } | null };
@@ -95,6 +105,7 @@ export default async function BehindTheWall({ params }: { params: Promise<{ id: 
             ) : <span className="font-bold text-chalk">Demonstration content</span>}
             {post.is_sample && <SampleTag />}
             <span>· {POST_TYPES[post.type].label} · {timeAgo(post.created_at)}</span>
+            {post.visibility === "link" && <span className="rounded-md bg-mustard px-1.5 py-0.5 text-[11px] font-bold uppercase text-[#2c1e02]">Private link wall</span>}
             {post.visibility === "followers" && <span className="rounded-md bg-night-3 px-1.5 py-0.5 text-[11px] font-bold uppercase">Followers only</span>}
             {post.status !== "active" && <span className="rounded-md bg-danger/20 px-1.5 py-0.5 text-[11px] font-bold uppercase text-[#ffb4b4]">{post.status === "hidden" ? "Hidden pending review" : "Removed"}</span>}
           </div>
@@ -126,6 +137,16 @@ export default async function BehindTheWall({ params }: { params: Promise<{ id: 
           )}
 
           <ReactionBar type="post" id={post.id} counts={thread.reactions.post.counts} mine={thread.reactions.post.mine} loggedIn={loggedIn} own={owner} />
+          {owner && post.visibility === "link" && post.share_token && (
+            <div className="space-y-3 rounded-2xl border-2 border-mustard bg-night-2 p-4">
+              <p className="display text-xl">Your private wall is live</p>
+              <p className="text-sm text-chalk-dim">It isn't listed anywhere. Only people with your link can open it. Share it, and the questions land in your inbox.</p>
+              <ShareButton label="Share my wall" path={`/w/${post.share_token}`} imagePath={`/w/${post.share_token}/card`} title="Share your wall" text={`${post.title ?? "Send me a message"} — send me an anonymous message`} />
+            </div>
+          )}
+          {post.visibility === "public" && !post.is_sample && post.status === "active" && (
+            <ShareButton path={`/post/${post.id}`} imagePath={`/post/${post.id}/card`} title="Share this wall" text={post.type === "false_wall" || post.type === "hidden_thought" ? "Look closer. There's something behind this wall." : post.title ?? "Take a look at this wall"} />
+          )}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <PostToolbar postId={post.id} saved={thread.saved} loggedIn={loggedIn} isPublic={post.visibility === "public" && !post.is_sample} owner={owner} />
             {canAsk && <AskBox postId={post.id} loggedIn={loggedIn} allowAnonymous={post.allow_anonymous_questions} canAsk />}

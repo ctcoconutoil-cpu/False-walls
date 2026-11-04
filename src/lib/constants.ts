@@ -24,6 +24,9 @@ export const POST_TYPES: Record<PostType, { label: string; blurb: string; icon: 
   prompt_response: { label: "Random Prompt", blurb: "Answer a conversation prompt from the platform.", icon: "!" },
   false_wall: { label: "Build a False Wall", blurb: "Conceal a question, photo, story, poll or conversation behind a wall.", icon: "▤" },
 };
+/** Icons an author can put on a private wall. */
+export const WALL_ICONS = ["🧱", "❓", "🔥", "👀", "💬", "🏆", "💡", "❤️", "⭐", "🌙", "🎵", "🎨", "📸", "🎮", "📚", "⚽", "🍜", "☕", "🌍", "🦋", "🔮", "🗝️", "🎭", "🌈"] as const;
+
 export const CREATE_ROUTES: Record<string, PostType> = {
   "ask-me": "ask_me", "hidden-thought": "hidden_thought", "picture-wall": "picture",
   "random-prompt": "prompt_response", "false-wall": "false_wall",

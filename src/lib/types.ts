@@ -27,7 +27,11 @@ export type Post = {
   false_wall_kind: FalseWallKind | null;
   clue_style: ClueStyle | null;
   wall_color: WallColor;
-  visibility: "public" | "followers";
+  wall_icon?: string | null;
+  template?: "pick_number" | null;
+  options?: string[] | null;
+  share_token?: string | null;
+  visibility: "public" | "followers" | "link";
   reveal_mode: "anyone" | "followers";
   allow_anonymous_questions: boolean;
   allow_replies: boolean;

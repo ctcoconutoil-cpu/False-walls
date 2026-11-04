@@ -1,6 +1,7 @@
 "use server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/supabase/claims";
@@ -17,6 +18,9 @@ export async function signUp(_: FormState, fd: FormData): Promise<FormState> {
   const parsed = creds.safeParse({ email: fd.get("email"), password: fd.get("password") });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   if (fd.get("terms") !== "on") return { error: "Agree to the community guidelines and privacy notice to continue." };
+  // Remember where the person was heading (for example a friend's shared wall) until their profile is finished.
+  const back = safeNext(String(fd.get("next") ?? ""), "");
+  if (back) (await cookies()).set("fw_next", back, { path: "/", maxAge: 60 * 60 * 24, sameSite: "lax", secure: process.env.NODE_ENV === "production" });
   const supabase = await createClient();
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const { data, error } = await supabase.auth.signUp({
@@ -97,7 +101,10 @@ export async function completeOnboarding(_: FormState, fd: FormData): Promise<Fo
     return { error: friendlyError(error) };
   }
   revalidatePath("/", "layout");
-  redirect("/wall");
+  const jar = await cookies();
+  const back = safeNext(jar.get("fw_next")?.value);
+  jar.delete("fw_next");
+  redirect(back);
 }
 
 export async function updateProfile(_: FormState, fd: FormData): Promise<FormState> {
