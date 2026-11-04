@@ -47,11 +47,11 @@ export const CLUE_STYLES: Record<ClueStyle, { label: string; hint: string }> = {
 };
 
 export const REACTIONS: { kind: ReactionKind; label: string; glyph: string }[] = [
-  { kind: "interesting", label: "Interesting", glyph: "◆" },
-  { kind: "funny", label: "Funny", glyph: "✦" },
-  { kind: "surprising", label: "Surprising", glyph: "!" },
-  { kind: "thought_provoking", label: "Thought-provoking", glyph: "?" },
-  { kind: "like", label: "Like", glyph: "♥" },
+  { kind: "interesting", label: "Interesting", glyph: "💡" },
+  { kind: "funny", label: "Funny", glyph: "😂" },
+  { kind: "surprising", label: "Surprising", glyph: "😮" },
+  { kind: "thought_provoking", label: "Thought-provoking", glyph: "🤔" },
+  { kind: "like", label: "Like", glyph: "❤️" },
 ];
 
 export const AREAS: Record<AreaSlug, { name: string; blurb: string; wall: string; floor: string; accent: string; mortar: string; tagline: string }> = {
