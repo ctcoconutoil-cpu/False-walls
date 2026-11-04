@@ -52,6 +52,8 @@ export function MazeView({ area, section, sectionCount, items: rawItems, tab, lo
   const zoomRef = useRef(zoom);
   const router = useRouter();
   const [ready, setReady] = useState(false);
+  const instant = useRef(false); // set while restoring a saved spot, so the eye and camera appear there instead of gliding from the start
+  const who = me?.id ?? "guest"; // saved spots belong to whoever is signed in on this device
   const [zoomOpen, setZoomOpen] = useState(false);
   const [pos, setPos] = useState<Point>(m.start);
   const posRef = useRef(pos);
@@ -89,7 +91,7 @@ export function MazeView({ area, section, sectionCount, items: rawItems, tab, lo
     try {
       const z = parseFloat(localStorage.getItem("fw-zoom") ?? "");
       if (z >= 0.55 && z <= 2) setUserZoom(z);
-      const v = JSON.parse(localStorage.getItem(`fw-last:${area}`) ?? "null") as { s: number; x: number; y: number } | null;
+      const v = JSON.parse(localStorage.getItem(`fw-last:${who}:${area}`) ?? "null") as { s: number; x: number; y: number } | null;
       const explicit = new URLSearchParams(window.location.search).has("section");
       if (v && !explicit && typeof v.s === "number" && v.s !== section && v.s > 0 && v.s < sectionCount) {
         router.replace(`/wall/${area}?section=${v.s}${area === "trending" ? `&tab=${tab}` : ""}`);
@@ -97,15 +99,15 @@ export function MazeView({ area, section, sectionCount, items: rawItems, tab, lo
       }
       if (v && v.s === section && Number.isInteger(v.x) && Number.isInteger(v.y) && m.walls[v.y]?.[v.x] === false) {
         const p = { x: v.x, y: v.y };
-        setPos(p); posRef.current = p; px.set(p.x * TILE); py.set(p.y * TILE);
-      } else localStorage.setItem(`fw-last:${area}`, JSON.stringify({ s: section, x: m.start.x, y: m.start.y }));
+        instant.current = true; setPos(p); posRef.current = p; px.set(p.x * TILE); py.set(p.y * TILE);
+      } else localStorage.setItem(`fw-last:${who}:${area}`, JSON.stringify({ s: section, x: m.start.x, y: m.start.y }));
     } catch { /* storage may be unavailable */ }
     setReady(true);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!ready) return;
-    try { localStorage.setItem(`fw-last:${area}`, JSON.stringify({ s: section, x: pos.x, y: pos.y })); } catch { /* ignore */ }
-  }, [pos, area, section, ready]);
+    try { localStorage.setItem(`fw-last:${who}:${area}`, JSON.stringify({ s: section, x: pos.x, y: pos.y })); } catch { /* ignore */ }
+  }, [pos, area, section, ready, who]);
 
   // First visit to an area counts toward the Explorer badge.
   useEffect(() => { if (loggedIn) void recordDiscovery("area_visited", area); }, [area, loggedIn]);
@@ -157,11 +159,11 @@ export function MazeView({ area, section, sectionCount, items: rawItems, tab, lo
 
   // The marker glides to each new tile; the camera follows unless the person has dragged away.
   useEffect(() => {
-    const d = reduce ? 0 : STEP / 1000;
+    const d = reduce || instant.current ? 0 : STEP / 1000;
     if (d) { animate(px, pos.x * TILE, { duration: d, ease: "linear" }); animate(py, pos.y * TILE, { duration: d, ease: "linear" }); }
     else { px.set(pos.x * TILE); py.set(pos.y * TILE); }
   }, [pos, reduce, px, py]);
-  useEffect(() => { if (!detached) follow(pos); }, [pos, detached, follow]);
+  useEffect(() => { if (!detached) follow(pos, instant.current); instant.current = false; }, [pos, detached, follow]);
   useEffect(() => { follow(posRef.current, true); }, [m, vp.w, vp.h]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const showToast = useCallback((t: string) => { setToast(t); window.setTimeout(() => setToast(null), 2600); }, []);
@@ -312,7 +314,7 @@ export function MazeView({ area, section, sectionCount, items: rawItems, tab, lo
         )}
       </header>
 
-        <div ref={viewport} data-testid="wall-viewport" className="relative min-h-0 flex-1 touch-none select-none overflow-hidden outline-none" role="group" aria-label={`${A.name}. Use the arrow keys or the on-screen arrows to walk. Tap a wall to open it. Drag to look around.`} tabIndex={0} onKeyDown={onKey} onPointerDown={onPointerDown}>
+        <div ref={viewport} data-testid="wall-viewport" className={cx("relative min-h-0 flex-1 touch-none select-none overflow-hidden outline-none", !ready && "opacity-0")} role="group" aria-label={`${A.name}. Use the arrow keys or the on-screen arrows to walk. Tap a wall to open it. Drag to look around.`} tabIndex={0} onKeyDown={onKey} onPointerDown={onPointerDown}>
           <motion.div data-testid="wall-world" className="absolute left-0 top-0 origin-top-left will-change-transform" style={{ x, y, width: SIZE * TILE, height: SIZE * TILE, scale: zoom }} onClick={onWorldClick}>
             <MazeWorld m={m} area={area} />
 

@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { Button, Notice, inputCls } from "@/components/ui";
-import { sendQuestionViaLink } from "@/lib/actions/share";
+import { sendGuestQuestion, sendQuestionViaLink } from "@/lib/actions/share";
 import { LIMITS } from "@/lib/constants";
 import { cx } from "@/lib/utils";
 
@@ -13,6 +13,7 @@ export function SharedAsk({ token, template, options, allowAnonymous, loggedIn, 
   const [pick, setPick] = useState<number | null>(null);
   const [text, setText] = useState("");
   const [anon, setAnon] = useState(allowAnonymous);
+  const canSend = loggedIn || allowAnonymous; // visitors without an account can only send anonymously
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [pending, start] = useTransition();
@@ -28,10 +29,10 @@ export function SharedAsk({ token, template, options, allowAnonymous, loggedIn, 
     );
   }
 
-  const body = template === "pick_number" ? (pick ? `Pick ${pick}: ${options[pick - 1]}${text.trim() ? `\n${text.trim()}` : ""}` : "") : text.trim();
+  const body = template === "pick_number" ? (pick ? `Pick ${pick}: ${options[pick - 1]}` : "") : text.trim();
   const send = (e: React.FormEvent) => {
     e.preventDefault(); setErr(null);
-    start(async () => { const r = await sendQuestionViaLink(token, body, anon && allowAnonymous); if (r.ok) setDone(true); else setErr(r.error); });
+    start(async () => { const r = loggedIn ? await sendQuestionViaLink(token, body, anon && allowAnonymous) : await sendGuestQuestion(token, body); if (r.ok) setDone(true); else setErr(r.error); });
   };
 
   return (
@@ -53,24 +54,29 @@ export function SharedAsk({ token, template, options, allowAnonymous, loggedIn, 
           })}
         </ol>
       )}
-      {(template !== "pick_number" || pick) && (
+      {template !== "pick_number" && (
         <label className="block">
-          <span className="mb-1 block text-sm font-semibold">{template === "pick_number" ? "Add a message (optional)" : "Your question"}</span>
-          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={template === "pick_number" ? 2 : 4} maxLength={template === "pick_number" ? 250 : LIMITS.question} required={template !== "pick_number"} className={inputCls} placeholder={template === "pick_number" ? "Say more if you want to" : "Ask anything"} />
+          <span className="mb-1 block text-sm font-semibold">Your question</span>
+          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} maxLength={LIMITS.question} required className={inputCls} placeholder="Ask anything" />
         </label>
       )}
-      {(template !== "pick_number" || pick) && (
+      {loggedIn && (template !== "pick_number" || pick) && (
         <label className={cx("flex items-start gap-3 rounded-xl border-2 p-3", anon && allowAnonymous ? "border-mustard" : "border-night-3", !allowAnonymous && "opacity-60")}>
           <input type="checkbox" checked={anon && allowAnonymous} disabled={!allowAnonymous} onChange={(e) => setAnon(e.target.checked)} className="mt-1 h-5 w-5 accent-mustard" />
           <span><span className="block font-bold">Send anonymously</span><span className="block text-xs text-chalk-dim">{allowAnonymous ? "They won't see your name." : "This wall only takes questions with your name on them."}</span></span>
         </label>
       )}
       {err && <Notice tone="error">{err}</Notice>}
-      {loggedIn ? (
-        (template !== "pick_number" || pick) && <Button type="submit" className="w-full" disabled={pending || !body}>{pending ? "Sending…" : "Send"}</Button>
+      {canSend ? (
+        (template !== "pick_number" || pick) && (
+          <>
+            {!loggedIn && <p className="text-center text-sm text-chalk-dim">No account needed. Your message is sent anonymously.</p>}
+            <Button type="submit" className="w-full" disabled={pending || !body}>{pending ? "Sending…" : "Send"}</Button>
+          </>
+        )
       ) : (
         <div className="space-y-2 rounded-xl bg-night-2 p-3 text-center">
-          <p className="text-sm text-chalk-dim">Create a free account or log in to send. It takes a minute, and it keeps the wall safe from spam.</p>
+          <p className="text-sm text-chalk-dim">This wall only takes messages with your name on them. Log in to send one.</p>
           <div className="flex justify-center gap-2"><Link href={`/signup?next=${next}`} className="rounded-xl bg-mustard px-4 py-2.5 font-bold text-[#2c1e02]">Join</Link><Link href={`/login?next=${next}`} className="rounded-xl bg-night-3 px-4 py-2.5 font-bold">Log in</Link></div>
         </div>
       )}

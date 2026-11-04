@@ -32,7 +32,7 @@ export function OnboardingForm() {
           <Field label="Nickname (optional)" hint="Shown next to your username. Don't use your real full name if you'd rather not.">
             <input name="display_name" maxLength={30} className={inputCls} />
           </Field>
-          <Field label="Date of birth" hint="Used once to check you're 13 or over and to choose safer defaults for under-18s. We don't store it or show it to anyone.">
+          <Field label="Date of birth" hint="Used once to check you're 17 or over and to choose safer defaults for under-18s. We don't store it or show it to anyone.">
             <input name="birth_date" type="date" required max={today} min="1900-01-01" className={inputCls} />
           </Field>
         </section>

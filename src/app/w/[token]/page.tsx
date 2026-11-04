@@ -32,15 +32,14 @@ export default async function SharedWallPage({ params }: P) {
   const owner = viewer.profile?.username === w.author.username;
   return (
     <main className="mx-auto min-h-dvh max-w-xl space-y-6 px-4 py-8" data-nopad>
-      <div className="relative mx-auto w-full max-w-xs">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/wall/brick.png" alt="" width={380} height={256} className="w-full drop-shadow-[0_8px_10px_rgba(0,0,0,.5)]" />
-        <span aria-hidden className="absolute left-1/2 top-1/2 grid h-20 w-20 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-4 bg-night text-4xl" style={{ borderColor: c.base }}>{w.wall_icon || (w.template ? "#" : "?")}</span>
+      <div className="relative mx-auto w-fit">
+        <span className="block rounded-full p-1.5" style={{ background: c.base }}><Avatar user={{ ...(w.author as never as { username: string; display_name: string | null; avatar_style: string; avatar_color: string }), avatar_url: w.author.avatar_url ?? null }} size={132} /></span>
+        {w.wall_icon && <span aria-hidden className="absolute -bottom-1 -right-1 grid h-12 w-12 place-items-center rounded-full border-4 bg-night text-2xl" style={{ borderColor: c.base }}>{w.wall_icon}</span>}
       </div>
       <div className="space-y-2 text-center">
         <h1 className="text-3xl uppercase leading-tight sm:text-4xl">{w.title}</h1>
         {w.body && <p className="text-lg text-chalk-dim">{w.body}</p>}
-        <Link href={`/profile/${w.author.username}`} className="inline-flex items-center gap-2 text-sm font-bold text-chalk-dim"><Avatar user={w.author as never} size={24} />by {w.author.display_name || w.author.username}</Link>
+        <Link href={`/profile/${w.author.username}`} className="inline-flex items-center gap-2 text-sm font-bold text-chalk-dim"><Avatar user={{ ...w.author, avatar_url: w.author.avatar_url ?? null }} size={24} />by {w.author.display_name || w.author.username}</Link>
       </div>
       {owner ? (
         <div className="space-y-3 rounded-2xl bg-night-2 p-4 text-center">
@@ -49,6 +48,17 @@ export default async function SharedWallPage({ params }: P) {
         </div>
       ) : (
         <SharedAsk token={token} template={w.template} options={w.options ?? []} allowAnonymous={w.allow_anonymous} loggedIn={!!viewer.profile} accent={c.base} ink={c.ink} />
+      )}
+      {(w.answers?.length ?? 0) > 0 && (
+        <section aria-labelledby="pub-answers" className="space-y-3">
+          <h2 id="pub-answers" className="text-xl">Answers</h2>
+          {w.answers!.map((a) => (
+            <article key={a.id} className="space-y-2 rounded-2xl bg-night-2 p-4">
+              <p className="text-sm text-chalk-dim">{a.question}</p>
+              <p className="font-semibold">{a.answer}</p>
+            </article>
+          ))}
+        </section>
       )}
       <p className="text-center text-xs text-chalk-dim">Be kind. Messages that break the <Link href="/guidelines" className="underline">community guidelines</Link> can be reported and removed. <Link href="/" className="underline">What is FALSE WALLS?</Link></p>
     </main>

@@ -18,7 +18,7 @@ export default function Guidelines() {
       <h2>Your tools</h2>
       <p>You can report, block or mute from any wall, answer or profile. Blocking an anonymous sender works without revealing who they are. Reports go to a moderation queue; walls that many established members report are hidden while they are reviewed.</p>
       <h2>Under 18</h2>
-      <p>You must be 13 or older. Accounts for under-18s start private, are not listed in search, and cannot receive anonymous questions.</p>
+      <p>You must be 17 or older. Accounts for under-18s start private, are not listed in search, and cannot receive anonymous questions.</p>
       <h2>What moderators can do</h2>
       <p>Remove content, suspend accounts, and keep a log of each action. Sample content marked as demo is placed by the False Walls team to show how the Wall works.</p>
     </Prose>

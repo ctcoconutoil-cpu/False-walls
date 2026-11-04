@@ -25,7 +25,7 @@ export async function signUp(_: FormState, fd: FormData): Promise<FormState> {
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const { data, error } = await supabase.auth.signUp({
     ...parsed.data,
-    options: { emailRedirectTo: `${site}/auth/callback?next=/onboarding` },
+    options: { emailRedirectTo: `${site}/auth/callback?next=${encodeURIComponent("/onboarding?confirmed=1")}` },
   });
   if (error) return { error: error.message.includes("registered") ? "That email already has an account. Log in instead." : "We couldn't create that account. Try again." };
   if (!data.session) return { notice: "Check your email for a confirmation link, then come back to finish your profile." };
@@ -71,7 +71,7 @@ export async function completeOnboarding(_: FormState, fd: FormData): Promise<Fo
   const birth = new Date(parsed.data.birth_date + "T00:00:00Z");
   const age = (Date.now() - birth.getTime()) / 31557600000;
   if (Number.isNaN(age) || age < 0 || age > 120) return { error: friendlyError("invalid_birth_date") };
-  if (age < 13) {
+  if (age < 17) {
     await supabase.auth.signOut();
     return { error: friendlyError("under_age") };
   }
@@ -141,4 +141,38 @@ export async function updateProfile(_: FormState, fd: FormData): Promise<FormSta
   if (dErr) return { error: friendlyError(dErr.message.includes("check") ? "contact_info" : dErr) };
   revalidatePath("/", "layout");
   return { notice: "Profile saved." };
+}
+
+const emailOnly = z.object({ email: z.string().trim().email("Enter a valid email address.") });
+
+/** Continue with Google. Supabase sends the person to Google, then back to /auth/callback. */
+export async function signInWithGoogle(fd: FormData) {
+  const back = safeNext(String(fd.get("next") ?? ""), "");
+  if (back) (await cookies()).set("fw_next", back, { path: "/", maxAge: 60 * 60 * 24, sameSite: "lax", secure: process.env.NODE_ENV === "production" });
+  const supabase = await createClient();
+  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const { data, error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${site}/auth/callback?next=${encodeURIComponent("/onboarding")}` } });
+  if (error || !data.url) redirect("/login?error=google");
+  redirect(data.url);
+}
+
+/** Sends a password reset link. The answer is the same whether or not the email has an account. */
+export async function requestPasswordReset(_: FormState, fd: FormData): Promise<FormState> {
+  const parsed = emailOnly.safeParse({ email: fd.get("email") });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const supabase = await createClient();
+  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  await supabase.auth.resetPasswordForEmail(parsed.data.email, { redirectTo: `${site}/auth/callback?next=${encodeURIComponent("/reset-password")}` });
+  return { notice: "If that email has an account, a reset link is on its way. Check your inbox and spam folder." };
+}
+
+export async function updatePassword(_: FormState, fd: FormData): Promise<FormState> {
+  const pw = z.string().min(8, "Use at least 8 characters.").max(72).safeParse(fd.get("password"));
+  if (!pw.success) return { error: pw.error.issues[0].message };
+  if (fd.get("password") !== fd.get("confirm")) return { error: "The two passwords don't match." };
+  const supabase = await createClient();
+  if (!(await getAuthUser(supabase))) return { error: "That reset link has expired. Request a new one." };
+  const { error } = await supabase.auth.updateUser({ password: pw.data });
+  if (error) return { error: "We couldn't change your password. Request a new reset link and try again." };
+  redirect("/wall");
 }

@@ -1,5 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { createHash } from "node:crypto";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { friendlyError } from "@/lib/errors";
 import { LIMITS, WALL_COLORS, WALL_ICONS } from "@/lib/constants";
@@ -45,4 +47,17 @@ export async function shareQuestion(questionId: string): Promise<ActionResult<{ 
   const { data, error } = await supabase.rpc("share_question", { p_id: questionId });
   if (error) return { ok: false, error: friendlyError(error) };
   return { ok: true, token: data as string };
+}
+
+/** Lets someone without an account leave an anonymous question on a private wall. Nothing about them is stored. */
+export async function sendGuestQuestion(token: string, body: string): Promise<ActionResult> {
+  if (!/^[a-f0-9]{32}$/.test(token)) return { ok: false, error: friendlyError("not_found") };
+  const h = await headers();
+  const ip = (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || h.get("x-real-ip") || "unknown";
+  // Only a salted hash of the address is sent, and only to rate limit spam.
+  const key = createHash("sha256").update(`${process.env.GUEST_SALT ?? "false-walls"}:${ip}`).digest("hex");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("send_guest_question", { p_token: token, p_body: body, p_key: key });
+  if (error) return { ok: false, error: friendlyError(error) };
+  return { ok: true };
 }

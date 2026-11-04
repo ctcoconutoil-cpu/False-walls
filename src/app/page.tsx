@@ -25,7 +25,7 @@ export default async function Welcome() {
               <LinkButton href="/login" tone="ghost">Log In</LinkButton>
             </div>
           </div>
-          <p className="text-xs text-chalk-dim">For people aged 13 and over. <a className="underline" href="/guidelines">Community guidelines</a> · <a className="underline" href="/privacy">Privacy and anonymity</a></p>
+          <p className="text-xs text-chalk-dim">For people aged 17 and over. <a className="underline" href="/guidelines">Community guidelines</a> · <a className="underline" href="/privacy">Privacy and anonymity</a></p>
         </section>
       </div>
     </main>

@@ -1,5 +1,4 @@
 import { ImageResponse } from "next/og";
-import { BRICK_PNG, BRICK_RATIO } from "@/lib/brick-data";
 import { WALL_COLORS } from "@/lib/constants";
 import type { WallColor } from "@/lib/types";
 
@@ -25,17 +24,12 @@ export function shareCard(d: CardData, format: CardFormat) {
   const sub = d.subtitle ? clip(clean(d.subtitle), story ? 220 : 130) : null;
   const tag = d.kind === "question" ? "ANONYMOUS QUESTION" : d.count ? "PICK A NUMBER" : "PRIVATE WALL";
   const titleSize = story ? (title.length > 70 ? 76 : 96) : title.length > 60 ? 46 : 60;
-  const brickW = story ? 760 : 400, brickH = Math.round(brickW * BRICK_RATIO);
-  const badge = story ? 150 : 96;
+  const badge = story ? 360 : 240;
   const chips = d.count ? Array.from({ length: Math.min(d.count, 10) }, (_, i) => i + 1) : [];
 
   const brick = (
-    <div style={{ display: "flex", position: "relative", width: brickW, height: brickH, alignItems: "center", justifyContent: "center" }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={BRICK_PNG} width={brickW} height={brickH} alt="" style={{ position: "absolute", left: 0, top: 0 }} />
-      <div style={{ display: "flex", width: badge, height: badge, borderRadius: badge, background: "#14112a", border: `6px solid ${c.base}`, alignItems: "center", justifyContent: "center", color: c.base, fontSize: badge * 0.6, fontWeight: 900 }}>
-        {d.kind === "question" ? "?" : d.count ? "#" : "?"}
-      </div>
+    <div style={{ display: "flex", width: badge, height: badge, borderRadius: badge, background: "#14112a", border: `${story ? 14 : 10}px solid ${c.base}`, alignItems: "center", justifyContent: "center", color: c.base, fontSize: badge * 0.55, fontWeight: 900 }}>
+      {d.kind === "question" ? "?" : d.count ? "#" : "?"}
     </div>
   );
 

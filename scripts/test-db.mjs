@@ -56,7 +56,7 @@ const onboard = (uid, name, birth) => as(uid, "select public.complete_onboarding
 await expectErr("under-13 rejected", U.z, "select public.complete_onboarding('kiddo',null,'blob','#FF6B4A',null,null,'{}','2020-01-01')", [], "under_age");
 ok("under-13 leaves no profile", (await as(U.a, "select count(*)::int n from public.profiles where id=$1", [U.z])).rows[0].n === 0);
 for (const [u, n, b] of [[U.a, "alice", "1995-05-05"], [U.b, "bobby", "1993-03-03"], [U.c, "carol", "1990-01-01"], [U.m, "modmod", "1985-01-01"], [U.d, "davey", "1992-02-02"]]) await expectOk(`onboard ${n}`, u, "select public.complete_onboarding($1,null,'blob','#FF6B4A',null,'hello',array['art'],$2::date)", [n, b]);
-await expectOk("onboard teen", U.t, "select public.complete_onboarding('teeny',null,'blob','#FF6B4A',null,'x','{}','2011-01-01'::date)");
+await expectOk("onboard teen", U.t, "select public.complete_onboarding('teeny',null,'blob','#FF6B4A',null,'x','{}',(current_date - interval '17 years 1 month')::date)");
 await expectErr("reserved username", U.z, "select public.complete_onboarding('admin',null,'blob','#FF6B4A',null,null,'{}','1990-01-01')", [], "username_reserved");
 await expectErr("duplicate username", U.z, "select public.complete_onboarding('alice',null,'blob','#FF6B4A',null,null,'{}','1990-01-01')", [], "username_taken");
 await expectErr("contact info in bio rejected", U.z, "select public.complete_onboarding('zed',null,'blob','#FF6B4A',null,'mail me at z@example.com','{}','1990-01-01')", [], "contact_info");
@@ -245,6 +245,29 @@ ok("named question sent", !lidq.error, lidq.error);
 await expectErr("questions from named people cannot be shared", U.a, "select public.share_question($1)", [lidq.rows[0]?.q], "not_shareable");
 ok("unanswered shared question hides any answer", lgq.rows[0].g.answer === null);
 await expectErr("others cannot set an icon on someone else's wall", U.b, "select public.set_post_icon($1,'🔥')", [PW.id], "not_found");
+
+// ---- guests, public answers on shared walls, 17+ (0012) ----
+const KEY = "a".repeat(32);
+const g1 = await as(null, "select public.send_guest_question($1,'Pick 3: A secret I kept',$2) q", [PW.token, KEY]);
+ok("signed-out visitor can send through the share link", !g1.error, g1.error);
+ok("guest question reaches the owner with no sender", (await as(U.a, "select count(*)::int n from public.questions where id=$1 and asker_id is null and is_anonymous", [g1.rows[0]?.q])).rows[0].n === 1);
+ok("guest question records no sender", (await db.query("select count(*)::int n from public.question_senders where question_id=$1", [g1.rows[0]?.q])).rows[0].n === 0);
+await expectErr("guest with a bad token is refused", null, "select public.send_guest_question('nope','hello there friend',$1)", [KEY], "not_found");
+await expectErr("guest cannot repeat the same words", null, "select public.send_guest_question($1,'Pick 3: A secret I kept',$2)", [PW.token, "b".repeat(32)], "duplicate");
+await expectErr("guest cannot unmask senders", null, "select public.send_guest_question($1,'who are you really',$2)", [PW.token, "c".repeat(32)], "content_not_allowed");
+await expectErr("guest needs a visitor key", null, "select public.send_guest_question($1,'hello there',null)", [PW.token], "not_authenticated");
+let limited = null;
+for (let i = 0; i < 8 && !limited; i++) { const r = await as(null, "select public.send_guest_question($1,$2,$3)", [PW.token, "guest message number " + i, "d".repeat(32)]); if (r.error) limited = r.error; }
+ok("guest sending is rate limited", !!limited && limited.includes("rate_limited"), limited ?? "never limited");
+ok("guest events table has row security and no policy", (await db.query("select relrowsecurity r, (select count(*) from pg_policies where tablename='guest_events')::int n from pg_class where relname='guest_events'")).rows[0].r === true && (await db.query("select count(*)::int n from pg_policies where tablename='guest_events'")).rows[0].n === 0);
+const gans = await as(U.a, "select public.answer_question($1,'It was a long story',true) a", [g1.rows[0]?.q]);
+ok("owner answers a guest question publicly", !gans.error, gans.error);
+const sw2 = await as(null, "select public.get_shared_wall($1) w", [PW.token]);
+ok("people with the link see public answers", sw2.rows[0]?.w?.answers?.length === 1 && sw2.rows[0].w.answers[0].answer === "It was a long story");
+const priv = await as(U.a, "select public.answer_question($1,'keep this one private',false) a", [lqid]);
+ok("private answers stay hidden from the link", !priv.error && (await as(null, "select public.get_shared_wall($1) w", [PW.token])).rows[0].w.answers.length === 1, priv.error);
+ok("shared wall exposes no sender ids", !JSON.stringify(sw2.rows[0].w).match(/22222222|asker/));
+await expectErr("under-17 rejected", U.z, "select public.complete_onboarding('teenager',null,'blob','#FF6B4A',null,null,'{}',(current_date - interval '16 years')::date)", [], "under_age");
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

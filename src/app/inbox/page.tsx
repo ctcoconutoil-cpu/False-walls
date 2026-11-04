@@ -17,7 +17,7 @@ function describe(n: Notif): { text: string; href: string } {
   const post = n.post_id ? `/post/${n.post_id}` : "/inbox";
   switch (n.kind) {
     case "question": return { text: n.data.anonymous ? "You have a new anonymous question." : `${who} sent you a question.`, href: "/inbox" };
-    case "answer": return { text: `${who} answered your question.`, href: post };
+    case "answer": return { text: `${who} answered your question.`, href: "/inbox?tab=sent" };
     case "reply": return { text: `${who} replied in a conversation you're part of.`, href: post };
     case "reaction": return { text: `${who} reacted to your wall.`, href: post };
     case "follow": return { text: `${who} followed you.`, href: n.actor ? `/profile/${n.actor.username}` : "/inbox" };
