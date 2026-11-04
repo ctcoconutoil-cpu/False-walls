@@ -18,6 +18,20 @@ export function DiscoveryPing({ kind, id }: { kind: "wall_explored" | "chain_exp
   return null;
 }
 
+/** Outline reaction icons: line art with no fill and no background, drawn in the current text colour. */
+function ReactionIcon({ kind, size = 28 }: { kind: ReactionKind; size?: number }) {
+  const face = <circle cx="12" cy="12" r="9.2" />;
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      {kind === "like" && <path d="M12 20.5s-7.8-4.7-9.4-9.6C1.5 7.6 3.4 4.4 6.8 4.4c2 0 3.6 1 5.2 2.9 1.6-1.9 3.2-2.9 5.2-2.9 3.4 0 5.3 3.2 4.2 6.5-1.6 4.9-9.4 9.6-9.4 9.6z" />}
+      {kind === "funny" && <>{face}<path d="M7.6 10.4c.7-.9 2-.9 2.7 0M13.7 10.4c.7-.9 2-.9 2.7 0" /><path d="M7.2 13.4h9.6a4.8 4.8 0 0 1-9.6 0z" /></>}
+      {kind === "surprising" && <>{face}<circle cx="8.8" cy="10" r=".6" fill="currentColor" /><circle cx="15.2" cy="10" r=".6" fill="currentColor" /><ellipse cx="12" cy="15.6" rx="2" ry="2.6" /></>}
+      {kind === "thought_provoking" && <>{face}<circle cx="8.8" cy="10.4" r=".6" fill="currentColor" /><circle cx="15.2" cy="10.4" r=".6" fill="currentColor" /><path d="M7.4 7.6l3.2-1.1M9 15.8h6.2" /></>}
+      {kind === "interesting" && <><path d="M12 2.8a6.2 6.2 0 0 0-3.6 11.2c.7.6 1.1 1.4 1.1 2.3h5c0-.9.4-1.7 1.1-2.3A6.2 6.2 0 0 0 12 2.8z" /><path d="M9.6 19.2h4.8M10.6 21.6h2.8" /></>}
+    </svg>
+  );
+}
+
 export function ReactionBar({ type, id, counts, mine, loggedIn, own }: { type: "post" | "answer" | "reply"; id: string; counts: Partial<Record<ReactionKind, number>>; mine: ReactionKind | null; loggedIn: boolean; own?: boolean }) {
   const [state, setState] = useState({ counts, mine });
   const [msg, setMsg] = useState<string | null>(null);
@@ -33,27 +47,20 @@ export function ReactionBar({ type, id, counts, mine, loggedIn, own }: { type: "
     setState({ counts: c, mine: next }); setMsg(null);
     start(async () => { const r = await setReaction(type, id, next); if (!r.ok) { setState(prev); setMsg(r.error); } });
   }
-  // The coloured icons beside the buttons show which reactions this wall has received, most popular first. No numbers.
-  const used = REACTIONS.filter((r) => (state.counts[r.kind] ?? 0) > 0).sort((x, y) => (state.counts[y.kind] ?? 0) - (state.counts[x.kind] ?? 0));
   return (
     <div>
-      <div className="flex items-center gap-1">
-        <div role="group" aria-label="React" className="flex items-center">
-          {REACTIONS.map((r) => {
-            const on = state.mine === r.kind;
-            return (
-              <button key={r.kind} type="button" aria-pressed={on} aria-label={r.label} title={r.label} onClick={() => press(r.kind)}
-                className={cx("grid h-11 w-11 place-items-center bg-transparent text-[24px] leading-none transition-transform active:scale-90", on ? "scale-125" : "opacity-60 grayscale brightness-[1.9]")}>
-                <span aria-hidden>{r.glyph}</span>
-              </button>
-            );
-          })}
-        </div>
-        {used.length > 0 && (
-          <span className="ml-2 flex items-center" role="img" aria-label={`Reactions received: ${used.map((r) => r.label).join(", ")}`}>
-            {used.slice(0, 5).map((r, i) => <span key={r.kind} aria-hidden className="text-[20px] leading-none" style={{ marginLeft: i ? -6 : 0, zIndex: 10 - i }}>{r.glyph}</span>)}
-          </span>
-        )}
+      <div role="group" aria-label="React" className="flex flex-wrap items-center">
+        {REACTIONS.map((r) => {
+          const on = state.mine === r.kind;
+          const n = state.counts[r.kind] ?? 0;
+          return (
+            <button key={r.kind} type="button" aria-pressed={on} aria-label={`${r.label}${n ? `, ${n}` : ""}`} title={r.label} onClick={() => press(r.kind)}
+              className="flex min-h-11 items-center gap-1 bg-transparent px-2.5 transition-transform active:scale-90" style={{ color: on ? r.color : "#9d98bd" }}>
+              <ReactionIcon kind={r.kind} size={on ? 30 : 28} />
+              {n > 0 && <span className="min-w-3 text-sm font-bold tabular-nums">{n}</span>}
+            </button>
+          );
+        })}
       </div>
       {msg && <p role="status" className="mt-1 text-xs text-[#ffb4b4]">{msg}</p>}
     </div>
