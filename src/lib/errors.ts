@@ -36,6 +36,7 @@ const MESSAGES: Record<string, string> = {
   invalid_reaction: "Pick one of the five reactions.",
   username_taken: "That username is taken.",
   username_reserved: "That username is reserved.",
+  already_sent: "You already picked a number on this wall.",
   under_age: "FALSE WALLS is for people aged 17 and over.",
   invalid_birth_date: "Enter a valid date of birth.",
   already_onboarded: "Your profile is already set up.",

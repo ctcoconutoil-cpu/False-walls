@@ -256,8 +256,11 @@ await expectErr("guest with a bad token is refused", null, "select public.send_g
 await expectErr("guest cannot repeat the same words", null, "select public.send_guest_question($1,'Pick 3: A secret I kept',$2)", [PW.token, "b".repeat(32)], "duplicate");
 await expectErr("guest cannot unmask senders", null, "select public.send_guest_question($1,'who are you really',$2)", [PW.token, "c".repeat(32)], "content_not_allowed");
 await expectErr("guest needs a visitor key", null, "select public.send_guest_question($1,'hello there',null)", [PW.token], "not_authenticated");
+await expectErr("one pick per visitor on a Pick a number wall", null, "select public.send_guest_question($1,'Pick 1: something else',$2)", [PW.token, KEY], "already_sent");
+await expectErr("one pick per signed-in member too", U.b, "select public.send_question_via_link($1,'Pick 2: again',true)", [PW.token], "already_sent");
+const plain = (await as(U.a, "select public.create_private_wall('Ask me anything now',null,null,null,'teal',null,true) r")).rows[0].r;
 let limited = null;
-for (let i = 0; i < 8 && !limited; i++) { const r = await as(null, "select public.send_guest_question($1,$2,$3)", [PW.token, "guest message number " + i, "d".repeat(32)]); if (r.error) limited = r.error; }
+for (let i = 0; i < 8 && !limited; i++) { const r = await as(null, "select public.send_guest_question($1,$2,$3)", [plain.token, "guest message number " + i, "d".repeat(32)]); if (r.error) limited = r.error; }
 ok("guest sending is rate limited", !!limited && limited.includes("rate_limited"), limited ?? "never limited");
 ok("guest events table has row security and no policy", (await db.query("select relrowsecurity r, (select count(*) from pg_policies where tablename='guest_events')::int n from pg_class where relname='guest_events'")).rows[0].r === true && (await db.query("select count(*)::int n from pg_policies where tablename='guest_events'")).rows[0].n === 0);
 const gans = await as(U.a, "select public.answer_question($1,'It was a long story',true) a", [g1.rows[0]?.q]);
