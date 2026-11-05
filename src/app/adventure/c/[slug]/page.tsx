@@ -40,7 +40,7 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
             <li key={o.id} className="flex flex-col items-center gap-1.5 rounded-2xl bg-night-2 p-3 text-center">
               <ObjectArt found={o.found} emoji={o.emoji} image_path={o.image_path} rare={o.rarity === "rare"} size={60} silhouette={o.mission?.silhouette} />
               <p className="text-sm font-bold leading-tight">{o.found ? o.name : o.unlocked && o.name ? o.name : "???"}</p>
-              <p className="text-[11px] text-chalk-dim">{o.found ? (o.via_team ? "Found with team" : "Found solo") : o.unlocked ? "In the maze" : o.mission ? "Solve the riddle" : "Hidden"}{o.rarity === "rare" ? " · Rare" : ""}</p>
+              <p className="text-[11px] text-chalk-dim">{o.found ? (o.via_team ? "Found with team" : "Found solo") : o.unlocked ? "On the Wall" : o.mission ? "Solve the riddle" : "Hidden"}{o.rarity === "rare" ? " · Rare" : ""}</p>
               {o.found && o.area && <p className="text-[11px]" style={{ color: AREAS[o.area as AreaSlug]?.accent }}>{AREAS[o.area as AreaSlug]?.name}</p>}
             </li>
           ))}

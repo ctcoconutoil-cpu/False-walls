@@ -14,7 +14,7 @@ export default async function AdventureAdmin() {
     <div className="space-y-8">
       <header>
         <h1 className="text-3xl">Adventure</h1>
-        <p className="text-sm text-chalk-dim">{d.stats.players} players · {d.stats.finds} objects found · {d.stats.teams} teams. Everything here is live: edits show up in the maze straight away.</p>
+        <p className="text-sm text-chalk-dim">{d.stats.players} players · {d.stats.finds} objects found · {d.stats.teams} teams. Everything here is live: edits show up in the walls straight away.</p>
       </header>
 
       <section aria-labelledby="profs" className="space-y-3">

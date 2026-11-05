@@ -47,9 +47,9 @@ export function RiddleCard({ riddleId, kind, prompt, hint, difficulty, silhouett
       </div>
       {kind === "direct" || isSolved ? (
         <div className="mt-3 space-y-2">
-          {isSolved && kind !== "direct" && <Notice tone="ok">Correct! It's the {emoji} {name}. Find it in the maze.</Notice>}
+          {isSolved && kind !== "direct" && <Notice tone="ok">Correct! It's the {emoji} {name}. It's on the Wall now. Some objects are hidden inside a wall: look for a patch a shade lighter than the rest.</Notice>}
           {kind === "direct" && name && <p className="text-sm text-chalk-dim">Look for the {emoji} {name}.</p>}
-          <Button tone="teal" size="sm" onClick={hunt} disabled={pending}>Hunt it in the maze</Button>
+          <Button tone="teal" size="sm" onClick={hunt} disabled={pending}>Hunt it in the walls</Button>
         </div>
       ) : (
         <form className="mt-3 space-y-2" onSubmit={(e) => { e.preventDefault(); if (answer.trim()) check(); }}>
@@ -67,7 +67,7 @@ export function RiddleCard({ riddleId, kind, prompt, hint, difficulty, silhouett
   );
 }
 
-/** Choose solo or a team, then step into the maze. */
+/** Choose solo or a team, then step into the walls. */
 export function PlayPanel({ slug, playing, activeTeam, teams, color }: { slug: string; playing: boolean; activeTeam: string | null; teams: { id: string; name: string }[]; color: string }) {
   const router = useRouter();
   const [team, setTeam] = useState<string>(activeTeam ?? "");
@@ -90,7 +90,7 @@ export function PlayPanel({ slug, playing, activeTeam, teams, color }: { slug: s
       )}
       {err && <Notice tone="error">{err}</Notice>}
       <div className="flex flex-wrap gap-2">
-        <Button onClick={go} disabled={pending}>{playing ? "Back to the maze" : "Hunt in the maze"}</Button>
+        <Button onClick={go} disabled={pending}>{playing ? "Back to the walls" : "Hunt in the walls"}</Button>
         {playing && <Button tone="ghost" onClick={stop} disabled={pending}>Pause Adventure</Button>}
       </div>
     </div>
@@ -171,7 +171,7 @@ export function TeamTools({ teamId, friends, playing, slug, status }: { teamId: 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
-        {status === "active" && <Button tone="teal" onClick={play} disabled={pending}>{playing ? "Back to the maze" : "Hunt for the team"}</Button>}
+        {status === "active" && <Button tone="teal" onClick={play} disabled={pending}>{playing ? "Back to the walls" : "Hunt for the team"}</Button>}
         {status === "active" && <Button tone="violet" onClick={() => setOpen(true)}>Invite friends</Button>}
         <Button tone="danger" onClick={leave} disabled={pending}>Leave team</Button>
       </div>

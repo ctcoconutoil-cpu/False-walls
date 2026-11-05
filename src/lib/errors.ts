@@ -37,7 +37,7 @@ const MESSAGES: Record<string, string> = {
   username_taken: "That username is taken.",
   username_reserved: "That username is reserved.",
   already_sent: "You already sent something to this wall. Each person can send once.",
-  not_unlocked: "Solve the riddle first. Then the object appears in the maze.",
+  not_unlocked: "Solve the riddle first. Then the object shows up on the Wall.",
   already_collected: "That one is already collected.",
   not_friends: "You can only invite friends: people you follow who follow you back.",
   team_full: "A team has room for 6 players.",

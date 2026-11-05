@@ -65,11 +65,11 @@ export function ObjectForm({ professionId, o, nextSort }: { professionId: string
           {o?.image_path && <span className="mt-1 flex items-center gap-2 text-xs"><input type="checkbox" name="remove_image" /> Remove the uploaded picture</span>}
         </L>
         <L t="Wall (where it is hidden)"><Select name="area" def={o?.area ?? "main"} opts={AREA_ORDER.map((a) => [a, AREAS[a].name])} /></L>
-        <L t="Maze section (0 is the first)"><input name="section" type="number" min={0} max={50} defaultValue={o?.section ?? 0} className={inputCls} /></L>
-        <L t="Kind of spot"><Select name="placement" def={o?.placement ?? "corridor"} opts={[["dead_end", "Dead end"], ["corner", "Corner"], ["junction", "Junction"], ["corridor", "Corridor"], ["room", "Open plaza"]]} /></L>
-        <L t="Visibility"><Select name="visibility" def={o?.visibility ?? "clear"} opts={[["clear", "Easy: always glowing"], ["hidden", "Hard: shows up when you're close"]]} /></L>
-        <L t="Exact tile X (optional, 0-16)"><input name="tile_x" type="number" min={0} max={16} defaultValue={o?.tile_x ?? ""} className={inputCls} /></L>
-        <L t="Exact tile Y (optional, 0-16)"><input name="tile_y" type="number" min={0} max={16} defaultValue={o?.tile_y ?? ""} className={inputCls} /></L>
+        <L t="Wall section (0 is the first)"><input name="section" type="number" min={0} max={50} defaultValue={o?.section ?? 0} className={inputCls} /></L>
+        <L t="Spot beside the wall"><Select name="placement" def={o?.placement ?? "corridor"} opts={[["dead_end", "Dead end"], ["corner", "Corner"], ["junction", "Junction"], ["corridor", "Corridor"], ["room", "Plaza edge"]]} /></L>
+        <L t="Visibility"><Select name="visibility" def={o?.visibility ?? "clear"} opts={[["clear", "Easy: glows in the open on the floor"], ["hidden", "Hard: hidden inside a wall, a shade lighter"]]} /></L>
+        <L t="Exact tile X (optional; a wall tile for Hard, a floor tile for Easy)"><input name="tile_x" type="number" min={0} max={16} defaultValue={o?.tile_x ?? ""} className={inputCls} /></L>
+        <L t="Exact tile Y (optional)"><input name="tile_y" type="number" min={0} max={16} defaultValue={o?.tile_y ?? ""} className={inputCls} /></L>
         <L t="Rarity"><Select name="rarity" def={o?.rarity ?? "common"} opts={[["common", "Common"], ["rare", "Rare (Treasure Hunter)"]]} /></L>
         <L t="Sort order"><input name="sort_order" type="number" defaultValue={o?.sort_order ?? nextSort ?? 0} className={inputCls} /></L>
         <label className="flex items-center gap-2"><input type="checkbox" name="per_player" defaultChecked={o?.per_player} className="h-5 w-5" /> Different spot for each player</label>

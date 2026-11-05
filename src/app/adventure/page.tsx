@@ -26,10 +26,10 @@ export default async function AdventureHome() {
         {active ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p><span aria-hidden>{active.emoji}</span> Hunting: <b>{active.name}</b>{o.active.team_id ? " (with your team)" : ""}. Look for glowing objects on the walls.</p>
-            <div className="flex gap-2"><Link href="/wall" className="btn-press display inline-flex min-h-11 items-center rounded-xl bg-coral px-4 font-black text-[#2a0d08]">Open the maze</Link><PauseButton /></div>
+            <div className="flex gap-2"><Link href="/wall" className="btn-press display inline-flex min-h-11 items-center rounded-xl bg-coral px-4 font-black text-[#2a0d08]">Open the Wall</Link><PauseButton /></div>
           </div>
         ) : (
-          <p className="text-chalk-dim"><b className="text-chalk">Adventure is optional.</b> The Wall works exactly as before. Pick a collection below to start hunting for objects hidden in the maze.</p>
+          <p className="text-chalk-dim"><b className="text-chalk">Adventure is optional.</b> The Wall works exactly as before. Pick a collection below to start hunting for objects. Some glow in the open; others are hidden inside the walls, so look for a patch of wall that is just a little lighter than the rest, then walk up to it.</p>
         )}
       </section>
 

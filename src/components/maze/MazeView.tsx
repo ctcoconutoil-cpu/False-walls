@@ -192,6 +192,7 @@ export function MazeView({ area, section, sectionCount, items: rawItems, tab, lo
   const [gone, setGone] = useState<Set<string>>(() => new Set());
   const [burst, setBurst] = useState<{ x: number; y: number; emoji: string } | null>(null);
   const [collecting, setCollecting] = useState(false);
+  const [hintOff, setHintOff] = useState(false);
   const placed = useMemo(() => {
     if (!adventure) return [];
     const here = adventure.objects.filter((o) => o.section % sectionCount === section);
@@ -397,8 +398,13 @@ export function MazeView({ area, section, sectionCount, items: rawItems, tab, lo
 
           {adventure && (
             <Link href={`/adventure/c/${adventure.profession.slug}`} className="pointer-events-auto absolute left-2 top-2 z-40 flex max-w-[55%] items-center gap-1.5 rounded-full bg-night/85 px-3 py-1.5 text-xs font-bold backdrop-blur" style={{ color: adventure.profession.color }}>
-              <span aria-hidden>{adventure.profession.emoji}</span><span className="truncate">{adventure.profession.name} hunt</span><span className="text-chalk-dim">{placed.filter((o) => !gone.has(o.id)).length > 0 ? `· ${placed.filter((o) => !gone.has(o.id)).length} here` : ""}</span>
+              <span aria-hidden>{adventure.profession.emoji}</span><span className="truncate">{adventure.profession.name} hunt</span><span className="text-chalk-dim">{placed.filter((o) => !gone.has(o.id)).length > 0 ? `· ${placed.filter((o) => !gone.has(o.id)).length} on this wall` : ""}</span>
             </Link>
+          )}
+          {adventure && !hintOff && placed.some((o) => !gone.has(o.id)) && (
+            <button type="button" onClick={() => setHintOff(true)} className="pointer-events-auto absolute left-2 top-12 z-40 max-w-[70%] rounded-xl bg-night/85 px-3 py-2 text-left text-[11px] leading-snug text-chalk backdrop-blur" aria-label="Dismiss hint">
+              Some items are hidden <b>inside the walls</b>. Look for a wall patch a shade lighter than the rest, then walk up to it. Others glow in the open. <span className="text-chalk-dim">Tap to hide.</span>
+            </button>
           )}
 
           {sectionCount > 1 && (

@@ -15,7 +15,7 @@ export default async function Book() {
     <main className="mx-auto max-w-xl space-y-6 px-4 pb-8 pt-4">
       <Link href="/adventure" className="text-sm text-chalk-dim underline">Adventure</Link>
       <header><h1 className="display text-3xl">My collection book</h1><p className="text-chalk-dim">{total} {total === 1 ? "object" : "objects"} discovered so far.</p></header>
-      {total === 0 && <Empty title="Your book is empty" action={<Link href="/adventure" className="underline">Pick a collection</Link>}>Everything you find in the maze is added here automatically.</Empty>}
+      {total === 0 && <Empty title="Your book is empty" action={<Link href="/adventure" className="underline">Pick a collection</Link>}>Everything you find in the walls is added here automatically.</Empty>}
       {shelves.map((s) => (
         <section key={s.slug} aria-labelledby={`s-${s.slug}`} className="rounded-3xl bg-night-2 p-4" style={{ borderTop: `4px solid ${s.color}` }}>
           <div className="mb-3 flex items-center justify-between"><h2 id={`s-${s.slug}`} className="display text-lg uppercase">{s.emoji} {s.name}</h2><span className="text-sm text-chalk-dim">{s.found}/{s.total}</span></div>
