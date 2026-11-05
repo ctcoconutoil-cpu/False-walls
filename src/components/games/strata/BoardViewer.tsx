@@ -1,38 +1,125 @@
 "use client";
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createBoard, previewTerritory } from "@/games/strata/engine/board";
 import { describeCell } from "@/games/strata/engine/describe";
 import { BOARD_11 } from "@/games/strata/config/layouts";
 import { PLAYER_COLORS } from "@/games/strata/config/palette";
-import type { Cell } from "@/games/strata/engine/types";
+import { PIECES, STARTER_SET, flip, rollSide, rotateYaw, size, tiltPitch, type Cubes } from "@/games/strata/engine/pieces";
+import { commit, place, REASON_TEXT } from "@/games/strata/engine/placement";
+import type { Board, Cell } from "@/games/strata/engine/types";
 import type { CameraCmd } from "./BoardScene";
+import type { HeldBlock } from "./PracticeScene";
+import type { PlacedPiece } from "./Blocks";
 import { cx } from "@/lib/utils";
 
-const BoardScene = dynamic(() => import("./BoardScene").then((m) => m.BoardScene), { ssr: false, loading: () => <div className="fw-skel h-full w-full" aria-busy="true" /> });
+const PracticeScene = dynamic(() => import("./PracticeScene").then((m) => m.PracticeScene), { ssr: false, loading: () => <div className="fw-skel h-full w-full" aria-busy="true" /> });
 
 function hasWebGL() {
   try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2") || c.getContext("webgl")); } catch { return false; }
 }
 
+const TRAY = STARTER_SET.map((id) => ({ id, cubes: PIECES[id].cubes as Cubes }));
+
+/** Re-centres a block after it changes shape, so turning it doesn't make it jump across the board. */
+const recentre = (prev: Cubes, next: Cubes, x: number, y: number) => {
+  const a = size(prev), b = size(next);
+  return { x: Math.round(x + (a.w - b.w) / 2), y: Math.round(y + (a.d - b.d) / 2) };
+};
+
 export function BoardViewer() {
-  const base = useMemo(() => createBoard(BOARD_11), []);
+  const [history, setHistory] = useState<Board[]>(() => [createBoard(BOARD_11)]);
+  const [placed, setPlaced] = useState<PlacedPiece[]>([]);
+  const [held, setHeld] = useState<HeldBlock | null>(null);
   const [preview, setPreview] = useState(false);
-  const board = useMemo(() => (preview ? previewTerritory(base) : base), [base, preview]);
   const [selected, setSelected] = useState<Cell | null>(null);
   const [cmd, setCmd] = useState<CameraCmd>({ kind: "angled", nonce: 0 });
   const [gl] = useState(() => (typeof document === "undefined" ? true : hasWebGL()));
+  const [note, setNote] = useState<string | null>(null);
+
+  const real = history[history.length - 1];
+  const board = useMemo(() => (preview ? previewTerritory(real) : real), [real, preview]);
+  const placement = useMemo(() => (held ? place(real, held.cubes, held.x, held.y) : null), [held, real]);
   const send = (kind: CameraCmd["kind"]) => setCmd((c) => ({ kind, nonce: c.nonce + 1 }));
+
+  const select = useCallback((id: string) => {
+    const cubes = PIECES[id].cubes as Cubes, s = size(cubes);
+    setHeld({ id, cubes, x: Math.round((BOARD_11.width - s.w) / 2), y: Math.round((BOARD_11.height - s.d) / 2) });
+    setNote(null);
+  }, []);
+  const transform = useCallback((fn: (c: Cubes) => Cubes) => setHeld((h) => {
+    if (!h) return h;
+    const cubes = fn(h.cubes);
+    return { ...h, cubes, ...recentre(h.cubes, cubes, h.x, h.y) };
+  }), []);
+  const confirm = useCallback(() => {
+    if (!held || !placement?.valid) return;
+    setHistory((h) => [...h, commit(h[h.length - 1], placement)]);
+    setPlaced((p) => [...p, { id: Date.now() + p.length, world: placement.world }]);
+    setNote(`Placed the ${PIECES[held.id].name.toLowerCase()}.`);
+    setHeld(null);
+  }, [held, placement]);
+  const undo = useCallback(() => {
+    if (history.length < 2) return;
+    setHistory((h) => h.slice(0, -1)); setPlaced((p) => p.slice(0, -1)); setNote("Undid the last block.");
+  }, [history.length]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.closest("input,textarea,select")) return;
+      const k = e.key.toLowerCase();
+      if (k === "escape") setHeld(null);
+      else if (!held) return;
+      else if (k === "r") transform(rotateYaw);
+      else if (k === "t") transform(tiltPitch);
+      else if (k === "f") transform(flip);
+      else if (k === "enter") confirm();
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [held, transform, confirm]);
+
+  const onPick = (c: Cell | null) => {
+    if (held && c) { const s = size(held.cubes); setHeld({ ...held, x: c.x - Math.floor(s.w / 2), y: c.y - Math.floor(s.d / 2) }); return; }
+    setSelected(c);
+  };
   const info = selected ? describeCell(board.cells[selected.y][selected.x]) : null;
-  const btn = "btn-press inline-flex min-h-11 items-center justify-center rounded-xl bg-night-3 px-3.5 text-sm font-bold";
+  const btn = "btn-press inline-flex min-h-11 items-center justify-center rounded-xl bg-night-3 px-3.5 text-sm font-bold disabled:opacity-40";
+  const turnLeft = (c: Cubes) => rotateYaw(rotateYaw(rotateYaw(c)));
 
   if (!gl) return <div className="rounded-2xl bg-night-2 p-5 text-sm text-chalk-dim">This device can&apos;t draw 3D graphics, which STRATA needs. Try another browser or turn on hardware acceleration.</div>;
   return (
     <div className="space-y-3">
-      <div className="relative h-[62vh] min-h-[380px] overflow-hidden rounded-3xl bg-night-2" data-testid="strata-board">
-        <BoardScene board={board} selected={selected} onPick={(c) => setSelected(c ?? null)} cmd={cmd} />
-        <p className="pointer-events-none absolute inset-x-0 bottom-2 text-center text-[11px] text-chalk-dim/80">Drag to turn · pinch or scroll to zoom · tap a tile</p>
+      <div className="relative h-[62vh] min-h-[380px] touch-none overflow-hidden rounded-3xl bg-night-2" data-testid="strata-board">
+        <PracticeScene board={board} selected={selected} onPick={onPick} cmd={cmd} placed={placed} tray={TRAY} held={held} placement={placement} onSelectTray={select}
+          onMove={(x, y) => setHeld((h) => (h ? { ...h, x, y } : h))} />
+        <p className="pointer-events-none absolute inset-x-0 bottom-2 text-center text-[11px] text-chalk-dim/80">{held ? "Drag the lifted block, or tap a tile to move it" : "Tap a block below the board to pick it up"}</p>
       </div>
+
+      <section aria-label="Block controls" className="space-y-2 rounded-2xl bg-night-2 p-3" data-testid="block-panel">
+        <p className="text-sm" aria-live="polite" data-testid="block-status">
+          {held && placement ? (placement.valid
+            ? <><b className="text-[#3ddc97]">Fits</b> · {PIECES[held.id].name}{placement.base > 0 ? `, resting ${placement.base} high` : ""}. Confirm to place it.</>
+            : <><b className="text-[#ff7a7a]">Can&apos;t place here</b> · {REASON_TEXT[placement.reason!]}</>)
+            : <span className="text-chalk-dim">{note ?? "Practice mode: pick up a block, turn it, and place it. Blocks stack. The full scoring rules come in the next phase."}</span>}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={btn} disabled={!held} onClick={() => transform(turnLeft)} aria-label="Rotate left">↺ Left</button>
+          <button type="button" className={btn} disabled={!held} onClick={() => transform(rotateYaw)} aria-label="Rotate right">↻ Right</button>
+          <button type="button" className={btn} disabled={!held} onClick={() => transform(tiltPitch)} aria-label="Tip forward">⤵ Tip</button>
+          <button type="button" className={btn} disabled={!held} onClick={() => transform(rollSide)} aria-label="Roll sideways">⟳ Roll</button>
+          <button type="button" className={btn} disabled={!held} onClick={() => transform(flip)} aria-label="Flip (mirror)">⇋ Flip</button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={cx(btn, "!bg-coral !text-[#2a0d08]")} disabled={!held || !placement?.valid} onClick={confirm} data-testid="confirm">Confirm placement</button>
+          <button type="button" className={btn} disabled={!held} onClick={() => setHeld(null)}>Put back</button>
+          <button type="button" className={btn} disabled={history.length < 2} onClick={undo} data-testid="undo">Undo last</button>
+          <span className="ml-auto self-center text-xs text-chalk-dim" data-testid="placed-count">{placed.length} placed</span>
+        </div>
+      </section>
+
       <div className="flex flex-wrap gap-2" role="toolbar" aria-label="Camera">
         <button type="button" className={btn} onClick={() => send("angled")}>Angled</button>
         <button type="button" className={btn} onClick={() => send("top")}>Top view</button>

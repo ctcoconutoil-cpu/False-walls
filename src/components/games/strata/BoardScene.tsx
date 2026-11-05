@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { Line, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
@@ -154,8 +154,8 @@ function CameraRig({ cmd }: { cmd: CameraCmd }) {
     last.current = cmd.nonce;
     const aspect = size.width / Math.max(1, size.height);
     const fit = aspect < 1 ? 1 / Math.max(0.55, aspect) : 1; // pull back on tall phones so the whole board stays visible
-    if (cmd.kind === "angled") goal.current = new THREE.Vector3(0, 11.5 * fit * 1.12, 11 * fit * 1.12);
-    else if (cmd.kind === "top") goal.current = new THREE.Vector3(0, 18 * fit, 0.001);
+    if (cmd.kind === "angled") goal.current = new THREE.Vector3(0, 11.5 * fit * 1.18, 11 * fit * 1.18 + 2.2);
+    else if (cmd.kind === "top") goal.current = new THREE.Vector3(0, 18 * fit * 1.1, 2.2);
     else {
       const t = controls?.target ?? new THREE.Vector3();
       const dir = camera.position.clone().sub(t);
@@ -174,10 +174,10 @@ function CameraRig({ cmd }: { cmd: CameraCmd }) {
   return null;
 }
 
-export function BoardScene({ board, selected, onPick, cmd }: { board: Board; selected: Cell | null; onPick: (c: Cell) => void; cmd: CameraCmd }) {
+export function BoardScene({ board, selected, onPick, cmd, children }: { board: Board; selected: Cell | null; onPick: (c: Cell) => void; cmd: CameraCmd; children?: ReactNode }) {
   const w = board.width * CELL + 0.7, h = board.height * CELL + 0.7;
   return (
-    <Canvas flat shadows="soft" frameloop="demand" dpr={[1, 2]} camera={{ position: [0, 11.5, 11], fov: 36, near: 0.1, far: 80 }} gl={{ antialias: true, powerPreference: "high-performance" }}
+    <Canvas flat shadows="soft" frameloop="demand" dpr={[1, 2]} camera={{ position: [0, 13.5, 15], fov: 36, near: 0.1, far: 80 }} gl={{ antialias: true, powerPreference: "high-performance" }}
       style={{ touchAction: "none" }} onPointerMissed={() => onPick(null as unknown as Cell)}>
       <color attach="background" args={["#1b1230"]} />
       <ambientLight intensity={1.9} />
@@ -191,7 +191,8 @@ export function BoardScene({ board, selected, onPick, cmd }: { board: Board; sel
       <Dots board={board} />
       <Diamonds board={board} />
       <Selection board={board} cell={selected} />
-      <OrbitControls makeDefault enablePan={false} enableDamping dampingFactor={0.12} minDistance={7} maxDistance={28} minPolarAngle={0} maxPolarAngle={1.25} rotateSpeed={0.7} zoomSpeed={0.8}
+      {children}
+      <OrbitControls makeDefault enablePan={false} target={[0, 0, 2.2]} enableDamping dampingFactor={0.12} minDistance={7} maxDistance={28} minPolarAngle={0} maxPolarAngle={1.25} rotateSpeed={0.7} zoomSpeed={0.8}
         touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE }} />
       <CameraRig cmd={cmd} />
     </Canvas>

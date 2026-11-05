@@ -32,7 +32,7 @@ Later phases add `engine/pieces.ts` (polycube generator), `engine/rules.ts` (pla
 
 ## Phases
 1. Digital board: DONE. Board, colours, obstacles, dot tiles, diamonds, starting areas, claimed and captured looks, camera (drag, pinch, zoom, angled, top, reset), tile inspector, How to play.
-2. 3D blocks: polycube generator, shapes, drag, rotate, flip, snapping, placement preview.
+2. 3D blocks: DONE. `engine/pieces.ts` (10 polycube shapes, 24 orientations, flip), `engine/placement.ts` (bounds, black tiles, drop-and-rest stacking, stack limit), tray, lift, drag, tap-to-move, snapping, green/red preview, confirm, undo. The viewer is a practice sandbox with unlimited blocks; real turns come in phase 3. Known limit: stacks are stored as heights, so a block cannot slide into the open space under a bridge.
 3. Rules engine: placement, gravity, height tiles, claim, capture, scoring, turns.
 4. Local game: hot-seat plus test opponents.
 5. AI: four levels, offline.

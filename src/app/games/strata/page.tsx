@@ -17,7 +17,7 @@ export default function Strata() {
       </div>
       <section aria-labelledby="soon" className="rounded-2xl bg-night-2 p-4">
         <h2 id="soon" className="font-black">Being built</h2>
-        <p className="mt-1 text-sm text-chalk-dim">You can explore the board now. Placing blocks and the game modes below are the next phases, and nothing here pretends to work before it does.</p>
+        <p className="mt-1 text-sm text-chalk-dim">You can explore the board and practise placing, turning and stacking 3D blocks now. Scoring, turns and the game modes below are the next phases, and nothing here pretends to work before it does.</p>
         <ul className="mt-3 space-y-2 text-sm">
           {later.map(([t, d]) => <li key={t} className="flex items-start justify-between gap-3 rounded-xl bg-night/60 px-3 py-2"><span><b>{t}</b><span className="block text-chalk-dim">{d}</span></span><span className="shrink-0 rounded-full bg-night-3 px-2 py-0.5 text-[11px] text-chalk-dim">Soon</span></li>)}
         </ul>

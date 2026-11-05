@@ -75,7 +75,10 @@ export default function HowToPlay() {
           <li><b className="text-chalk">Zoom:</b> pinch, scroll, or use ＋ and －.</li>
           <li><b className="text-chalk">Views:</b> Angled for depth, Top view for planning, Reset to start over.</li>
           <li><b className="text-chalk">Inspect:</b> tap any tile to see what it does.</li>
-          <li><b className="text-chalk">Blocks</b> (coming with the next phase): select, drag, rotate and flip, then confirm.</li>
+          <li><b className="text-chalk">Pick up a block:</b> tap one in the tray below the board. It lifts above the board and a coloured preview shows where it will land. Green fits, red doesn&apos;t.</li>
+          <li><b className="text-chalk">Move it:</b> drag the lifted block, or tap a tile. It snaps to whole tiles and rests on the board or on blocks below it.</li>
+          <li><b className="text-chalk">Turn it:</b> Left and Right spin it flat, Tip and Roll stand it on its side, Flip mirrors it. On a keyboard: R, T, F. Enter confirms and Esc puts it back.</li>
+          <li><b className="text-chalk">Undo:</b> take back placements until the game is submitted.</li>
         </ul></section>
 
       <section className="space-y-2 rounded-2xl bg-night-2 p-4"><H id="open">Rules we&apos;re still confirming</H>
