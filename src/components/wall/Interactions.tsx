@@ -2,8 +2,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Button, Field, Notice, Sheet, inputCls } from "@/components/ui";
-import { REACTIONS, REPORT_REASONS, LIMITS } from "@/lib/constants";
+import { Avatar, Button, Field, Notice, Sheet, inputCls } from "@/components/ui";
+import { fetchFireReactors } from "@/lib/actions/adventure";
+import type { Person } from "@/lib/adventure/types";
+import { FIRE, REACTIONS, REPORT_REASONS, LIMITS } from "@/lib/constants";
 import { deletePost, deleteReply, editPost, postReply, recordDiscovery, reportContent, setReaction, toggleSave, deleteMedia } from "@/lib/actions/posts";
 import { sendQuestion, setAnswerPublic, deleteAnswer } from "@/lib/actions/social";
 import type { ReactionKind } from "@/lib/types";
@@ -32,8 +34,50 @@ function ReactionIcon({ kind, size = 28 }: { kind: ReactionKind; size?: number }
   );
 }
 
-export function ReactionBar({ type, id, counts, mine, loggedIn, own }: { type: "post" | "answer" | "reply"; id: string; counts: Partial<Record<ReactionKind, number>>; mine: ReactionKind | null; loggedIn: boolean; own?: boolean }) {
+/** The Animated Fire: a layered flame that flickers once it is lit. Grey outline when it is not. */
+function FireIcon({ lit, size = 28 }: { lit: boolean; size?: number }) {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" width={size} height={size} className={lit ? "fw-flicker" : undefined} fill="none" strokeLinejoin="round" strokeLinecap="round">
+      <defs>
+        <linearGradient id="fw-fire-a" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#FF3D2E" /><stop offset=".6" stopColor="#FF8A1F" /><stop offset="1" stopColor="#FFD84A" /></linearGradient>
+      </defs>
+      <path d="M12.2 2.4c.4 3-1.2 4.6-2.7 6.3C8 10.400 6.500 12.200 6.500 14.800a5.600 5.600 0 0 0 11.200 0c0-2-.9-3.500-1.900-4.700-.3 1-.9 1.700-1.700 2 .6-3.200-.1-6.800-1.900-9.700z" stroke={lit ? "none" : "currentColor"} strokeWidth="1.7" fill={lit ? "url(#fw-fire-a)" : "none"} />
+      {lit ? <path d="M12 21a2.800 2.800 0 0 1-2.800-2.900c0-1.500 1.200-2.300 2-3.500.9 1.200 3.600 2.200 3.600 4.200A2.800 2.800 0 0 1 12 21z" fill="#FFF3B0" /> : <path d="M12 20.200a2.400 2.400 0 0 1-2.400-2.400c0-1.200.9-1.900 1.600-2.800.8 1 3.200 1.800 3.200 3.500a2.400 2.400 0 0 1-2.400 1.700z" stroke="currentColor" strokeWidth="1.5" />}
+    </svg>
+  );
+}
+
+/** A short burst of flames that rises over the page. Cheap CSS animation, removed after two seconds. */
+function FireBurst({ onDone }: { onDone: () => void }) {
+  useEffect(() => { const t = window.setTimeout(onDone, 2100); return () => window.clearTimeout(t); }, [onDone]);
+  return (
+    <div aria-hidden className="pointer-events-none fixed inset-0 z-[90] overflow-hidden">
+      {Array.from({ length: 18 }, (_, i) => (
+        <span key={i} className="fw-flame absolute bottom-[-40px] block" style={{ left: `${(i * 37) % 96}%`, fontSize: 26 + ((i * 13) % 28), animation: `fw-flame ${1.3 + ((i * 7) % 8) / 10}s ease-out ${((i * 11) % 7) / 10}s both` }}>🔥</span>
+      ))}
+    </div>
+  );
+}
+
+function FireWho({ type, id }: { type: "post" | "answer" | "reply"; id: string }) {
+  const [open, setOpen] = useState(false);
+  const [people, setPeople] = useState<Person[] | null>(null);
+  const show = async () => { setOpen(true); const r = await fetchFireReactors(type, id); setPeople(r.ok ? r.people : []); };
+  return (
+    <>
+      <button type="button" onClick={show} className="text-xs font-bold text-chalk-dim underline">Who set it on fire?</button>
+      <Sheet open={open} onClose={() => setOpen(false)} title="Fire reactions">
+        {people === null ? <p className="text-chalk-dim">Loading…</p> : people.length === 0 ? <p className="text-chalk-dim">Everyone who used Fire has a private profile, so no names are shown.</p> : (
+          <ul className="space-y-2">{people.map((p) => <li key={p.username}><Link href={`/profile/${p.username}`} className="flex items-center gap-3 rounded-xl bg-night-3 p-2.5"><Avatar user={p} size={36} /><span className="font-bold">{p.display_name || p.username}</span><span className="text-chalk-dim">@{p.username}</span></Link></li>)}</ul>
+        )}
+      </Sheet>
+    </>
+  );
+}
+
+export function ReactionBar({ type, id, counts, mine, loggedIn, own, fire = false }: { type: "post" | "answer" | "reply"; id: string; counts: Partial<Record<ReactionKind, number>>; mine: ReactionKind | null; loggedIn: boolean; own?: boolean; fire?: boolean }) {
   const [state, setState] = useState({ counts, mine });
+  const [burst, setBurst] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [, start] = useTransition();
   function press(kind: ReactionKind) {
@@ -45,10 +89,12 @@ export function ReactionBar({ type, id, counts, mine, loggedIn, own }: { type: "
     if (prev.mine) c[prev.mine] = Math.max(0, (c[prev.mine] ?? 1) - 1);
     if (next) c[next] = (c[next] ?? 0) + 1;
     setState({ counts: c, mine: next }); setMsg(null);
+    if (next === "fire") setBurst(true);
     start(async () => { const r = await setReaction(type, id, next); if (!r.ok) { setState(prev); setMsg(r.error); } });
   }
   return (
-    <div>
+    <div className={cx("rounded-2xl", state.mine === "fire" && "fw-fire-glow")}>
+      {burst && <FireBurst onDone={() => setBurst(false)} />}
       <div role="group" aria-label="React" className="flex flex-wrap items-center">
         {REACTIONS.map((r) => {
           const on = state.mine === r.kind;
@@ -61,7 +107,19 @@ export function ReactionBar({ type, id, counts, mine, loggedIn, own }: { type: "
             </button>
           );
         })}
+        {(fire || (state.counts.fire ?? 0) > 0) && (() => {
+          const on = state.mine === "fire", n = state.counts.fire ?? 0;
+          return (
+            <button type="button" aria-pressed={on} aria-disabled={!fire} aria-label={`${FIRE.label}${n ? `, ${n}` : ""}${fire ? "" : " (locked)"}`} title={fire ? "Fire" : "Fire: unlocked in Adventure"}
+              onClick={() => { if (fire) press("fire"); else setMsg("Fire is an Adventure reward. Complete three collections to unlock it."); }}
+              className="flex min-h-11 items-center gap-1 bg-transparent px-2.5 transition-transform active:scale-90" style={{ color: on ? FIRE.color : "#9d98bd" }}>
+              <FireIcon lit={on} size={on ? 31 : 28} />
+              {n > 0 && <span className="min-w-3 text-sm font-bold tabular-nums">{n}</span>}
+            </button>
+          );
+        })()}
       </div>
+      {(state.counts.fire ?? 0) > 0 && <div className="px-2.5"><FireWho type={type} id={id} /></div>}
       {msg && <p role="status" className="mt-1 text-xs text-[#ffb4b4]">{msg}</p>}
     </div>
   );

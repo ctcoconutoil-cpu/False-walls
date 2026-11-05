@@ -138,3 +138,18 @@ html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-
 @keyframes fw-skel { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .fw-skel { animation: none; } }
 :root[data-motion="reduced"] .fw-skel { animation: none; }
+
+/* ---------- Adventure ---------- */
+@keyframes fw-float { 0%, 100% { transform: translateY(-3px) } 50% { transform: translateY(-9px) } }
+@keyframes fw-ring { 0%, 100% { transform: scale(.94); opacity: .75 } 50% { transform: scale(1.06); opacity: 1 } }
+@keyframes fw-twinkle { 0%, 100% { opacity: .25; transform: scale(.7) } 50% { opacity: 1; transform: scale(1.25) } }
+@keyframes fw-flame { 0% { transform: translateY(0) scale(.6); opacity: 0 } 15% { opacity: 1 } 100% { transform: translateY(-110vh) scale(1.3); opacity: 0 } }
+@keyframes fw-flicker { 0%, 100% { transform: scale(1) rotate(-2deg) } 25% { transform: scale(1.08, .96) rotate(2deg) } 50% { transform: scale(.96, 1.08) rotate(-1deg) } 75% { transform: scale(1.05, .98) rotate(1.5deg) } }
+@keyframes fw-glow { 0%, 100% { box-shadow: 0 0 0 0 #ff6a3d00 } 50% { box-shadow: 0 0 22px 2px #ff6a3d66 } }
+.fw-float { animation: fw-float 2.6s ease-in-out infinite }
+.fw-ring { animation: fw-ring 2.2s ease-in-out infinite }
+.fw-twinkle { animation: fw-twinkle 1.6s ease-in-out infinite }
+.fw-flicker { animation: fw-flicker .9s ease-in-out infinite; transform-origin: 50% 90% }
+.fw-fire-glow { animation: fw-glow 1.8s ease-in-out infinite }
+@media (prefers-reduced-motion: reduce) { .fw-float, .fw-ring, .fw-twinkle, .fw-flicker, .fw-fire-glow { animation: none } }
+@media (prefers-reduced-motion: reduce) { .fw-flame { display: none } }

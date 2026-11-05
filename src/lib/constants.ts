@@ -54,6 +54,9 @@ export const REACTIONS: { kind: ReactionKind; label: string; glyph: string; colo
   { kind: "like", label: "Like", glyph: "❤️", color: "#FF4D6D" },
 ];
 
+/** The Animated Fire is a reward from Adventure, so it sits apart from the five everyone can use. */
+export const FIRE = { kind: "fire" as const, label: "Fire", color: "#FF6A3D" };
+
 export const AREAS: Record<AreaSlug, { name: string; blurb: string; wall: string; floor: string; accent: string; mortar: string; tagline: string }> = {
   main: { name: "Main Wall", blurb: "The crossroads. Every kind of wall turns up here.", wall: "#B4503A", floor: "#2B2540", accent: "#F2573F", mortar: "#7C3425", tagline: "Where it starts" },
   trending: { name: "Trending Wall", blurb: "Conversations people are genuinely talking about.", wall: "#4B2C86", floor: "#1B1233", accent: "#FF7BA9", mortar: "#30195C", tagline: "Lit up tonight" },

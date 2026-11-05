@@ -271,5 +271,93 @@ ok("private answers stay hidden from the link", !priv.error && (await as(null, "
 ok("shared wall exposes no sender ids", !JSON.stringify(sw2.rows[0].w).match(/22222222|asker/));
 await expectErr("under-17 rejected", U.z, "select public.complete_onboarding('teenager',null,'blob','#FF6B4A',null,null,'{}',(current_date - interval '16 years')::date)", [], "under_age");
 
+// ---- ADVENTURE (0015/0016) ----
+const adv = async (u, sql, params = []) => as(u, sql, params);
+await expectErr("signed-out visitors cannot open Adventure", null, "select public.adv_overview()", [], "not_authenticated");
+const ov0 = (await adv(U.b, "select public.adv_overview() o")).rows[0].o;
+ok("Adventure is optional: not joined until chosen", ov0.joined === false && ov0.professions.length === 12);
+ok("overview shows missions without answers", ov0.missions.length > 0 && !JSON.stringify(ov0).match(/"answers?"/));
+const doc = ov0.professions.find((p) => p.slug === "doctor");
+ok("doctor collection has 8 objects", doc.total === 8 && doc.found === 0);
+await expectErr("cannot collect before joining", U.b, "select public.adv_collect((select id from public.adv_objects where name='Bandage' limit 1))", [], "not_found");
+await expectOk("player joins a collection", U.b, "select public.adv_join('doctor')");
+const col = (await adv(U.b, "select public.adv_collection('doctor') c")).rows[0].c;
+const bandage = col.objects.find((o) => o.mission?.prompt?.includes("cover the cut"));
+ok("riddle objects stay hidden until solved (no name or emoji leak)", bandage && bandage.name === null && bandage.emoji === null && !bandage.unlocked);
+await expectErr("cannot collect a riddle object before solving it", U.b, "select public.adv_collect($1)", [bandage.id], "not_unlocked");
+const wrongAns = (await adv(U.b, "select public.adv_answer($1,'sandwich') r", [bandage.mission.riddle_id])).rows[0].r;
+ok("wrong answer is refused", wrongAns.correct === false);
+const good = (await adv(U.b, "select public.adv_answer($1,'  A Plaster! ') r", [bandage.mission.riddle_id])).rows[0].r;
+ok("right answer (normalised, alias) reveals the object", good.correct === true && good.object.name === "Bandage");
+await adv(U.b, "select public.adv_answer($1,'bandage')", [bandage.mission.riddle_id]);
+ok("solving twice does not count twice", (await db.query("select count(*)::int n from public.adv_solves where user_id=$1", [U.b])).rows[0].n === 1);
+const maze = (await adv(U.b, "select public.adv_maze($1) m", [good.object.id ? (await db.query("select area from public.adv_objects where id=$1", [good.object.id])).rows[0].area : "main"])).rows[0].m;
+ok("maze receives only unlocked, uncollected objects", maze.objects.some((o) => o.id === bandage.id) && maze.objects.every((o) => o.name));
+const c1 = await adv(U.b, "select public.adv_collect($1) r", [bandage.id]);
+ok("collecting an unlocked object works", !c1.error && c1.rows[0].r.mine === true && c1.rows[0].r.found === 1, c1.error);
+await db.query("update public.adv_players set last_collect_at = now() - interval '5 seconds' where user_id=$1", [U.b]);
+await expectErr("the same object cannot be collected twice", U.b, "select public.adv_collect($1)", [bandage.id], "already_collected");
+ok("progress did not move on the repeat", (await db.query("select count(*)::int n from public.adv_finds where user_id=$1", [U.b])).rows[0].n === 1);
+ok("first discovery badge awarded once", (await db.query("select count(*)::int n from public.adv_user_rewards r join public.adv_milestones m on m.id=r.milestone_id where r.user_id=$1 and m.slug='first-discovery'", [U.b])).rows[0].n === 1);
+await db.query("update public.adv_players set last_collect_at = now() - interval '5 seconds' where user_id=$1", [U.b]);
+await expectErr("objects from another profession cannot be collected", U.b, "select public.adv_collect((select id from public.adv_objects where name='Comb'))", [], "not_found");
+const rem = col.objects.filter((o) => o.id !== bandage.id).map((o) => o.id);
+for (const id of rem) {
+  await db.query("insert into public.adv_solves (user_id, riddle_id) select $1, r.id from public.adv_riddles r where r.object_id=$2 on conflict do nothing", [U.b, id]);
+  await db.query("update public.adv_players set last_collect_at = now() - interval '5 seconds' where user_id=$1", [U.b]);
+  await adv(U.b, "select public.adv_collect($1)", [id]);
+}
+const prog = (await adv(U.b, "select public.adv_rewards() r")).rows[0].r;
+ok("finishing a collection counts as one completed collection", prog.progress.collections === 1 && prog.progress.objects === 8);
+ok("Professional badge earned, Fire still locked", prog.items.find((i) => i.slug === "professional").earned && !prog.items.find((i) => i.slug === "animated-fire").earned && prog.progress.fire === false);
+ok("rare object finds count as Treasure Hunter", prog.items.find((i) => i.slug === "treasure-hunter").earned);
+// fire reaction
+const postForFire = (await db.query("select id from public.posts where author_id=$1 and status='active' and visibility='public' limit 1", [U.a])).rows[0]?.id;
+await expectErr("Fire is refused until unlocked", U.c, "select public.set_reaction('post',$1,'fire')", [postForFire], "fire_locked");
+await db.query("insert into public.adv_user_rewards (user_id, milestone_id) select $1, id from public.adv_milestones where slug='animated-fire'", [U.b]);
+await expectOk("Fire works once unlocked", U.b, "select public.set_reaction('post',$1,'fire')", [postForFire]);
+ok("Fire counts as a reaction on the post", (await db.query("select count(*)::int n from public.reactions where target_id=$1 and kind='fire'", [postForFire])).rows[0].n === 1);
+// teams
+await db.query("insert into public.follows (follower_id, followee_id) values ($1,$2),($2,$1),($1,$3) on conflict do nothing", [U.b, U.c, U.a]);
+await expectErr("team invites are for friends only", U.b, "select public.adv_team_create('chef','Kitchen crew',array[$1::uuid])", [U.a], "not_friends");
+const tid = (await adv(U.b, "select public.adv_team_create('chef','Kitchen crew',array[$1::uuid]) t", [U.c])).rows[0]?.t;
+ok("team created with a friend invited", !!tid && (await db.query("select count(*)::int n from public.adv_team_members where team_id=$1", [tid])).rows[0].n === 2);
+ok("invitee sees the invitation", (await adv(U.c, "select public.adv_overview() o")).rows[0].o.invites.length === 1);
+await expectErr("invited people cannot read the team chat yet", U.c, "select public.adv_team_messages_get($1)", [tid], "not_found");
+await expectOk("friend accepts", U.c, "select public.adv_team_respond($1,true)", [tid]);
+await expectOk("team chat message", U.c, "select public.adv_team_send($1,'Anyone seen the whisk?')", [tid]);
+await expectErr("outsiders cannot post in the team chat", U.d, "select public.adv_team_send($1,'hi')", [tid], "not_found");
+const chefObjs = (await db.query("select id from public.adv_objects where profession_id=(select id from public.adv_professions where slug='chef') order by sort_order")).rows.map((r) => r.id);
+await db.query("insert into public.adv_solves (user_id, riddle_id) select u, r.id from (values ($1::uuid),($2::uuid)) v(u) cross join public.adv_riddles r where r.object_id = any($3::uuid[]) on conflict do nothing", [U.b, U.c, chefObjs]);
+await expectOk("teammate starts playing for the team", U.c, "select public.adv_join('chef',$1)", [tid]);
+await db.query("update public.adv_players set last_collect_at = now() - interval '5 seconds'");
+const t1 = await adv(U.b, "select public.adv_collect($1,$2) r", [chefObjs[0], tid]);
+ok("team find recorded for the finder", !t1.error && t1.rows[0].r.shared === true && t1.rows[0].r.team_found === 1, t1.error);
+await db.query("update public.adv_players set last_collect_at = now() - interval '5 seconds'");
+await expectErr("a teammate cannot add the same object twice", U.c, "select public.adv_collect($1,$2)", [chefObjs[0], tid], "already_collected");
+const td = (await adv(U.c, "select public.adv_team_detail($1) d", [tid])).rows[0].d;
+ok("teammates see shared progress and who found what", td.found === 1 && td.objects[0].by && td.members.find((m) => m.found === 1));
+const mz = (await adv(U.c, "select public.adv_maze($1) m", [(await db.query("select area from public.adv_objects where id=$1", [chefObjs[1]])).rows[0].area])).rows[0].m;
+ok("team objects already found disappear from the maze", !(mz?.objects ?? []).some((o) => o.id === chefObjs[0]));
+ok("team chat shows the discovery", (await adv(U.c, "select public.adv_team_messages_get($1) m", [tid])).rows[0].m.some((m) => m.kind === "discovery"));
+for (const id of chefObjs.slice(1)) { await db.query("update public.adv_players set last_collect_at = now() - interval '5 seconds'"); await adv(U.c, "select public.adv_collect($1,$2)", [id, tid]); }
+ok("team completes when every object is found", (await db.query("select status from public.adv_teams where id=$1", [tid])).rows[0].status === "complete");
+ok("team player badge earned by members", (await db.query("select count(*)::int n from public.adv_user_rewards r join public.adv_milestones m on m.id=r.milestone_id where m.slug='team-player' and r.user_id in ($1,$2)", [U.b, U.c])).rows[0].n === 2);
+await expectOk("a member can leave", U.b, "select public.adv_team_leave($1)", [tid]);
+// privacy of the Fire list
+ok("fire reactors listed only for public profiles", Array.isArray((await as(null, "select public.fire_reactors('post',$1) r", [postForFire])).rows[0].r));
+// admin
+await expectErr("players cannot use the admin functions", U.b, "select public.adv_admin_list()", [], "not_found");
+const al = (await adv(U.m, "select public.adv_admin_list() a")).rows[0]?.a;
+ok("admin can list everything including answers", al?.professions?.length === 12 && JSON.stringify(al).includes("answers"));
+const np = (await adv(U.m, "select public.adv_admin_profession($1::jsonb) id", [JSON.stringify({ slug: "pilot", name: "Pilot", emoji: "✈️", color: "#4FC3F7" })])).rows[0]?.id;
+ok("admin adds a profession", !!np);
+const no = (await adv(U.m, "select public.adv_admin_object($1::jsonb) id", [JSON.stringify({ profession_id: np, name: "Cockpit", emoji: "🛩️", area: "hidden", placement: "dead_end", riddle_prompt: "I am where the captain sits", riddle_answers: "cockpit, flight deck", riddle_difficulty: 2 })])).rows[0]?.id;
+ok("admin adds an object with a riddle and placement", !!no && (await db.query("select count(*)::int n from public.adv_riddles where object_id=$1", [no])).rows[0].n === 1);
+const ms = await adv(U.m, "select public.adv_admin_milestone($1::jsonb) id", [JSON.stringify({ slug: "ten-finds", title: "Ten Finds", metric: "objects", threshold: 10, reward: "badge" })]);
+ok("admin adds a milestone", !ms.error, ms.error);
+await expectOk("admin removes a profession", U.m, "select public.adv_admin_delete_profession($1)", [np]);
+ok("adventure tables are closed (RLS on, no policy)", (await db.query("select count(*)::int n from pg_class c where c.relname like 'adv\\_%' and c.relkind='r' and not c.relrowsecurity")).rows[0].n === 0 && (await db.query("select count(*)::int n from pg_policies where tablename like 'adv\\_%'")).rows[0].n === 0);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

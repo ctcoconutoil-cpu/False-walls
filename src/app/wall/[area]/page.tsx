@@ -3,6 +3,7 @@ import { MazeView } from "@/components/maze/MazeView";
 import { AREAS } from "@/lib/constants";
 import { getAreaItems } from "@/lib/data/posts";
 import { getViewer } from "@/lib/data/session";
+import { getMazeAdventure } from "@/lib/data/adventure";
 import { createClient } from "@/lib/supabase/server";
 import { SLOTS_PER_SECTION } from "@/lib/maze/layout";
 import type { AreaSlug } from "@/lib/types";
@@ -21,10 +22,11 @@ export default async function AreaPage({ params, searchParams }: { params: Promi
   const slug = area as AreaSlug;
   const supabase = await createClient();
   // Everything this page needs is fetched at once instead of one query after another.
-  const [{ items, hasMore }, viewer, last] = await Promise.all([
+  const [{ items, hasMore }, viewer, last, adventure] = await Promise.all([
     getAreaItems(slug, section, tab),
     getViewer(),
     slug === "trending" ? Promise.resolve(null) : supabase.from("wall_locations").select("slot_index").eq("area_slug", slug).order("slot_index", { ascending: false }).limit(1),
+    getMazeAdventure(slug),
   ]);
   let sectionCount = section + (hasMore ? 2 : 1);
   if (last) {
@@ -34,7 +36,7 @@ export default async function AreaPage({ params, searchParams }: { params: Promi
   return (
     <MazeView
       key={`${slug}:${section}:${tab}`} area={slug} section={section} sectionCount={sectionCount} items={items} tab={tab}
-      loggedIn={!!viewer.profile} me={viewer.profile ? { id: viewer.profile.id, username: viewer.profile.username, display_name: viewer.profile.display_name, avatar_style: viewer.profile.avatar_style, avatar_color: viewer.profile.avatar_color, avatar_url: viewer.profile.avatar_url } : null}
+      adventure={adventure} loggedIn={!!viewer.profile} me={viewer.profile ? { id: viewer.profile.id, username: viewer.profile.username, display_name: viewer.profile.display_name, avatar_style: viewer.profile.avatar_style, avatar_color: viewer.profile.avatar_color, avatar_url: viewer.profile.avatar_url } : null}
     />
   );
 }

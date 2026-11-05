@@ -2,7 +2,7 @@ export type PostType = "ask_me" | "hidden_thought" | "picture" | "prompt_respons
 export type WallColor = "coral" | "mustard" | "teal" | "violet" | "sky" | "lime" | "rose" | "slate";
 export type ClueStyle = "crack" | "handle" | "glow" | "texture" | "opening";
 export type FalseWallKind = "question" | "photo" | "story" | "poll" | "conversation";
-export type ReactionKind = "interesting" | "funny" | "surprising" | "thought_provoking" | "like";
+export type ReactionKind = "interesting" | "funny" | "surprising" | "thought_provoking" | "like" | "fire";
 export type AreaSlug = "main" | "trending" | "hidden" | "picture" | "question" | "community";
 
 export type AuthorLite = {

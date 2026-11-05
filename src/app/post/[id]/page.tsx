@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/data/session";
+import { getProfileAdventure } from "@/lib/data/adventure";
 import { getPostById, getThread } from "@/lib/data/posts";
 import { Avatar, Empty, Notice, SampleTag } from "@/components/ui";
 import { ShareButton } from "@/components/share/ShareSheet";
@@ -42,6 +43,7 @@ export default async function BehindTheWall({ params }: { params: Promise<{ id: 
   if (!post) notFound();
   const me = viewer.profile;
   const loggedIn = !!me;
+  const hasFire = me ? (await getProfileAdventure(me.id))?.fire ?? false : false;
   const owner = !!me && post.author_id === me.id;
   const supabase = await createClient();
   const thread = await getThread(id, me?.id ?? null);
@@ -136,7 +138,7 @@ export default async function BehindTheWall({ params }: { params: Promise<{ id: 
             </div>
           )}
 
-          <ReactionBar type="post" id={post.id} counts={thread.reactions.post.counts} mine={thread.reactions.post.mine} loggedIn={loggedIn} own={owner} />
+          <ReactionBar type="post" id={post.id} counts={thread.reactions.post.counts} mine={thread.reactions.post.mine} loggedIn={loggedIn} own={owner} fire={hasFire} />
           {owner && post.visibility === "link" && post.share_token && (
             <div className="space-y-3 rounded-2xl border-2 border-mustard bg-night-2 p-4">
               <p className="display text-xl">Your private wall is live</p>
@@ -174,7 +176,7 @@ export default async function BehindTheWall({ params }: { params: Promise<{ id: 
                     <p className="whitespace-pre-wrap font-semibold">{a.body}</p>
                   </div>
                   <div className="ml-4 space-y-2">
-                    <ReactionBar type="answer" id={a.id} counts={r?.counts ?? {}} mine={r?.mine ?? null} loggedIn={loggedIn} own={owner} />
+                    <ReactionBar type="answer" id={a.id} counts={r?.counts ?? {}} mine={r?.mine ?? null} loggedIn={loggedIn} own={owner} fire={hasFire} />
                     <div className="flex flex-wrap items-center gap-3">
                       <AnswerActions answerId={a.id} own={owner} isPublic />
                       {loggedIn && post.allow_chains && <Link href={`/create?chain_parent=${post.id}&chain_answer=${a.id}`} className="min-h-9 text-sm font-bold text-mustard underline">Build a related wall from this answer</Link>}

@@ -10,6 +10,10 @@ import { Button, SampleTag, Sheet } from "@/components/ui";
 import { MazeWorld } from "./MazeWorld";
 import { PlayerMarker } from "./PlayerMarker";
 import { EyeMark, WallMarker } from "./WallMarker";
+import { AdventureLayer } from "./AdventureLayer";
+import { placeObjects } from "@/lib/maze/adventure";
+import { collectObject } from "@/lib/actions/adventure";
+import type { MazeAdventure } from "@/lib/adventure/types";
 import { RevealPanel } from "@/components/wall/RevealPanel";
 import { useCurtainNav } from "./Curtain";
 import { recordDiscovery } from "@/lib/actions/posts";
@@ -18,14 +22,14 @@ import { cx, timeAgo } from "@/lib/utils";
 type Item = { slot: number; post: Post };
 type Props = {
   area: AreaSlug; section: number; sectionCount: number; items: Item[]; tab: "trending" | "newest";
-  loggedIn: boolean; me: AuthorLite | null;
+  loggedIn: boolean; me: AuthorLite | null; adventure?: MazeAdventure | null;
 };
 
 const STEP = 140; // ms per tile; the marker and camera glide at the same speed
 const NAMES = { n: "north", e: "east", s: "south", w: "west" } as const;
 const label = (p: Post) => p.title ?? p.clue ?? p.body ?? "wall";
 
-export function MazeView({ area, section, sectionCount, items: rawItems, tab, loggedIn, me }: Props) {
+export function MazeView({ area, section, sectionCount, items: rawItems, tab, loggedIn, me, adventure = null }: Props) {
   const reduce = useReducedMotion();
   const A = AREAS[area];
   const m = useMemo(() => buildSection(area, section), [area, section]);
@@ -184,6 +188,33 @@ export function MazeView({ area, section, sectionCount, items: rawItems, tab, lo
     tick();
   }, [reduce]);
 
+  // ---- Adventure: collectibles standing in this section ----
+  const [gone, setGone] = useState<Set<string>>(() => new Set());
+  const [burst, setBurst] = useState<{ x: number; y: number; emoji: string } | null>(null);
+  const [collecting, setCollecting] = useState(false);
+  const placed = useMemo(() => {
+    if (!adventure) return [];
+    const here = adventure.objects.filter((o) => o.section % sectionCount === section);
+    return placeObjects(m, here, me?.id ?? "guest");
+  }, [adventure, m, section, sectionCount, me?.id]);
+  const nearObj = useMemo(() => placed.find((o) => !gone.has(o.id) && Math.max(Math.abs(o.tile.x - pos.x), Math.abs(o.tile.y - pos.y)) <= 1) ?? null, [placed, gone, pos]);
+  const collect = useCallback(async () => {
+    if (!nearObj || collecting || !adventure) return;
+    setCollecting(true);
+    const r = await collectObject(nearObj.id, adventure.team_id);
+    setCollecting(false);
+    if (!r.ok) {
+      if (r.error.includes("already collected")) setGone((g) => new Set(g).add(nearObj.id));
+      showToast(r.error); return;
+    }
+    const { result } = r;
+    setGone((g) => new Set(g).add(nearObj.id));
+    setBurst({ x: nearObj.tile.x, y: nearObj.tile.y, emoji: result.object.emoji });
+    window.setTimeout(() => setBurst(null), 1300);
+    const progress = result.shared && result.team_found != null ? `Team ${result.team_found}/${result.total}` : `${result.found}/${result.total}`;
+    showToast(`Found: ${result.object.name} ${result.object.emoji}  ${progress}${result.rewards.length ? `  · Unlocked: ${result.rewards.join(", ")}` : ""}`);
+  }, [nearObj, collecting, adventure, showToast]);
+
   const adjacentItems = useMemo(() => {
     const out: Item[] = [];
     for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) { const it = byFace.get(`${pos.x + dx},${pos.y + dy}`); if (it) out.push(it); }
@@ -338,6 +369,14 @@ export function MazeView({ area, section, sectionCount, items: rawItems, tab, lo
               </button>
             )}
 
+            {adventure && <AdventureLayer placed={placed} gone={gone} pos={pos} color={adventure.profession.color} />}
+            {burst && (
+              <div aria-hidden className="pointer-events-none absolute z-40 grid place-items-center" style={{ left: burst.x * TILE, top: burst.y * TILE, width: TILE, height: TILE }}>
+                <motion.span className="absolute block rounded-full" style={{ width: TILE, height: TILE, border: "3px solid #fff" }} initial={{ scale: 0.4, opacity: 1 }} animate={{ scale: 3, opacity: 0 }} transition={{ duration: 0.8 }} />
+                <motion.span className="absolute text-4xl" initial={{ y: 0, scale: 1, opacity: 1 }} animate={{ y: -70, scale: 1.8, opacity: 0 }} transition={{ duration: 1.1, ease: "easeOut" }}>{burst.emoji}</motion.span>
+                {[0, 1, 2, 3, 4, 5].map((i) => <motion.span key={i} className="absolute text-lg" initial={{ x: 0, y: 0, opacity: 1 }} animate={{ x: Math.cos(i * 1.05) * 56, y: Math.sin(i * 1.05) * 56, opacity: 0 }} transition={{ duration: 0.9 }}>✦</motion.span>)}
+              </div>
+            )}
             <PlayerMarker px={px} py={py} color={me?.avatar_color ?? "#F2573F"} look={look} moving={moving} bump={bump} tile={pos} />
 
             {rf && revealing && (
@@ -356,6 +395,12 @@ export function MazeView({ area, section, sectionCount, items: rawItems, tab, lo
             </div>
           )}
 
+          {adventure && (
+            <Link href={`/adventure/c/${adventure.profession.slug}`} className="pointer-events-auto absolute left-2 top-2 z-40 flex max-w-[55%] items-center gap-1.5 rounded-full bg-night/85 px-3 py-1.5 text-xs font-bold backdrop-blur" style={{ color: adventure.profession.color }}>
+              <span aria-hidden>{adventure.profession.emoji}</span><span className="truncate">{adventure.profession.name} hunt</span><span className="text-chalk-dim">{placed.filter((o) => !gone.has(o.id)).length > 0 ? `· ${placed.filter((o) => !gone.has(o.id)).length} here` : ""}</span>
+            </Link>
+          )}
+
           {sectionCount > 1 && (
             <div className="pointer-events-auto absolute right-2 top-2 z-40 flex items-center gap-1 rounded-full bg-night/85 p-1 text-xs backdrop-blur">
               <Link aria-label="Earlier section" aria-disabled={section === 0} tabIndex={section === 0 ? -1 : 0} href={qs(Math.max(0, section - 1))} className={cx("grid h-8 w-8 place-items-center rounded-full bg-night-3 font-bold", section === 0 && "pointer-events-none opacity-40")}>‹</Link>
@@ -370,6 +415,7 @@ export function MazeView({ area, section, sectionCount, items: rawItems, tab, lo
               <Pad label="Walk west" glyph="◀" onPress={() => move1("w")} /><Pad label="Walk south" glyph="▼" onPress={() => move1("s")} /><Pad label="Walk east" glyph="▶" onPress={() => move1("e")} />
             </div>
             <div className="pointer-events-auto flex flex-col items-end gap-1.5">
+              {nearObj && !selected && <Button tone="coral" size="sm" disabled={collecting} onClick={collect} data-testid="collect">{collecting ? "Collecting…" : `Collect ${nearObj.name}`}</Button>}
               {adjacentItems[0] && !selected && <Button tone="mustard" size="sm" onClick={() => activate(adjacentItems[0])}>{adjacentItems[0].post.type === "false_wall" ? "Look closer" : "Open this wall"}</Button>}
               <button type="button" data-testid="recenter" onClick={recenter} aria-label="Recenter on your position" className={cx("flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-bold shadow-[0_3px_0_#0d0b1f]", detached ? "bg-mustard text-[#2c1e02]" : "bg-night/85 text-chalk")}>
                 <span aria-hidden>◎</span>Recenter

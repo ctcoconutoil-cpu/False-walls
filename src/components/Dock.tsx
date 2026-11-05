@@ -23,6 +23,7 @@ export function Dock({ username, unread }: { username: string | null; unread: nu
         {item("/wall", "Wall", "▦", path.startsWith("/wall"))}
         {item("/discover", "Discover", "✦", path.startsWith("/discover") || path.startsWith("/search"))}
         <Link href="/create" aria-label="Create: put something on the wall" className="relative -mt-5 mb-1.5 grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-coral text-3xl font-black text-[#2a0d08] shadow-[0_5px_0_#8f2c1b] btn-press [--btn-shadow:#8f2c1b]">+</Link>
+        {item("/adventure", "Adventure", "🧭", path.startsWith("/adventure"))}
         {item("/inbox", "Inbox", "✉", path.startsWith("/inbox"), unread)}
         {item(username ? `/profile/${username}` : "/login", "Me", "☻", path.startsWith("/profile") || path === "/settings")}
       </div>
