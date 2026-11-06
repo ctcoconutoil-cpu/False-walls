@@ -6,7 +6,7 @@ import { describeCell } from "@/games/strata/engine/describe";
 import { BOARD_11 } from "@/games/strata/config/layouts";
 import { PLAYER_COLORS } from "@/games/strata/config/palette";
 import { PIECES, STARTER_SET, flip, rollSide, rotateYaw, size, tiltPitch, type Cubes } from "@/games/strata/engine/pieces";
-import { commit, place, REASON_TEXT } from "@/games/strata/engine/placement";
+import { place, REASON_TEXT } from "@/games/strata/engine/placement";
 import type { Board, Cell } from "@/games/strata/engine/types";
 import type { CameraCmd } from "./BoardScene";
 import type { HeldBlock } from "./PracticeScene";
@@ -28,7 +28,7 @@ const recentre = (prev: Cubes, next: Cubes, x: number, y: number) => {
 };
 
 export function BoardViewer() {
-  const [history, setHistory] = useState<Board[]>(() => [createBoard(BOARD_11)]);
+  const [real] = useState<Board>(() => createBoard(BOARD_11));
   const [placed, setPlaced] = useState<PlacedPiece[]>([]);
   const [held, setHeld] = useState<HeldBlock | null>(null);
   const [preview, setPreview] = useState(false);
@@ -37,9 +37,8 @@ export function BoardViewer() {
   const [gl] = useState(() => (typeof document === "undefined" ? true : hasWebGL()));
   const [note, setNote] = useState<string | null>(null);
 
-  const real = history[history.length - 1];
   const board = useMemo(() => (preview ? previewTerritory(real) : real), [real, preview]);
-  const placement = useMemo(() => (held ? place(real, held.cubes, held.x, held.y) : null), [held, real]);
+  const placement = useMemo(() => (held ? place(real, held.cubes, held.x, held.y, new Set(placed.flatMap((p) => p.world.map((c) => c.join(","))))) : null), [held, real, placed]);
   const send = (kind: CameraCmd["kind"]) => setCmd((c) => ({ kind, nonce: c.nonce + 1 }));
 
   const select = useCallback((id: string) => {
@@ -54,15 +53,14 @@ export function BoardViewer() {
   }), []);
   const confirm = useCallback(() => {
     if (!held || !placement?.valid) return;
-    setHistory((h) => [...h, commit(h[h.length - 1], placement)]);
     setPlaced((p) => [...p, { id: Date.now() + p.length, world: placement.world }]);
     setNote(`Placed the ${PIECES[held.id].name.toLowerCase()}.`);
     setHeld(null);
   }, [held, placement]);
   const undo = useCallback(() => {
-    if (history.length < 2) return;
-    setHistory((h) => h.slice(0, -1)); setPlaced((p) => p.slice(0, -1)); setNote("Undid the last block.");
-  }, [history.length]);
+    if (!placed.length) return;
+    setPlaced((p) => p.slice(0, -1)); setNote("Undid the last block.");
+  }, [placed.length]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -101,9 +99,9 @@ export function BoardViewer() {
       <section aria-label="Block controls" className="space-y-2 rounded-2xl bg-night-2 p-3" data-testid="block-panel">
         <p className="text-sm" aria-live="polite" data-testid="block-status">
           {held && placement ? (placement.valid
-            ? <><b className="text-[#3ddc97]">Fits</b> · {PIECES[held.id].name}{placement.base > 0 ? `, resting ${placement.base} high` : ""}. Confirm to place it.</>
+            ? <><b className="text-[#3ddc97]">Fits</b> · {PIECES[held.id].name}{placement.bridge ? ", as a bridge" : ""}. Confirm to place it.</>
             : <><b className="text-[#ff7a7a]">Can&apos;t place here</b> · {REASON_TEXT[placement.reason!]}</>)
-            : <span className="text-chalk-dim">{note ?? "Practice mode: pick up a block, turn it, and place it. Blocks stack. The full scoring rules come in the next phase."}</span>}
+            : <span className="text-chalk-dim">{note ?? "Practice mode: pick up a block, turn it, and place it. Blocks stand on the board and never stack. Real turns, bridges and scoring are in Play."}</span>}
         </p>
         <div className="flex flex-wrap gap-2">
           <button type="button" className={btn} disabled={!held} onClick={() => transform(turnLeft)} aria-label="Rotate left">↺ Left</button>
@@ -115,7 +113,7 @@ export function BoardViewer() {
         <div className="flex flex-wrap gap-2">
           <button type="button" className={cx(btn, "!bg-coral !text-[#2a0d08]")} disabled={!held || !placement?.valid} onClick={confirm} data-testid="confirm">Confirm placement</button>
           <button type="button" className={btn} disabled={!held} onClick={() => setHeld(null)}>Put back</button>
-          <button type="button" className={btn} disabled={history.length < 2} onClick={undo} data-testid="undo">Undo last</button>
+          <button type="button" className={btn} disabled={placed.length === 0} onClick={undo} data-testid="undo">Undo last</button>
           <span className="ml-auto self-center text-xs text-chalk-dim" data-testid="placed-count">{placed.length} placed</span>
         </div>
       </section>

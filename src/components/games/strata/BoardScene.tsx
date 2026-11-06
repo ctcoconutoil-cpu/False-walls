@@ -4,7 +4,7 @@ import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber"
 import { Line, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import type { Board, Cell, PlayerColor } from "@/games/strata/engine/types";
-import { BOARD_COLORS, PLAYER_COLORS } from "@/games/strata/config/palette";
+import { BOARD_COLORS, PLAYER_COLORS, PLAYER_PATTERN, type PatternId } from "@/games/strata/config/palette";
 
 export type CameraCmd = { kind: "angled" | "top" | "zoomIn" | "zoomOut"; nonce: number };
 
@@ -15,33 +15,41 @@ const TOP = 0.06; // thickness of a tile
 /** World position of the centre of a cell. The board is centred on the origin. */
 export const toWorld = (b: Board, x: number, y: number): [number, number] => [(x - (b.width - 1) / 2) * CELL, (y - (b.height - 1) / 2) * CELL];
 
-/** One small pattern per colour, so colour is never the only signal. */
-function patternTexture(color: PlayerColor): THREE.CanvasTexture {
+/** Draws one territory pattern. Patterns are only a look for claimed tiles; they never change how a tile plays. */
+function drawPattern(g: CanvasRenderingContext2D, S: number, id: PatternId) {
+  g.strokeStyle = "rgba(255,255,255,.85)"; g.fillStyle = "rgba(255,255,255,.85)"; g.lineWidth = 5; g.lineCap = "round"; g.lineJoin = "round";
+  const spots: Array<[number, number]> = [[32, 32], [96, 32], [32, 96], [96, 96], [64, 64]];
+  if (id === "waves") {
+    for (let i = 0; i < 4; i++) { g.beginPath(); const y = 16 + i * 32; g.moveTo(0, y); for (let x = 0; x <= S; x += 32) { g.quadraticCurveTo(x + 8, y - 12, x + 16, y); g.quadraticCurveTo(x + 24, y + 12, x + 32, y); } g.stroke(); }
+  } else if (id === "crosses") {
+    for (const [x, y] of spots) { g.beginPath(); g.moveTo(x - 9, y - 9); g.lineTo(x + 9, y + 9); g.moveTo(x + 9, y - 9); g.lineTo(x - 9, y + 9); g.stroke(); }
+  } else if (id === "dots") {
+    for (const [x, y] of spots) { g.beginPath(); g.arc(x, y, 8, 0, 7); g.fill(); }
+  } else if (id === "zigzag") {
+    for (let i = 0; i < 4; i++) { g.beginPath(); const y = 20 + i * 32; g.moveTo(0, y); for (let x = 0; x <= S; x += 32) { g.lineTo(x + 16, y - 10); g.lineTo(x + 32, y); } g.stroke(); }
+  } else if (id === "grid") {
+    g.lineWidth = 4; for (const v of [32, 96]) { g.beginPath(); g.moveTo(v, 0); g.lineTo(v, S); g.moveTo(0, v); g.lineTo(S, v); g.stroke(); }
+  } else {
+    for (let i = -2; i < 6; i++) { g.beginPath(); g.moveTo(i * 32, S); g.lineTo(i * 32 + S, 0); g.stroke(); }
+  }
+}
+
+/** The claimed-tile texture for a colour: its solid colour with its own pattern (see PLAYER_PATTERN). */
+export function patternTexture(color: PlayerColor, pattern: PatternId = PLAYER_PATTERN[color]): THREE.CanvasTexture {
   const S = 128, c = document.createElement("canvas");
   c.width = c.height = S;
   const g = c.getContext("2d")!;
   g.fillStyle = PLAYER_COLORS[color].hex;
   g.fillRect(0, 0, S, S);
-  g.strokeStyle = "rgba(255,255,255,.85)"; g.fillStyle = "rgba(255,255,255,.85)"; g.lineWidth = 5; g.lineCap = "round";
-  if (color === "orange" || color === "turquoise") {
-    for (let i = 0; i < 4; i++) { g.beginPath(); const y = 16 + i * 32; g.moveTo(0, y); for (let x = 0; x <= S; x += 32) { g.quadraticCurveTo(x + 8, y - 12, x + 16, y); g.quadraticCurveTo(x + 24, y + 12, x + 32, y); } g.stroke(); }
-  } else if (color === "blue") {
-    for (const [x, y] of [[32, 32], [96, 32], [32, 96], [96, 96], [64, 64]]) { g.beginPath(); g.moveTo(x - 9, y - 9); g.lineTo(x + 9, y + 9); g.moveTo(x + 9, y - 9); g.lineTo(x - 9, y + 9); g.stroke(); }
-  } else if (color === "yellow") {
-    for (const [x, y] of [[32, 32], [96, 32], [32, 96], [96, 96], [64, 64]]) { g.beginPath(); g.arc(x, y, 7, 0, 7); g.fill(); }
-  } else if (color === "purple") {
-    for (let i = 0; i < 4; i++) { g.beginPath(); const y = 20 + i * 32; g.moveTo(0, y); for (let x = 0; x <= S; x += 32) { g.lineTo(x + 16, y - 10); g.lineTo(x + 32, y); } g.stroke(); }
-  } else {
-    for (let i = -2; i < 6; i++) { g.beginPath(); g.moveTo(i * 32, S); g.lineTo(i * 32 + S, 0); g.stroke(); }
-  }
+  drawPattern(g, S, pattern);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
   return t;
 }
 
 const baseColor = (c: Cell) => {
-  if (c.type === "black") return BOARD_COLORS.black;
   if (c.owner && (c.status === "captured" || c.type === "start")) return PLAYER_COLORS[c.owner].hex;
+  if (c.type === "black") return BOARD_COLORS.black;
   return BOARD_COLORS.tile;
 };
 

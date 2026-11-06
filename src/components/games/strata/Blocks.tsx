@@ -59,12 +59,13 @@ const anchor = (board: Board, cubes: Cubes, x: number, y: number, h: number): [n
 };
 
 /** Blocks standing on the board. A newly placed one drops in with a short ease. */
-export function PlacedBlocks({ board, placed }: { board: Board; placed: PlacedPiece[] }) {
-  return <>{placed.map((p) => <Dropped key={p.id} board={board} piece={p} />)}</>;
+export function PlacedBlocks({ board, placed, vanish = false }: { board: Board; placed: PlacedPiece[]; vanish?: boolean }) {
+  return <>{placed.map((p) => <Dropped key={p.id} board={board} piece={p} vanish={vanish} />)}</>;
 }
-function Dropped({ board, piece }: { board: Board; piece: PlacedPiece }) {
+function Dropped({ board, piece, vanish }: { board: Board; piece: PlacedPiece; vanish: boolean }) {
   const ref = useRef<THREE.Group>(null);
   const y = useRef(1.1);
+  const k = useRef(1);
   const invalidate = useThree((s) => s.invalidate);
   const min = useMemo(() => ({ x: Math.min(...piece.world.map((c) => c[0])), y: Math.min(...piece.world.map((c) => c[1])), z: Math.min(...piece.world.map((c) => c[2])) }), [piece]);
   const local = useMemo(() => piece.world.map((c): Cube => [c[0] - min.x, c[1] - min.y, c[2] - min.z]), [piece, min]);
@@ -72,6 +73,14 @@ function Dropped({ board, piece }: { board: Board; piece: PlacedPiece }) {
   // The group starts lifted and eases down; position is set here rather than as a prop so re-renders don't reset it.
   useLayoutEffect(() => { ref.current?.position.set(pos[0], pos[1] + y.current, pos[2]); invalidate(); }, [pos, invalidate]);
   useFrame((_, dt) => {
+    if (ref.current && vanish && k.current > 0) {
+      // the temporary block shrinks into the board once the move is confirmed
+      k.current = Math.max(0, k.current - dt * 2.4);
+      ref.current.scale.setScalar(Math.max(0.001, k.current * k.current));
+      ref.current.visible = k.current > 0.01;
+      invalidate();
+      return;
+    }
     if (!ref.current || y.current <= 0.0005) return;
     y.current *= Math.pow(0.0009, dt);
     if (y.current < 0.0005) y.current = 0;

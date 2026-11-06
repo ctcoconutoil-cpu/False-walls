@@ -2,7 +2,7 @@ import type { Board, BoardLayout, Cell, PlayerColor } from "./types";
 
 export function createBoard(layout: BoardLayout): Board {
   const cells: Cell[][] = Array.from({ length: layout.height }, (_, y) =>
-    Array.from({ length: layout.width }, (_, x): Cell => ({ x, y, type: "normal", height: null, startOf: null, diamond: false, owner: null, status: "unclaimed", stack: 0 })));
+    Array.from({ length: layout.width }, (_, x): Cell => ({ x, y, type: "normal", height: null, startOf: null, diamond: false, owner: null, status: "unclaimed" })));
   const at = (x: number, y: number) => {
     const c = cells[y]?.[x];
     if (!c) throw new Error(`Layout ${layout.id} has a tile outside the board at ${x},${y}`);

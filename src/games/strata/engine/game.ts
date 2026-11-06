@@ -1,6 +1,6 @@
 import type { Board, BoardLayout, PlayerColor } from "./types.ts";
 import { createBoard } from "./board.ts";
-import { applyBlock, captureAll, checkBlock, legalPlacements, tallies, territoryShare, type Reason, type Tally } from "./play.ts";
+import { checkBlock, legalPlacements, resolveBlocks, tallies, territoryShare, type Reason, type Resolution, type Tally } from "./play.ts";
 import { STARTER_SET, type Cube, type Cubes } from "./pieces.ts";
 import { draw } from "./rng.ts";
 import { STRATA_RULES, type StrataRules } from "../config/rules.ts";
@@ -12,9 +12,8 @@ export type Turn = {
   player: number;
   /** Blocks still to place this turn. */
   hand: string[];
+  /** Temporary blocks standing on the board this turn. The board's territory doesn't change until the turn is confirmed. */
   placed: PlacedBlock[];
-  /** The board before each block this turn, so undo is exact. */
-  snapshots: Board[];
 };
 export type MoveRecord = { turnNumber: number; player: number; blocks: Array<{ pieceId: string; cubes: Cube[]; x: number; y: number }>; captured: number; ended: "submit" | "stuck" | "pass" };
 export type GameStatus = "playing" | "final_round" | "finished";
@@ -47,7 +46,7 @@ export function createGame(opts: { layout: BoardLayout; players: PlayerInfo[]; s
   const layout: BoardLayout = { ...opts.layout, starts: opts.layout.starts.filter((s) => colours.has(s.color)) };
   const hand = draw(STARTER_SET, rules.blocksPerTurn, opts.seed);
   const board = createBoard(layout);
-  return { ok: true, state: { rules, board, players: opts.players, turn: { player: 0, hand: hand.picks, placed: [], snapshots: [] }, turnNumber: 1, seed: hand.seed, status: "playing", endAfter: null, passes: 0, history: [] } };
+  return { ok: true, state: { rules, board, players: opts.players, turn: { player: 0, hand: hand.picks, placed: [] }, turnNumber: 1, seed: hand.seed, status: "playing", endAfter: null, passes: 0, history: [] } };
 }
 
 export const activePlayer = (s: GameState) => s.players[s.turn.player];
@@ -58,6 +57,7 @@ export function checkMove(s: GameState, cubes: Cubes, x: number, y: number) {
   return checkBlock(s.board, activePlayer(s).color, earlierCubes(s), cubes, x, y, s.rules);
 }
 
+/** Puts the next block on the board as a temporary piece. Nothing is claimed and no score changes until the whole turn is confirmed. */
 export function placeBlock(s: GameState, pieceId: string, cubes: Cubes, x: number, y: number): Result<{ state: GameState }> {
   if (s.status === "finished") return { ok: false, error: "game_over" };
   if (!s.turn.hand.includes(pieceId)) return { ok: false, error: s.turn.hand.length ? "not_your_block" : "no_blocks_left" };
@@ -66,17 +66,50 @@ export function placeBlock(s: GameState, pieceId: string, cubes: Cubes, x: numbe
   if (!chk.ok) return { ok: false, error: chk.reason };
   const hand = [...s.turn.hand];
   hand.splice(hand.indexOf(pieceId), 1);
-  const board = applyBlock(s.board, me.color, chk.placement, s.rules);
   const block: PlacedBlock = { pieceId, cubes: cubes.map((c) => [...c] as Cube), x, y, world: chk.placement.world };
-  return { ok: true, state: { ...s, board, turn: { ...s.turn, hand, placed: [...s.turn.placed, block], snapshots: [...s.turn.snapshots, s.board] } } };
+  return { ok: true, state: { ...s, turn: { ...s.turn, hand, placed: [...s.turn.placed, block] } } };
 }
 
-/** Takes back the last block placed this turn. Only possible before the turn is submitted. */
+/** Takes back the last block placed this turn. Only possible before the turn is confirmed. */
 export function undoBlock(s: GameState): Result<{ state: GameState }> {
   const last = s.turn.placed[s.turn.placed.length - 1];
   if (!last || s.status === "finished") return { ok: false, error: "nothing_to_undo" };
-  return { ok: true, state: { ...s, board: s.turn.snapshots[s.turn.snapshots.length - 1], turn: { ...s.turn, hand: [...s.turn.hand, last.pieceId], placed: s.turn.placed.slice(0, -1), snapshots: s.turn.snapshots.slice(0, -1) } } };
+  return { ok: true, state: { ...s, turn: { ...s.turn, hand: [...s.turn.hand, last.pieceId], placed: s.turn.placed.slice(0, -1) } } };
 }
+
+/** The tiles this turn's blocks are over so far (for the outline). Safe to show before the third block; carries no score. */
+export function outline(s: GameState): Array<{ x: number; y: number }> {
+  return [...new Map(s.turn.placed.flatMap((b) => b.world).map(([x, y]) => [`${x},${y}`, { x, y }])).values()];
+}
+
+export type TurnPreview = {
+  /** Points the confirmed turn would add, split by kind, for the active player. */
+  gain: { claimed: number; captured: number; heightBonus: number; total: number };
+  /** The board as it will look after confirming. */
+  board: Board;
+  resolution: Resolution;
+  /** Points other players would lose (tiles taken from them). */
+  opponentLoss: number;
+};
+
+/**
+ * What confirming would do. Only available once the whole arrangement is down (all blocks placed, or the player is stuck):
+ * the score is never worked out after the first or second block.
+ */
+export function previewTurn(s: GameState): TurnPreview | null {
+  if (!canSubmit(s) || s.turn.placed.length === 0) return null;
+  const me = activePlayer(s);
+  const resolution = resolveBlocks(s.board, me.color, s.turn.placed, s.rules);
+  const before = tallies(s.board, s.rules), after = tallies(resolution.board, s.rules);
+  const zero: Tally = { claimed: 0, captured: 0, heightBonus: 0, score: 0 };
+  const b = before[me.color] ?? zero, a = after[me.color] ?? zero;
+  let opponentLoss = 0;
+  for (const p of s.players) if (p.color !== me.color) opponentLoss += Math.max(0, (before[p.color]?.score ?? 0) - (after[p.color]?.score ?? 0));
+  return { board: resolution.board, resolution, opponentLoss, gain: { claimed: a.claimed - b.claimed, captured: a.captured - b.captured, heightBonus: a.heightBonus - b.heightBonus, total: a.score - b.score } };
+}
+
+/** The board as it would stand after the blocks placed so far were confirmed. For computer players to look ahead; humans use previewTurn. */
+export const projectBoard = (s: GameState): Board => (s.turn.placed.length ? resolveBlocks(s.board, activePlayer(s).color, s.turn.placed, s.rules).board : s.board);
 
 /** Every legal placement for the blocks still in hand. */
 export const legalMoves = (s: GameState, limit = Infinity) => legalPlacements(s.board, activePlayer(s).color, earlierCubes(s), s.turn.hand, s.rules, limit);
@@ -87,7 +120,7 @@ export const canSubmit = (s: GameState) => s.status !== "finished" && (s.turn.ha
 export function ranking(s: GameState): Array<{ player: PlayerInfo; index: number } & Tally> {
   const t = tallies(s.board, s.rules);
   return s.players
-    .map((player, index) => ({ player, index, ...(t[player.color] ?? { claimed: 0, captured: 0, score: 0 }) }))
+    .map((player, index) => ({ player, index, ...(t[player.color] ?? { claimed: 0, captured: 0, heightBonus: 0, score: 0 }) }))
     .sort((a, b) => b.score - a.score || b.captured - a.captured || a.index - b.index);
 }
 /** Winners (more than one means a tie on points and captured tiles). */
@@ -96,15 +129,17 @@ export function winners(s: GameState): PlayerInfo[] {
   return r.filter((x) => x.score === r[0].score && x.captured === r[0].captured).map((x) => x.player);
 }
 
-/** Ends the turn: captures enclosed tiles, scores, checks the tracker, and passes play on. */
-export function submitTurn(s: GameState): Result<{ state: GameState; captured: number }> {
+/** Confirms the turn: the tiles under the blocks are claimed, enclosed tiles are captured, the temporary blocks are removed, and play passes on. */
+export function submitTurn(s: GameState): Result<{ state: GameState; captured: number; resolution: Resolution; blocks: PlacedBlock[] }> {
   if (s.status === "finished") return { ok: false, error: "game_over" };
   if (!canSubmit(s)) return { ok: false, error: "hand_not_empty" };
   const n = s.players.length;
-  const { board, captured } = captureAll(s.board);
+  const me = activePlayer(s);
+  const resolution = resolveBlocks(s.board, me.color, s.turn.placed, s.rules);
+  const board = resolution.board;
   const placedNothing = s.turn.placed.length === 0;
   const record: MoveRecord = {
-    turnNumber: s.turnNumber, player: s.turn.player, captured: captured.length,
+    turnNumber: s.turnNumber, player: s.turn.player, captured: resolution.captured.length,
     blocks: s.turn.placed.map(({ pieceId, cubes, x, y }) => ({ pieceId, cubes, x, y })),
     ended: placedNothing ? "pass" : s.turn.hand.length ? "stuck" : "submit",
   };
@@ -115,8 +150,8 @@ export function submitTurn(s: GameState): Result<{ state: GameState; captured: n
   const nextPlayer = (s.turn.player + 1) % n;
   const hand = draw(STARTER_SET, s.rules.blocksPerTurn, s.seed);
   return {
-    ok: true, captured: captured.length,
-    state: { ...s, board, status: over ? "finished" : status, endAfter, passes, history: [...s.history, record], turnNumber: s.turnNumber + 1, seed: hand.seed, turn: { player: nextPlayer, hand: hand.picks, placed: [], snapshots: [] } },
+    ok: true, captured: resolution.captured.length, resolution, blocks: s.turn.placed,
+    state: { ...s, board, status: over ? "finished" : status, endAfter, passes, history: [...s.history, record], turnNumber: s.turnNumber + 1, seed: hand.seed, turn: { player: nextPlayer, hand: hand.picks, placed: [] } },
   };
 }
 

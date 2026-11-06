@@ -38,13 +38,28 @@ t("a bad layout is rejected", () => {
   assert.throws(() => createBoard({ ...BOARD_11, dots: [[4, 1, 2]] }));
 });
 
-// ---- Phase 2: blocks and placement ----
+
+// ---- Blocks and placement ----
 const P = await import("../src/games/strata/engine/pieces.ts");
 const PL = await import("../src/games/strata/engine/placement.ts");
-const cnt = (k) => P.orientations(P.PIECES[k].cubes).length;
-t("cube counts: single 1, domino 2, line 3, L 4, T 4, square 4, cross 5, tower 3, bridge 5, stair 4", () => {
-  const want = { single: 1, domino: 2, line3: 3, el: 4, tee: 4, square: 4, cross: 5, tower: 3, bridge: 5, stair: 4 };
-  for (const [k, v] of Object.entries(want)) assert.equal(P.PIECES[k].cubes.length, v, k);
+const G = await import("../src/games/strata/engine/game.ts");
+const PLAY = await import("../src/games/strata/engine/play.ts");
+const RNG = await import("../src/games/strata/engine/rng.ts");
+const ANIM = await import("../src/games/strata/engine/animation.ts");
+const PAL = await import("../src/games/strata/config/palette.ts");
+const { STRATA_RULES } = await import("../src/games/strata/config/rules.ts");
+
+t("there are exactly six distinct block designs, five cubes each", () => {
+  assert.equal(Object.keys(P.PIECES).length, 6);
+  assert.deepEqual([...P.STARTER_SET].sort(), Object.keys(P.PIECES).sort());
+  const shapes = new Set();
+  for (const d of Object.values(P.PIECES)) {
+    assert.equal(d.cubes.length, 5, d.id);
+    const all = P.orientations(d.cubes, true).map(P.keyOf);
+    for (const k of all) assert.ok(!shapes.has(k) || all.includes(k), "distinct");
+    assert.ok(![...shapes].some((k) => all.includes(k)), `${d.id} is the same shape as another block`);
+    all.forEach((k) => shapes.add(k));
+  }
 });
 t("every block is face-connected", () => {
   for (const d of Object.values(P.PIECES)) {
@@ -54,45 +69,52 @@ t("every block is face-connected", () => {
     assert.equal(seen.size, d.cubes.length, d.id);
   }
 });
-t("orientation counts are right (single 1, tower 3, domino 3, square 3, cross 3)", () => { assert.equal(cnt("single"), 1); assert.equal(cnt("tower"), 3); assert.equal(cnt("domino"), 3); assert.equal(cnt("square"), 3); assert.equal(cnt("cross"), 3); });
-t("the L block has 24 orientations; mirroring adds none (it is mirror-symmetric in 3D)", () => { assert.equal(P.orientations(P.PIECES.el.cubes).length, 24); assert.equal(P.orientations(P.PIECES.el.cubes, true).length, 24); });
-t("four yaw turns return the same block; yaw keeps height", () => {
-  let c = P.PIECES.bridge.cubes; const k = P.keyOf(c);
-  for (let i = 0; i < 4; i++) { c = P.rotateYaw(c); assert.equal(P.size(c).h, 2); }
-  assert.equal(P.keyOf(c), k);
+t("rotation: four turns return the same block, tilting and rolling keep five cubes, a block has up to 24 orientations", () => {
+  for (const d of Object.values(P.PIECES)) {
+    let c = d.cubes; for (let i = 0; i < 4; i++) c = P.rotateYaw(c);
+    assert.equal(P.keyOf(c), P.keyOf(d.cubes));
+    assert.equal(P.tiltPitch(d.cubes).length, 5); assert.equal(P.rollSide(d.cubes).length, 5);
+    assert.ok(P.orientations(d.cubes).length <= 24 && P.orientations(d.cubes).length >= 3, d.id);
+    assert.ok(P.orientations(d.cubes, true).length >= P.orientations(d.cubes).length);
+  }
+  assert.equal(P.orientations(P.PIECES.cross.cubes).length, 3);
+  assert.equal(P.orientations(P.PIECES.zigzag.cubes).length, 12, "a flat shape: flipping it over is the same as turning it");
+  assert.equal(P.orientations(P.PIECES.zigzag.cubes, true).length, 12);
 });
-t("tilting a flat T onto its side makes it 3 high", () => assert.equal(P.size(P.tiltPitch(P.PIECES.tee.cubes)).h, 2));
-t("tower laid down is 3 wide and 1 high", () => { const s = P.size(P.tiltPitch(P.PIECES.tower.cubes)); assert.equal(s.h, 1); assert.equal(s.w * s.d, 3); });
-t("flip is its own inverse", () => assert.equal(P.keyOf(P.flip(P.flip(P.PIECES.stair.cubes))), P.keyOf(P.PIECES.stair.cubes)));
-t("placing on open floor rests at height 0", () => { const r = PL.place(b, P.PIECES.cross.cubes, 4, 4); assert.ok(r.valid); assert.equal(r.base, 0); assert.equal(r.cells.length, 5); });
-t("off-board placement is invalid", () => { for (const [x, y] of [[-1, 0], [9, 5], [0, 10]]) { const r = PL.place(b, P.PIECES.cross.cubes, x, y); assert.equal(r.valid, false); assert.equal(r.reason, "off_board"); } });
-t("a block can't stand on a black tile", () => { const r = PL.place(b, P.PIECES.single.cubes, 4, 1); assert.equal(r.reason, "black_tile"); });
-t("a block dropped on another rests on top of it", () => {
-  let bb = PL.commit(b, PL.place(b, P.PIECES.tower.cubes, 5, 5));
-  const r = PL.place(bb, P.PIECES.single.cubes, 5, 5); assert.ok(r.valid); assert.equal(r.base, 3);
-  bb = PL.commit(bb, r); assert.equal(bb.cells[5][5].stack, 4);
+t("only the bridge is a bridge", () => {
+  assert.equal(P.isBridge(P.PIECES.bridge.cubes), true);
+  for (const id of ["cross", "zigzag", "tallT", "tallL", "step"]) assert.equal(P.isBridge(P.PIECES[id].cubes), false, id);
+  assert.deepEqual(P.spanColumns(P.PIECES.bridge.cubes), [[1, 0]]);
 });
-t("a bridge's lintel clears a tower beside its pillar", () => {
-  const bb = PL.commit(b, PL.place(b, P.PIECES.single.cubes, 6, 5)); // a 1-high stack under the lintel
-  const r = PL.place(bb, P.PIECES.bridge.cubes, 5, 5); assert.ok(r.valid); assert.equal(r.base, 0);
+t("independent support: a block that would tip over is rejected, balanced ones are fine", () => {
+  const tipping = [[0, 0, 0], [0, 0, 1], [1, 0, 1], [2, 0, 1], [3, 0, 1]];
+  assert.equal(P.stands(tipping), false);
+  for (const d of Object.values(P.PIECES)) assert.equal(P.stands(d.cubes), true, d.id);
+  const b = createBoard(BOARD_11);
+  assert.equal(PL.place(b, tipping, 5, 5).reason, "unstable");
+  assert.equal(PL.place(b, P.PIECES.cross.cubes, 5, 5).valid, true);
 });
-t("stack limit is enforced", () => { let bb = b; for (let i = 0; i < 2; i++) bb = PL.commit(bb, PL.place(bb, P.PIECES.tower.cubes, 5, 5)); const r = PL.place(bb, P.PIECES.tower.cubes, 5, 5); assert.equal(r.reason, "too_tall"); });
-t("commit refuses an invalid placement and never mutates the old board", () => {
-  assert.throws(() => PL.commit(b, PL.place(b, P.PIECES.single.cubes, 4, 1)));
-  const before = b.cells[5][5].stack; PL.commit(b, PL.place(b, P.PIECES.single.cubes, 5, 5)); assert.equal(b.cells[5][5].stack, before);
+const flat = (id, pick = 0) => P.orientations(P.PIECES[id].cubes).sort((a, b) => P.size(a).h - P.size(b).h)[pick];
+t("placement geometry: off the board, overlapping a block, standing on black", () => {
+  const b = createBoard(BOARD_11);
+  assert.equal(PL.place(b, P.PIECES.cross.cubes, 9, 5).reason, "off_board");
+  assert.equal(PL.place(b, P.PIECES.cross.cubes, -1, 5).reason, "off_board");
+  assert.equal(PL.place(b, flat("cross"), 4, 0).reason, "black_tile", "cross covers black (4,1)");
+  assert.equal(PL.place(b, flat("cross"), 4, 4, new Set(["5,5,0"])).reason, "overlap");
+  assert.equal(PL.place(b, flat("cross"), 4, 4).valid, true);
 });
 
-// ---- Phase 3: rules engine ----
-const G = await import("../src/games/strata/engine/game.ts");
-const PLAY = await import("../src/games/strata/engine/play.ts");
-const RNG = await import("../src/games/strata/engine/rng.ts");
-const { STRATA_RULES } = await import("../src/games/strata/config/rules.ts");
+// ---- Turn rules ----
 const people = [{ id: "a", name: "Ana", color: "blue", kind: "human" }, { id: "b", name: "Bo", color: "orange", kind: "human" }];
 const fresh = (seed = 7, players = people) => { const r = G.createGame({ layout: BOARD_11, players, seed }); assert.ok(r.ok, r.error); return r.state; };
 const withHand = (s, hand) => ({ ...s, turn: { ...s.turn, hand } });
-const cubesOf = (id) => P.PIECES[id].cubes;
-const put = (s, id, x, y, cubes = cubesOf(id)) => { const r = G.placeBlock(s, id, cubes, x, y); assert.ok(r.ok, `${id}@${x},${y}: ${r.error}`); return r.state; };
+/** a game on a board edited by `fn(cells)` */
+const custom = (fn, hand = ["cross", "bridge", "tallL"]) => { const s = fresh(); const cells = s.board.cells.map((r) => r.map((c) => ({ ...c }))); fn(cells); return withHand({ ...s, board: { ...s.board, cells } }, hand); };
+const give = (cells, x, y, owner, status = "claimed") => { cells[y][x].owner = owner; cells[y][x].status = status; };
+const put = (s, id, x, y, cubes = P.PIECES[id].cubes) => { const r = G.placeBlock(s, id, cubes, x, y); assert.ok(r.ok, `${id}@${x},${y}: ${r.error}`); return r.state; };
+const putAny = (s, id) => { const c = PLAY.legalPlacements(s.board, s.players[s.turn.player].color, s.turn.placed.flatMap((p) => p.world), [id])[0]; assert.ok(c, `${id} has a legal spot`); return put(s, id, c.x, c.y, c.cubes); };
 const tile = (s, x, y) => s.board.cells[y][x];
+const score = (s, color) => PLAY.tallies(s.board)[color]?.score ?? 0;
 
 t("seeded dealing is deterministic and gives 3 distinct blocks", () => {
   assert.deepEqual(fresh(5).turn.hand, fresh(5).turn.hand); assert.equal(new Set(fresh(5).turn.hand).size, 3);
@@ -101,159 +123,209 @@ t("seeded dealing is deterministic and gives 3 distinct blocks", () => {
 t("game setup: player count, colours and start areas are checked", () => {
   assert.equal(G.createGame({ layout: BOARD_11, players: [people[0]], seed: 1 }).error, "bad_players");
   assert.equal(G.createGame({ layout: BOARD_11, players: [people[0], { ...people[1], color: "blue" }], seed: 1 }).error, "no_start_area");
-  assert.equal(G.createGame({ layout: BOARD_11, players: [...people, { id: "c", name: "C", color: "purple", kind: "human" }], seed: 1 }).error, "no_start_area");
   assert.equal(PLAY.tallies(fresh().board).blue.claimed, 3);
   assert.equal(tile(fresh(), 9, 9).owner, null, "an unused corner is open ground");
 });
-t("a block must touch the player's territory", () => {
-  const s = withHand(fresh(), ["single", "domino", "line3"]);
-  assert.equal(G.placeBlock(s, "single", cubesOf("single"), 5, 5).error, "not_connected");
-  assert.ok(G.placeBlock(s, "single", cubesOf("single"), 2, 1).ok); // beside blue's (1,1)
-  assert.ok(G.placeBlock(s, "single", cubesOf("single"), 1, 2).ok); // below blue's (1,1)
-  assert.equal(G.placeBlock(s, "single", cubesOf("single"), 2, 2).error, "not_connected", "corner-to-corner doesn't count");
+t("connection to existing territory: the first block must be on or beside your own tiles", () => {
+  const s = withHand(fresh(), ["cross", "tallT", "step"]);
+  assert.equal(G.placeBlock(s, "cross", flat("cross"), 4, 4).error, "not_touching_territory");
+  const near = PLAY.legalPlacements(s.board, "blue", [], ["cross"]);
+  assert.ok(near.length > 0);
+  for (const c of near) assert.ok(PL.place(s.board, c.cubes, c.x, c.y).cells.some((q) => [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => { const k = s.board.cells[q.y + dy]?.[q.x + dx]; return k && k.owner === "blue"; })));
 });
-t("tiles claimed by an earlier block this turn count as territory for the next one", () => {
-  let s = withHand(fresh(), ["domino", "line3", "single"]);
-  assert.equal(G.placeBlock(s, "single", cubesOf("single"), 2, 0).error === undefined, true); // (1,0) is blue's
-  s = put(s, "domino", 2, 0); // claims (2,0),(3,0)
-  assert.ok(G.placeBlock(s, "single", cubesOf("single"), 2, 1).ok); // beside (2,0), which is now blue's
+t("flat-side connectivity: each later block must share a face with a block already placed (corners don't count)", () => {
+  const s0 = withHand(fresh(), ["cross", "tallT", "step"]);
+  const s1 = putAny(s0, "step"); // beside blue
+  const w = s1.turn.placed[0].world;
+  // a cross touching only at a corner
+  const maxX = Math.max(...w.map((c) => c[0])), minY = Math.min(...w.map((c) => c[1]));
+  const far = G.placeBlock(s1, "cross", flat("cross"), maxX + 2, minY + 4);
+  assert.equal(far.error, "not_connected");
+  // find a spot that touches by a face and one that touches only by a corner
+  const faces = PLAY.legalPlacements(s1.board, "blue", w, ["cross"]);
+  assert.ok(faces.length > 0, "some cross placement touches by a face");
+  for (const c of faces.slice(0, 20)) { const r = PL.place(s1.board, c.cubes, c.x, c.y); assert.ok(r.world.some(([x, y, z]) => w.some(([a, b, d]) => Math.abs(a - x) + Math.abs(b - y) + Math.abs(d - z) === 1)), "every legal block shares a face"); }
 });
-t("blocks may not touch black tiles", () => {
-  let s = withHand(fresh(), ["domino", "single", "line3"]);
-  s = put(s, "domino", 0, 2);
-  assert.equal(G.placeBlock(s, "single", cubesOf("single"), 1, 3).error, "touches_black"); // (1,4) is black
-  assert.equal(G.placeBlock(s, "single", cubesOf("single"), 3, 1).error, "touches_black"); // (4,1) is black
-  assert.ok(G.placeBlock(s, "single", cubesOf("single"), 0, 3).ok);
+t("blocks never rest on other blocks: stacking on a placed block is refused", () => {
+  const s1 = putAny(withHand(fresh(), ["cross", "tallT", "step"]), "step");
+  const w = s1.turn.placed[0].world;
+  const r = G.placeBlock(s1, "tallT", flat("tallT"), w[0][0], w[0][1]);
+  assert.equal(r.ok, false); assert.equal(r.error, "overlap");
 });
-t("a block can't be placed on a black tile (rules layer reports it too)", () => {
-  const s = withHand(fresh(), ["single", "domino", "line3"]);
-  assert.equal(G.placeBlock(s, "single", cubesOf("single"), 4, 1).error, "black_tile");
+t("a turn is three blocks placed one after another, then confirmed", () => {
+  let s = withHand(fresh(), ["tallT", "tallL", "step"]);
+  assert.equal(G.canSubmit(s), false); assert.equal(G.submitTurn(s).error, "hand_not_empty");
+  const go = (id) => { const c = PLAY.legalPlacements(s.board, "blue", s.turn.placed.flatMap((p) => p.world), [id])[0]; assert.ok(c, `${id} has a legal spot`); s = put(s, id, c.x, c.y, c.cubes); };
+  go("tallT"); assert.equal(s.turn.placed.length, 1); assert.equal(G.canSubmit(s), false);
+  go("tallL"); assert.equal(s.turn.placed.length, 2); assert.equal(G.canSubmit(s), false);
+  go("step"); assert.equal(s.turn.placed.length, 3); assert.equal(G.canSubmit(s), true);
+  const r = G.submitTurn(s); assert.ok(r.ok);
+  assert.equal(r.state.turn.player, 1); assert.equal(r.state.turn.placed.length, 0); assert.equal(r.state.turn.hand.length, 3);
+  assert.equal(r.state.history.length, 1); assert.equal(r.state.history[0].blocks.length, 3);
 });
-t("a block can't be placed on, or beside, another player's captured tiles", () => {
-  let s = withHand(fresh(), ["single", "domino", "line3"]);
-  const cells = s.board.cells.map((r) => r.map((c) => ({ ...c })));
-  cells[2][2].owner = "orange"; cells[2][2].status = "captured";
-  s = { ...s, board: { ...s.board, cells } };
-  assert.equal(G.placeBlock(s, "single", cubesOf("single"), 2, 2).error, "opponent_captured");
-  assert.equal(G.placeBlock(s, "single", cubesOf("single"), 2, 1).error, "touches_opponent");
+t("delayed scoring: nothing is claimed or scored until the turn is confirmed", () => {
+  let s = withHand(fresh(), ["tallT", "tallL", "step"]);
+  const before = JSON.stringify(s.board);
+  for (const id of ["tallT", "tallL", "step"]) { const c = PLAY.legalPlacements(s.board, "blue", s.turn.placed.flatMap((p) => p.world), [id])[0]; s = put(s, id, c.x, c.y, c.cubes); assert.equal(JSON.stringify(s.board), before, "territory is untouched while blocks are temporary"); assert.equal(score(s, "blue"), 15); }
+  const r = G.submitTurn(s); assert.ok(r.ok); assert.ok(score(r.state, "blue") > 15);
 });
-t("placing claims the tiles under the block", () => {
-  const s = put(withHand(fresh(), ["domino", "single", "line3"]), "domino", 2, 0, P.rotateYaw(cubesOf("domino")));
-  for (const y of [0, 1]) { assert.equal(tile(s, 2, y).owner, "blue"); assert.equal(tile(s, 2, y).status, "claimed"); }
-  // (3,0) is a 2-dot tile, so a 1-high block there is placed but leaves it unclaimed
-  const h = put(withHand(fresh(), ["domino", "single", "line3"]), "domino", 2, 0); assert.equal(tile(h, 2, 0).owner, "blue"); assert.equal(tile(h, 3, 0).owner, null);
+t("score preview: none after the first or second block, available after the third, and it matches the confirmed result", () => {
+  let s = withHand(fresh(), ["tallT", "tallL", "step"]);
+  const go = (id) => { const c = PLAY.legalPlacements(s.board, "blue", s.turn.placed.flatMap((p) => p.world), [id])[0]; s = put(s, id, c.x, c.y, c.cubes); };
+  assert.equal(G.previewTurn(s), null);
+  go("tallT"); assert.equal(G.previewTurn(s), null, "no score after block 1");
+  go("tallL"); assert.equal(G.previewTurn(s), null, "no score after block 2");
+  assert.equal(G.outline(s).length > 0, true, "the outline is available before the third block");
+  go("step");
+  const pv = G.previewTurn(s); assert.ok(pv);
+  const before = score(s, "blue"); const r = G.submitTurn(s);
+  assert.equal(score(r.state, "blue") - before, pv.gain.total);
+  assert.equal(pv.gain.total, pv.gain.claimed * 5 + pv.gain.captured * 10 + pv.gain.heightBonus);
+  assert.deepEqual(r.state.board.cells.map((row) => row.map((c) => c.status)), pv.board.cells.map((row) => row.map((c) => c.status)));
 });
-t("height tiles: only the matching stack height claims them", () => {
-  // (0,3) is a 2-dot tile. A single cube on bare ground makes a 1-high stack: placed, but not claimed.
-  let s = withHand(fresh(), ["domino", "single", "tower"]);
-  s = put(s, "domino", 0, 2, P.PIECES.domino.cubes); // claim (0,2),(1,2)
-  const low = put(s, "single", 0, 3);
-  assert.equal(tile(low, 0, 3).stack, 1); assert.equal(tile(low, 0, 3).owner, null);
-  // with a 1-high stack already there, a second cube makes it 2 high and claims it
-  const cells = s.board.cells.map((r) => r.map((c) => ({ ...c }))); cells[3][0].stack = 1;
-  const two = put({ ...s, board: { ...s.board, cells } }, "single", 0, 3);
-  assert.equal(tile(two, 0, 3).stack, 2); assert.equal(tile(two, 0, 3).owner, "blue");
-});
-t("height rule can be switched to 'at least'", () => {
-  const rules = { ...STRATA_RULES, heightMatch: "at_least" };
-  const base = G.createGame({ layout: BOARD_11, players: people, seed: 7, rules }).state;
-  let s = withHand(base, ["domino", "tower", "single"]);
-  s = put(s, "domino", 0, 2);
-  const cells = s.board.cells.map((r) => r.map((c) => ({ ...c }))); cells[3][0].stack = 2;
-  const r = put({ ...s, board: { ...s.board, cells } }, "single", 0, 3);
-  assert.equal(tile(r, 0, 3).owner, "blue"); // 3 high >= 2
-});
-t("a block resting on an opponent's claimed tile takes it over", () => {
-  let s = withHand(fresh(), ["domino", "single", "line3"]);
-  const cells = s.board.cells.map((r) => r.map((c) => ({ ...c }))); cells[0][2].owner = "orange"; cells[0][2].status = "claimed";
-  s = put({ ...s, board: { ...s.board, cells } }, "domino", 2, 0);
-  assert.equal(tile(s, 2, 0).owner, "blue");
-});
-t("captured: a claimed tile enclosed by its owner, black tiles or the edge", () => {
-  const s = withHand(fresh(), ["single", "domino", "line3"]);
-  const p = G.placeBlock(s, "single", cubesOf("single"), 0, 0); assert.ok(p.ok);
-  assert.equal(tile(p.state, 0, 0).status, "claimed", "captured only when the turn is submitted");
-  const sub = G.submitTurn({ ...p.state, turn: { ...p.state.turn, hand: [] } }); assert.ok(sub.ok);
-  assert.equal(tile(sub.state, 0, 0).status, "captured", "the corner is surrounded by blue and the edge");
-  assert.equal(tile(sub.state, 1, 0).status, "claimed", "(2,0) beside it is still open");
-  assert.equal(sub.captured, 1);
-});
-t("captured tiles never change hands", () => {
-  let s = withHand(fresh(), ["single", "domino", "line3"]);
-  s = put(s, "single", 0, 0);
-  const sub = G.submitTurn({ ...s, turn: { ...s.turn, hand: [] } }).state;
-  assert.equal(tile(sub, 0, 0).status, "captured");
-  // orange is next; it can't touch blue's captured tile
-  const o = withHand(sub, ["single", "domino", "line3"]);
-  assert.equal(G.placeBlock(o, "single", cubesOf("single"), 0, 0).error, "opponent_captured");
-});
-t("scoring is 5 per claimed tile and 10 per captured tile", () => {
-  const s = fresh(); assert.equal(G.ranking(s).find((r) => r.index === 0).score, 3 * STRATA_RULES.claimedPoints);
-  const cells = s.board.cells.map((r) => r.map((c) => ({ ...c }))); cells[0][1].status = "captured";
-  const r = G.ranking({ ...s, board: { ...s.board, cells } }).find((x) => x.index === 0);
-  assert.equal(r.score, 2 * 5 + 10); assert.equal(r.captured, 1);
-});
-t("the turn: all blocks must be placed before submitting, then play passes on with a fresh hand", () => {
-  let s = fresh();
-  assert.equal(G.submitTurn(s).error, "hand_not_empty");
-  const first = s.turn.hand.slice();
-  for (const id of first) { const m = G.legalMoves(withHand(s, [id]))[0]; s = put(withHand(s, [id].concat(s.turn.hand.filter((h) => h !== id))), id, m.x, m.y, m.cubes); s = { ...s, turn: { ...s.turn, hand: s.turn.hand.filter((h) => h !== id) } }; }
-  assert.equal(s.turn.hand.length, 0); assert.ok(G.canSubmit(s));
-  const sub = G.submitTurn(s); assert.ok(sub.ok);
-  assert.equal(sub.state.turn.player, 1); assert.equal(sub.state.turn.hand.length, 3); assert.equal(sub.state.turnNumber, 2); assert.equal(sub.state.history.length, 1);
-});
-t("a block that isn't in your hand can't be placed", () => assert.equal(G.placeBlock(withHand(fresh(), ["domino"]), "tower", cubesOf("tower"), 2, 1).error, "not_your_block"));
-t("undo restores the board and the hand exactly, only before submitting", () => {
-  const s0 = withHand(fresh(), ["domino", "single", "line3"]);
-  const s1 = put(s0, "domino", 2, 0);
-  const u = G.undoBlock(s1); assert.ok(u.ok);
-  assert.deepEqual(u.state.board, s0.board); assert.deepEqual([...u.state.turn.hand].sort(), [...s0.turn.hand].sort()); assert.equal(u.state.turn.placed.length, 0);
+t("undo only works before the turn is confirmed", () => {
+  let s = putAny(withHand(fresh(), ["tallT", "tallL", "step"]), "step");
+  const u = G.undoBlock(s); assert.ok(u.ok); assert.equal(u.state.turn.placed.length, 0); assert.equal(u.state.turn.hand.length, 3);
   assert.equal(G.undoBlock(u.state).error, "nothing_to_undo");
 });
-t("the tracker triggers a final round; everyone else plays once, then it ends", () => {
-  const s0 = fresh(3);
-  const cells = s0.board.cells.map((r) => r.map((c) => ({ ...c })));
-  let open = 0; for (const r of cells) for (const c of r) if (c.type !== "black") open++;
-  let need = Math.ceil(open * 0.62) ; for (const r of cells) for (const c of r) { if (need > 0 && c.type !== "black" && !c.owner) { c.owner = "blue"; c.status = "claimed"; need--; } }
-  let s = { ...s0, board: { ...s0.board, cells }, turn: { ...s0.turn, hand: [] } };
-  const a = G.submitTurn(s); assert.ok(a.ok); assert.equal(a.state.status, "final_round"); assert.equal(a.state.endAfter, 1);
-  const b = G.submitTurn({ ...a.state, turn: { ...a.state.turn, hand: [] } }); assert.ok(b.ok); assert.equal(b.state.status, "finished");
-  assert.equal(G.submitTurn(b.state).error, "game_over"); assert.equal(G.placeBlock(b.state, "tower", cubesOf("tower"), 0, 0).error, "game_over");
+
+// ---- Claimed, captured, height ----
+t("claiming: the tiles under the blocks become claimed (pattern), not captured", () => {
+  let s = withHand(fresh(), ["step", "tallL", "tallT"]);
+  s = putAny(s, "step");
+  const cells = s.turn.placed[0].world.map(([x, y]) => [x, y]);
+  const r = G.submitTurn({ ...s, turn: { ...s.turn, hand: [] } }); assert.ok(r.ok);
+  const seen = [];
+  for (const [x, y] of cells) { const c = tile(r.state, x, y); if (c.type === "height") continue; assert.equal(c.owner, "blue"); seen.push(c.status); }
+  assert.ok(seen.includes("claimed"), "ordinary tiles are claimed, not captured");
+  assert.equal(PLAY.captureAll(r.state.board).captured.length, 0, "anything enclosed was already captured on confirm");
 });
-t("a stuck player can end the turn; everyone stuck ends the game", () => {
-  // 3x3 board: two start tiles and everything else black, so nothing can ever be placed
-  const layout = { id: "t", name: "t", width: 3, height: 3, black: [[1, 0], [2, 0], [1, 1], [2, 1], [0, 2], [1, 2], [2, 2]], dots: [], starts: [{ color: "blue", cells: [[0, 0]], diamond: [0, 0] }, { color: "orange", cells: [[0, 1]], diamond: [0, 1] }] };
-  let s = G.createGame({ layout, players: people, seed: 1, rules: { ...STRATA_RULES, territoryTrackerShare: 2 } }).state; // tracker disabled so only passing can end it
-  assert.ok(G.isStuck(s)); assert.ok(G.canSubmit(s));
-  s = G.submitTurn(s).state; assert.equal(s.status, "playing"); assert.equal(s.history[0].ended, "pass");
-  s = G.submitTurn(s).state; assert.equal(s.status, "finished");
+t("claimed and captured are separate states: an enclosed claimed tile becomes captured and scores 10", () => {
+  const s = custom((c) => { give(c, 2, 1, "blue"); give(c, 3, 0, "blue"); give(c, 2, 0, "blue"); });
+  const cap = PLAY.captureAll(s.board);
+  assert.equal(tile({ board: cap.board }, 2, 0).status, "captured");
+  assert.equal(tile({ board: cap.board }, 3, 0).status, "claimed", "(3,0) has an open side");
+  assert.equal(PLAY.tallies(cap.board).blue.captured >= 1, true);
+  assert.equal(STRATA_RULES.claimedPoints, 5); assert.equal(STRATA_RULES.capturedPoints, 10);
 });
-t("winners: highest score, then captured tiles; equal means a tie", () => {
-  const s = fresh(); assert.equal(G.winners(s).length, 2);
-  const cells = s.board.cells.map((r) => r.map((c) => ({ ...c }))); cells[5][5].owner = "orange"; cells[5][5].status = "claimed";
-  const w = G.winners({ ...s, board: { ...s.board, cells } }); assert.equal(w.length, 1); assert.equal(w[0].color, "orange");
+const heightTile = (x, y, n) => (c) => { c[y][x].type = "height"; c[y][x].height = n; };
+const blueRow = (c) => { give(c, 1, 0, "blue"); };
+t("height tile needs the matching column height: flat block doesn't claim it, exact column does", () => {
+  const base = (n) => custom((c) => heightTile(2, 0, n)(c), ["step", "tallT", "tallL"]);
+  // a flat block over (2,0) (column height 1) leaves a 2-dot tile unclaimed
+  let s = base(2);
+  const flatSpot = PLAY.legalPlacements(s.board, "blue", [], ["tallT"]).find((c) => P.size(c.cubes).h === 1 && PL.place(s.board, c.cubes, c.x, c.y).cells.some((q) => q.x === 2 && q.y === 0));
+  assert.ok(flatSpot, "a flat block can cover (2,0)");
+  const sp = put(s, "tallT", flatSpot.x, flatSpot.y, flatSpot.cubes);
+  let r = G.submitTurn({ ...sp, turn: { ...sp.turn, hand: [] } });
+  assert.equal(tile(r.state, 2, 0).owner, null, "unmatched height leaves the tile unclaimed");
+  // the step's 2-high tower on a 2-dot tile claims it
+  const tower = PLAY.legalPlacements(s.board, "blue", [], ["step"]).find((c) => { const pl = PL.place(s.board, c.cubes, c.x, c.y); return pl.world.filter((w) => w[0] === 2 && w[1] === 0).length === 2; });
+  assert.ok(tower, "the step can stand its tower on (2,0)");
+  s = put(s, "step", tower.x, tower.y, tower.cubes);
+  r = G.submitTurn({ ...s, turn: { ...s.turn, hand: [] } });
+  assert.equal(tile(r.state, 2, 0).owner, "blue");
+  // a 3-dot tile is not claimed by a 2-high column
+  const s3 = base(3); const t3 = PLAY.legalPlacements(s3.board, "blue", [], ["step"]).find((c) => PL.place(s3.board, c.cubes, c.x, c.y).world.filter((w) => w[0] === 2 && w[1] === 0).length === 2);
+  assert.ok(t3);
+  const r3 = G.submitTurn({ ...put(s3, "step", t3.x, t3.y, t3.cubes), turn: { ...put(s3, "step", t3.x, t3.y, t3.cubes).turn, hand: [] } });
+  assert.equal(tile(r3.state, 2, 0).owner, null);
 });
-t("replaying the move history rebuilds the same game", () => {
-  let s = fresh(11); const opts = { layout: BOARD_11, players: people, seed: 11 };
-  for (let turn = 0; turn < 4; turn++) {
-    while (s.turn.hand.length && !G.isStuck(s)) { const m = G.legalMoves(s, 1)[0]; s = G.placeBlock(s, m.pieceId, m.cubes, m.x, m.y).state; }
-    s = G.submitTurn(s).state;
+t("height bonuses are paid on CAPTURE only: 10, 20 and 30 for one, two and three dots", () => {
+  assert.deepEqual({ ...STRATA_RULES.heightBonusPoints }, { 1: 10, 2: 20, 3: 30 });
+  for (const n of [1, 2, 3]) {
+    const claimedOnly = custom((c) => { heightTile(2, 0, n)(c); give(c, 2, 0, "blue"); });
+    assert.equal(score(claimedOnly, "blue"), 15 + 5, `claimed ${n}-dot tile: no bonus`);
+    const enclosed = custom((c) => { heightTile(2, 0, n)(c); give(c, 2, 0, "blue"); give(c, 3, 0, "blue"); give(c, 2, 1, "blue"); });
+    const cap = PLAY.captureAll(enclosed.board).board;
+    const tl = PLAY.tallies(cap).blue;
+    assert.equal(tile({ board: cap }, 2, 0).status, "captured");
+    assert.equal(tl.heightBonus, STRATA_RULES.heightBonusPoints[n], `captured ${n}-dot tile bonus`);
+    assert.equal(tl.score, tl.claimed * 5 + tl.captured * 10 + tl.heightBonus);
   }
-  const r = G.replay(opts, s.history); assert.ok(r.ok, r.error);
-  assert.deepEqual(r.state.board, s.board); assert.equal(r.state.turnNumber, s.turnNumber);
-  assert.deepEqual(G.replay(opts, s.history, 2).state.history.length, 2);
 });
-t("a random full game plays to the end with no illegal states", () => {
-  let s = fresh(21, people); let guard = 0;
-  while (s.status !== "finished" && guard++ < 400) {
-    while (s.turn.hand.length && !G.isStuck(s)) {
-      const all = G.legalMoves(s); const pick = all[Math.floor(RNG.nextRandom(guard * 977 + s.turnNumber * 31 + s.turn.hand.length).value * all.length)];
-      const r = G.placeBlock(s, pick.pieceId, pick.cubes, pick.x, pick.y); assert.ok(r.ok, r.error); s = r.state;
-    }
+
+// ---- Bridges, black tiles, captured tiles ----
+t("bridge: spans a black tile, claims it, and the legs stand beside it", () => {
+  const s = custom((c) => give(c, 4, 3, "blue"), ["bridge", "cross", "step"]);
+  const r = G.placeBlock(s, "bridge", P.PIECES.bridge.cubes, 4, 3); // legs on (4,3) and (6,3), span over black (5,3)
+  assert.ok(r.ok, r.error);
+  assert.equal(r.state.turn.placed[0].world.some(([x, y, z]) => x === 5 && y === 3 && z === 1), true);
+  const done = G.submitTurn({ ...r.state, turn: { ...r.state.turn, hand: [] } });
+  assert.equal(tile(done.state, 5, 3).owner, "blue"); assert.equal(tile(done.state, 5, 3).status === "claimed" || tile(done.state, 5, 3).status === "captured", true);
+  assert.equal(tile(done.state, 5, 3).type, "black", "it stays a black tile, now held by blue");
+});
+t("black tiles can't be claimed by ordinary blocks: standing on one is refused, hanging over one without being a bridge is refused", () => {
+  const s = withHand(fresh(), ["cross", "zigzag", "tallL"]);
+  assert.equal(G.placeBlock(s, "cross", flat("cross"), 4, 0).error, "black_tile");
+  const hang = P.PIECES.zigzag.cubes; // ground on (2,1),(3,1); its top cube hangs over (4,1), a black tile
+  assert.equal(P.isBridge(hang), false);
+  assert.equal(G.placeBlock(s, "zigzag", hang, 2, 1).error, "needs_bridge");
+});
+t("solid captured tiles of an opponent can't be stood on, but a bridge can claim them", () => {
+  const s = custom((c) => give(c, 1, 2, "orange", "captured"), ["bridge", "tallL", "cross"]);
+  // flat block over the captured tile: refused
+  const over = PLAY.legalPlacements(s.board, "blue", [], ["tallL", "cross"]).filter((c) => PL.place(s.board, c.cubes, c.x, c.y).ground.some((q) => q.x === 1 && q.y === 2));
+  assert.equal(over.length, 0, "no ordinary block may stand on it");
+  let tried = 0;
+  for (const cubes of P.orientations(P.PIECES.tallL.cubes)) for (let y = 0; y < 5; y++) for (let x = 0; x < 6; x++) {
+    const pl = PL.place(s.board, cubes, x, y); if (!pl.valid || !pl.ground.some((q) => q.x === 1 && q.y === 2)) continue;
+    tried++; assert.equal(G.placeBlock(s, "tallL", cubes, x, y).error, "opponent_captured");
+  }
+  assert.ok(tried > 0, "there were placements over the captured tile to refuse");
+  // bridge: legs on (0,2) and (2,2)
+  const r = G.placeBlock(s, "bridge", P.PIECES.bridge.cubes, 0, 2); assert.ok(r.ok, r.error);
+  const done = G.submitTurn({ ...r.state, turn: { ...r.state.turn, hand: [] } });
+  assert.equal(tile(done.state, 1, 2).owner, "blue", "the bridge took the captured tile");
+  assert.equal(tile(done.state, 1, 2).status === "claimed" || tile(done.state, 1, 2).status === "captured", true);
+});
+t("an opponent's merely CLAIMED tile can be taken by an ordinary block", () => {
+  const s = custom((c) => give(c, 3, 0, "orange", "claimed"), ["tallL", "step", "cross"]);
+  const spot = PLAY.legalPlacements(s.board, "blue", [], ["step"]).find((c) => PL.place(s.board, c.cubes, c.x, c.y).ground.some((q) => q.x === 3 && q.y === 0));
+  assert.ok(spot);
+  const r = G.submitTurn({ ...put(s, "step", spot.x, spot.y, spot.cubes), turn: { ...put(s, "step", spot.x, spot.y, spot.cubes).turn, hand: [] } });
+  assert.equal(tile(r.state, 3, 0).owner, "blue");
+});
+
+// ---- Animation, temporary blocks, patterns ----
+t("confirming returns a fill plan that spreads outwards, and the temporary blocks are gone from the state", () => {
+  let s = withHand(fresh(), ["tallT", "tallL", "step"]);
+  for (const id of ["tallT", "tallL", "step"]) { const c = PLAY.legalPlacements(s.board, "blue", s.turn.placed.flatMap((p) => p.world), [id])[0]; s = put(s, id, c.x, c.y, c.cubes); }
+  const r = G.submitTurn(s); assert.ok(r.ok);
+  assert.equal(r.state.turn.placed.length, 0, "blocks are removed after confirming");
+  assert.equal(JSON.stringify(r.state.board).includes('"world"'), false, "the board stores territory, never blocks");
+  const plan = ANIM.fillPlan(r.resolution, r.blocks);
+  assert.ok(plan.length >= r.resolution.claimed.length);
+  for (let i = 1; i < plan.length; i++) assert.ok(plan[i].delay >= plan[i - 1].delay, "fills in order outwards");
+  assert.equal(plan[0].delay, 0, "tiles under the blocks fill first");
+  for (const p of plan) { assert.equal(p.owner, "blue"); assert.ok(p.status === "claimed" || p.status === "captured"); }
+  assert.ok(ANIM.fillDuration(plan) > 0);
+});
+t("territory patterns: waves are not the default for everyone; each colour has a pattern and there are several patterns", () => {
+  assert.ok(PAL.PATTERNS.length >= 5);
+  const used = ["blue", "yellow", "orange", "turquoise"].map((c) => PAL.PLAYER_PATTERN[c]);
+  assert.equal(new Set(used).size, 4, "four colours, four different patterns");
+  for (const p of used) assert.ok(PAL.PATTERNS.includes(p));
+  assert.equal(PAL.PLAYER_PATTERN.turquoise, "waves"); assert.equal(PAL.PLAYER_PATTERN.blue, "crosses"); assert.equal(PAL.PLAYER_PATTERN.yellow, "dots");
+});
+
+// ---- Whole games ----
+t("stuck players may end the turn; the tracker ends the game; a replay rebuilds the same board", () => {
+  let s = fresh(11, people), guard = 0, rs = 99;
+  const rnd = (n) => { const r = RNG.nextRandom(rs); rs = r.seed; return Math.floor(r.value * n); };
+  while (s.status !== "finished" && guard++ < 600) {
+    for (let i = 0; i < 3; i++) { const all = G.legalMoves(s); if (!all.length) break; const c = all[rnd(all.length)]; const r = G.placeBlock(s, c.pieceId, c.cubes, c.x, c.y); assert.ok(r.ok); s = r.state; }
     const r = G.submitTurn(s); assert.ok(r.ok, r.error); s = r.state;
-    for (const row of s.board.cells) for (const c of row) { assert.ok(c.stack >= 0 && c.stack <= 8); if (c.type === "black") { assert.equal(c.stack, 0); assert.equal(c.owner, null); } }
   }
-  assert.equal(s.status, "finished"); assert.ok(guard < 400, "the game ended by itself");
-  const top = G.ranking(s)[0]; assert.ok(top.score > 0); console.log("   random game:", s.history.length, "turns; scores", G.ranking(s).map((r) => `${r.player.name} ${r.score}`).join(", "));
+  assert.equal(s.status, "finished");
+  const rep = G.replay({ layout: BOARD_11, players: people, seed: 11 }, s.history); assert.ok(rep.ok, rep.error);
+  assert.deepEqual(rep.state.board.cells, s.board.cells);
+  assert.deepEqual(G.ranking(rep.state).map((r) => r.score), G.ranking(s).map((r) => r.score));
 });
-console.log(`\n${n} passed`);
+t("humans and computers use the same engine functions (no separate AI rules)", async () => {
+  const src = (await import("node:fs")).readFileSync(new URL("../src/games/strata/engine/ai.ts", import.meta.url), "utf8");
+  assert.ok(src.includes("placeBlock") && src.includes("submitTurn") && src.includes("legalMoves") && src.includes("resolveBlocks"));
+  assert.equal(/STRATA_RULES\.(claimed|captured)Points/.test(src), false, "scoring numbers come only from the shared rules");
+});
+
+console.log(`\n${n} passing`);

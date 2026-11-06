@@ -14,8 +14,6 @@ export type Cell = {
   diamond: boolean;
   owner: PlayerColor | null;
   status: TileStatus;
-  /** Stack of cube units currently standing on this cell (0 = empty). */
-  stack: number;
 };
 
 export type Board = { id: string; name: string; width: number; height: number; cells: Cell[][] };
