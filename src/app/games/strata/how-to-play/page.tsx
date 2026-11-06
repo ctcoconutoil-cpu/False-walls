@@ -57,7 +57,7 @@ export default function HowToPlay() {
         <ul className="space-y-2">
           {legend.map(([sw, t, d]) => <li key={t} className="flex items-center gap-3 rounded-2xl bg-night-2 p-3">{sw}<span className="text-sm"><b>{t}</b><span className="block text-chalk-dim">{d}</span></span></li>)}
         </ul>
-        <p className="text-sm text-chalk-dim">Tip: on a black height tile, you claim it by <b className="text-chalk">bridging</b> over it at the right height, with the block resting on tiles either side.</p></section>
+</section>
 
       <section className="space-y-2"><H id="score">Scoring</H>
         <div className="grid grid-cols-2 gap-2 text-center">

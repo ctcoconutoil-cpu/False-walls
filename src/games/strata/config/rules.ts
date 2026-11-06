@@ -21,6 +21,12 @@ export const STRATA_RULES = {
   timerSecondsMax: 300,
   timerBonusPoints: 50,
   // unconfirmed (kept configurable)
+  /** Every block in a turn must touch the player's territory or a block already placed that turn (flat sides). The source only says one block must. */
+  chainBlocks: true,
+  /** A height tile is claimed when the stack on it is exactly this many cubes high ("exact") or at least that high ("at_least"). */
+  heightMatch: "exact" as "exact" | "at_least",
+  /** If none of the remaining blocks can legally be placed, the player may end the turn early. */
+  allowEndWhenStuck: true,
   minPlayers: 2,
   maxPlayers: 6,
   /** The source says height bonuses exist and are awarded on capture, but not how many points. */
