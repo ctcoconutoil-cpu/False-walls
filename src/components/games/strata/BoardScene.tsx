@@ -9,7 +9,7 @@ import { BOARD_COLORS, PLAYER_COLORS, PLAYER_PATTERN, type PatternId } from "@/g
 export type CameraCmd = { kind: "angled" | "top" | "zoomIn" | "zoomOut"; nonce: number };
 
 const CELL = 1;
-const GAP = 0.04;
+const GAP = 0.05;
 const TOP = 0.06; // thickness of a tile
 
 /** World position of the centre of a cell. The board is centred on the origin. */
@@ -162,8 +162,8 @@ function CameraRig({ cmd }: { cmd: CameraCmd }) {
     last.current = cmd.nonce;
     const aspect = size.width / Math.max(1, size.height);
     const fit = aspect < 1 ? 1 / Math.max(0.55, aspect) : 1; // pull back on tall phones so the whole board stays visible
-    if (cmd.kind === "angled") goal.current = new THREE.Vector3(0, 11.5 * fit * 1.18, 11 * fit * 1.18 + 2.2);
-    else if (cmd.kind === "top") goal.current = new THREE.Vector3(0, 18 * fit * 1.1, 2.2);
+    if (cmd.kind === "angled") goal.current = new THREE.Vector3(0, 19 * fit, 8 * fit + 2.2);
+    else if (cmd.kind === "top") goal.current = new THREE.Vector3(0, 21 * fit, 2.2);
     else {
       const t = controls?.target ?? new THREE.Vector3();
       const dir = camera.position.clone().sub(t);
@@ -183,24 +183,21 @@ function CameraRig({ cmd }: { cmd: CameraCmd }) {
 }
 
 export function BoardScene({ board, selected, onPick, cmd, children }: { board: Board; selected: Cell | null; onPick: (c: Cell) => void; cmd: CameraCmd; children?: ReactNode }) {
-  const w = board.width * CELL + 0.7, h = board.height * CELL + 0.7;
   return (
-    <Canvas flat shadows="soft" frameloop="demand" dpr={[1, 2]} camera={{ position: [0, 13.5, 15], fov: 36, near: 0.1, far: 80 }} gl={{ antialias: true, powerPreference: "high-performance" }}
+    <Canvas flat shadows="soft" frameloop="demand" dpr={[1, 2]} camera={{ position: [0, 19, 9], fov: 34, near: 0.1, far: 80 }} gl={{ antialias: true, powerPreference: "high-performance" }}
       style={{ touchAction: "none" }} onPointerMissed={() => onPick(null as unknown as Cell)}>
-      <color attach="background" args={["#1b1230"]} />
-      <ambientLight intensity={1.9} />
-      <directionalLight position={[6, 12, 5]} intensity={1.1} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-9} shadow-camera-right={9} shadow-camera-top={9} shadow-camera-bottom={-9} shadow-bias={-0.0004} />
-      <hemisphereLight args={["#ffffff", "#2a1d4a", 0.35]} />
-      {/* the slab the tiles sit in */}
-      <mesh position={[0, -0.16, 0]} receiveShadow castShadow><boxGeometry args={[w, 0.3, h]} /><meshStandardMaterial color={BOARD_COLORS.line} roughness={0.7} /></mesh>
-      <mesh position={[0, -0.02, 0]} receiveShadow><boxGeometry args={[w - 0.3, 0.05, h - 0.3]} /><meshStandardMaterial color="#d8d8d4" roughness={0.7} /></mesh>
+      <color attach="background" args={[BOARD_COLORS.backdrop]} />
+      <ambientLight intensity={2.1} />
+      <directionalLight position={[3, 14, 6]} intensity={0.9} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-9} shadow-camera-right={9} shadow-camera-top={9} shadow-camera-bottom={-9} shadow-bias={-0.0004} />
+      {/* the grid lines: a flat dark sheet under the tiles, no slab or frame */}
+      <mesh position={[0, 0.0, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow><planeGeometry args={[board.width * CELL + GAP, board.height * CELL + GAP]} /><meshBasicMaterial color={BOARD_COLORS.line} /></mesh>
       <Tiles board={board} onPick={onPick} />
       <Claimed board={board} />
       <Dots board={board} />
       <Diamonds board={board} />
       <Selection board={board} cell={selected} />
       {children}
-      <OrbitControls makeDefault enablePan={false} target={[0, 0, 2.2]} enableDamping dampingFactor={0.12} minDistance={7} maxDistance={28} minPolarAngle={0} maxPolarAngle={1.25} rotateSpeed={0.7} zoomSpeed={0.8}
+      <OrbitControls makeDefault enablePan={false} target={[0, 0, 2.2]} enableDamping dampingFactor={0.12} minDistance={7} maxDistance={30} minPolarAngle={0} maxPolarAngle={0.62} minAzimuthAngle={0} maxAzimuthAngle={0} rotateSpeed={0.5} zoomSpeed={0.8}
         touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE }} />
       <CameraRig cmd={cmd} />
     </Canvas>

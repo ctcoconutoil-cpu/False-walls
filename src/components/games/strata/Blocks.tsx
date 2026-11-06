@@ -3,10 +3,11 @@ import { memo, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
-import type { Board } from "@/games/strata/engine/types";
+import type { Board, PlayerColor } from "@/games/strata/engine/types";
 import { size, type Cube, type Cubes } from "@/games/strata/engine/pieces";
 import type { Placement } from "@/games/strata/engine/placement";
 import { toWorld } from "./BoardScene";
+import { Outline } from "./Territory";
 
 const TOP = 0.06; // board surface height
 const UNIT = 1; // one cube is 1 unit tall
@@ -22,14 +23,13 @@ let geo: RoundedBoxGeometry | null = null;
 const cubeGeo = () => (geo ??= new RoundedBoxGeometry(CUBE, CUBE * UNIT, CUBE, 3, 0.07));
 const insetGeo = new THREE.PlaneGeometry(CUBE * 0.62, CUBE * 0.62);
 
-type MatKind = "solid" | "ghost-ok" | "ghost-bad" | "dim";
+type MatKind = "solid" | "dim";
 function useMaterials() {
   return useMemo(() => ({
-    solid: new THREE.MeshStandardMaterial({ color: "#f3f2ee", roughness: 0.42, metalness: 0 }),
-    dim: new THREE.MeshStandardMaterial({ color: "#f3f2ee", roughness: 0.5, transparent: true, opacity: 0.4 }),
-    "ghost-ok": new THREE.MeshStandardMaterial({ color: "#3ddc97", roughness: 0.5, transparent: true, opacity: 0.55, depthWrite: false }),
-    "ghost-bad": new THREE.MeshStandardMaterial({ color: "#ff5252", roughness: 0.5, transparent: true, opacity: 0.55, depthWrite: false }),
-    inset: new THREE.MeshStandardMaterial({ color: "#dedcd6", roughness: 0.6 }),
+    // the blocks in the reference photos are a pale periwinkle blue, not pure white
+    solid: new THREE.MeshStandardMaterial({ color: "#c3d4ec", roughness: 0.45, metalness: 0 }),
+    dim: new THREE.MeshStandardMaterial({ color: "#c3d4ec", roughness: 0.5, transparent: true, opacity: 0.4 }),
+    inset: new THREE.MeshStandardMaterial({ color: "#aebfdc", roughness: 0.6 }),
   }), []);
 }
 
@@ -116,7 +116,7 @@ export function Tray({ board, items, activeId, onSelect }: { board: Board; items
  * The block you are holding: lifted above the board with a shadow, plus a coloured preview where it will land and the
  * tiles it covers. Drag the lifted block to move it; it snaps to whole tiles.
  */
-export function Held({ board, cubes, x, y, placement, onMove }: { board: Board; cubes: Cubes; x: number; y: number; placement: Placement; onMove: (x: number, y: number) => void }) {
+export function Held({ board, cubes, x, y, placement, onMove, color }: { color?: PlayerColor | null; board: Board; cubes: Cubes; x: number; y: number; placement: Placement; onMove: (x: number, y: number) => void }) {
   const controls = useThree((s) => s.controls) as unknown as { enabled: boolean } | null;
   const dragging = useRef(false);
   const s = size(cubes);
@@ -142,15 +142,16 @@ export function Held({ board, cubes, x, y, placement, onMove }: { board: Board; 
     (e.target as unknown as Element).releasePointerCapture?.(e.pointerId);
   };
   useEffect(() => () => setEnabled(controls, true), [controls]);
-  const rest = anchor(board, cubes, x, y, placement.base), float = anchor(board, cubes, x, y, lift);
+  const float = anchor(board, cubes, x, y, lift);
   return (
     <>
-      {placement.cells.map((c) => {
-        if (!board.cells[c.y]?.[c.x]) return null;
-        const [wx, wz] = toWorld(board, c.x, c.y);
-        return <mesh key={`${c.x},${c.y}`} position={[wx, TOP + 0.02, wz]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[0.92, 0.92]} /><meshBasicMaterial color={placement.valid ? "#3ddc97" : "#ff5252"} transparent opacity={0.6} depthWrite={false} /></mesh>;
-      })}
-      <group position={rest}><PieceMesh cubes={cubes} kind={placement.valid ? "ghost-ok" : "ghost-bad"} shadow={false} /></group>
+      {/* where it would land: the player's colour outline when it fits, a plain grey footprint when it doesn't (the reason is shown in words) */}
+      {placement.valid && color ? <Outline board={board} cells={placement.cells} color={color} strong={false} />
+        : placement.cells.map((c) => {
+          if (!board.cells[c.y]?.[c.x]) return null;
+          const [wx, wz] = toWorld(board, c.x, c.y);
+          return <mesh key={`${c.x},${c.y}`} position={[wx, TOP + 0.02, wz]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[0.92, 0.92]} /><meshBasicMaterial color="#6b6b73" transparent opacity={0.28} depthWrite={false} /></mesh>;
+        })}
       <group position={float} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
         onPointerOver={() => setCursor("grab")} onPointerOut={() => setCursor("")}>
         <PieceMesh cubes={cubes} />

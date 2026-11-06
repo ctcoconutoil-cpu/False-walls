@@ -114,10 +114,10 @@ export function tallies(board: Board, rules: StrataRules = STRATA_RULES): Record
   return out;
 }
 
-/** Share of the open tiles that someone holds. Drives the end-of-game tracker. Black tiles only count once someone has claimed them. */
+/** Share of the white tiles that someone has claimed or captured. Drives the end-of-game tracker. Black tiles never count. */
 export function territoryShare(board: Board): number {
   let open = 0, held = 0;
-  for (const row of board.cells) for (const c of row) { if (c.type === "black" && !c.owner) continue; open++; if (c.owner && c.status !== "unclaimed") held++; }
+  for (const row of board.cells) for (const c of row) { if (c.type === "black") continue; open++; if (c.owner && c.status !== "unclaimed") held++; }
   return open ? held / open : 0;
 }
 

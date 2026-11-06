@@ -7,7 +7,7 @@ import { PLAYER_COLORS } from "@/games/strata/config/palette";
 import { STRATA_RULES } from "@/games/strata/config/rules";
 import { chooseBlock, LEVELS, type Level } from "@/games/strata/engine/ai";
 import { activePlayer, canSubmit, checkMove, createGame, isStuck, outline, placeBlock, previewTurn, ranking, submitTurn, undoBlock, winners, type GameState, type PlayerInfo } from "@/games/strata/engine/game";
-import { fillDuration, fillPlan, type FillStep } from "@/games/strata/engine/animation";
+import { fillPlan, type FillStep } from "@/games/strata/engine/animation";
 import { PLAY_REASON_TEXT } from "@/games/strata/engine/play";
 import { PIECES, flip, rollSide, rotateYaw, size, tiltPitch, type Cubes } from "@/games/strata/engine/pieces";
 import { place, type Placement } from "@/games/strata/engine/placement";
@@ -25,7 +25,7 @@ const turnLeft = (c: Cubes) => rotateYaw(rotateYaw(rotateYaw(c)));
 const recentre = (prev: Cubes, next: Cubes, x: number, y: number) => { const a = size(prev), b = size(next); return { x: Math.round(x + (a.w - b.w) / 2), y: Math.round(y + (a.d - b.d) / 2) }; };
 
 type Saved = { state: GameState };
-type Anim = { plan: FillStep[]; before: Board; blocks: PlacedPiece[]; vanish: boolean };
+type Anim = { plan: FillStep[]; before: Board; blocks: PlacedPiece[]; vanish: boolean; /** "confirmed": score is in, blocks still stand, waiting for Remove blocks. "reveal": blocks shrink away and the colour fills in. */ stage: "confirmed" | "reveal"; color: PlayerColor; mover: "human" | "ai" };
 const load = (): Saved | null => { try { const r = localStorage.getItem(KEY); return r ? (JSON.parse(r) as Saved) : null; } catch { return null; } };
 const save = (v: Saved | null) => { try { if (v) localStorage.setItem(KEY, JSON.stringify(v)); else localStorage.removeItem(KEY); } catch { /* storage can be unavailable; the game still works */ } };
 const newSeed = () => (Math.floor(Math.random() * 2 ** 31) >>> 0) || 1;
@@ -64,12 +64,15 @@ export function GameView() {
     const plan = fillPlan(sub.resolution, sub.blocks);
     commitState(sub.state);
     if (plan.length) {
-      setAnim({ plan, before: s.board, blocks, vanish: false });
-      window.setTimeout(() => setAnim((a) => (a && a.plan === plan ? { ...a, vanish: true } : a)), Math.max(500, fillDuration(plan) * 0.55));
+      // Stage 1: the move is confirmed and scored, but the blocks stay put. Stage 2 (removeBlocks) takes them away and reveals the territory.
+      const mover = activePlayer(s);
+      setAnim({ plan, before: s.board, blocks, vanish: false, stage: "confirmed", color: mover.color, mover: mover.kind });
+      if (mover.kind === "ai") window.setTimeout(() => setAnim((a) => (a && a.plan === plan && a.stage === "confirmed" ? { ...a, stage: "reveal", vanish: true } : a)), 1100);
     }
     return sub;
   };
   const animDone = useCallback(() => setAnim(null), []);
+  const removeBlocks = () => setAnim((a) => (a && a.stage === "confirmed" ? { ...a, stage: "reveal", vanish: true } : a));
 
   const me = state ? activePlayer(state) : null;
   const busy = !!anim;
@@ -86,11 +89,12 @@ export function GameView() {
   }, [state, held, check, occupied]);
   const stuck = useMemo(() => (state ? isStuck(state) : false), [state]);
   const submit_ok = state ? canSubmit(state) : false;
-  const standing = useMemo(() => (state ? ranking(anim ? { ...state, board: anim.before } : state) : []), [state, anim]);
+  const standing = useMemo(() => (state ? ranking(state) : []), [state]);
   const preview = useMemo(() => (state && humanTurn ? previewTurn(state) : null), [state, humanTurn]);
   const extras: SceneExtras = useMemo(() => ({
-    outline: state && !anim && state.status !== "finished" ? { cells: outline(state), color: activePlayer(state).color, strong: !!preview } : undefined,
-    fill: anim ? { plan: anim.plan, onDone: animDone } : undefined,
+    outline: anim?.stage === "confirmed" ? { cells: [...new Map(anim.blocks.flatMap((b) => b.world).map(([x, y]) => [`${x},${y}`, { x, y }])).values()], color: anim.color, strong: true }
+      : state && !anim && state.status !== "finished" ? { cells: outline(state), color: activePlayer(state).color, strong: !!preview } : undefined,
+    fill: anim?.stage === "reveal" ? { plan: anim.plan, onDone: animDone } : undefined,
     vanish: anim?.vanish,
   }), [state, anim, preview, animDone]);
   const send = (kind: CameraCmd["kind"]) => setCmd((c) => ({ kind, nonce: c.nonce + 1 }));
@@ -235,9 +239,9 @@ export function GameView() {
       </ul>
 
       <div className="relative h-[46vh] min-h-[320px] touch-none overflow-hidden rounded-3xl bg-night-2" data-testid="strata-board">
-        <PracticeScene extras={extras} board={standingBoard ?? state.board} selected={null} onPick={(c) => { if (humanTurn && held && c) { const s = size(held.cubes); setHeld({ ...held, x: c.x - Math.floor(s.w / 2), y: c.y - Math.floor(s.d / 2) }); } }} cmd={cmd} placed={placed} tray={over ? [] : tray} held={over ? null : held} placement={shown}
+        <PracticeScene color={me?.color ?? null} extras={extras} board={standingBoard ?? state.board} selected={null} onPick={(c) => { if (humanTurn && held && c) { const s = size(held.cubes); setHeld({ ...held, x: c.x - Math.floor(s.w / 2), y: c.y - Math.floor(s.d / 2) }); } }} cmd={cmd} placed={placed} tray={over ? [] : tray} held={over ? null : held} placement={shown}
           onSelectTray={select} onMove={(x, y) => { if (humanTurn) setHeld((h) => (h ? { ...h, x, y } : h)); }} />
-        <p className="pointer-events-none absolute inset-x-0 bottom-2 text-center text-[11px] text-chalk-dim/80">{over ? "Game over" : busy ? "Filling in the new territory…" : held ? "Drag the lifted block, or tap a tile to move it" : "Tap one of your blocks below the board"}</p>
+        <p className="pointer-events-none absolute inset-x-0 bottom-2 text-center text-[11px] text-chalk-dim/80">{over ? "Game over" : anim?.stage === "confirmed" ? "Move confirmed. Remove the blocks to see the new territory." : busy ? "Filling in the new territory…" : held ? "Drag the lifted block, or tap a tile to move it" : "Tap one of your blocks below the board"}</p>
       </div>
 
       {over ? (
@@ -248,6 +252,13 @@ export function GameView() {
           <div className="flex flex-wrap gap-2"><button type="button" className={cx(btn, "!bg-coral !text-[#2a0d08]")} onClick={() => start(state.players)}>Rematch</button><button type="button" className={btn} onClick={leave}>New game</button><Link href="/games" className={btn}>Games</Link><Link href="/" className={btn}>Back to False Walls</Link></div>
         </section>
       ) : (
+        <>
+        {anim?.stage === "confirmed" && anim.mover === "human" && (
+          <div className="flex items-center gap-3 rounded-2xl bg-night-2 p-3" role="status">
+            <p className="flex-1 text-sm"><b>Move confirmed.</b> <span className="text-chalk-dim">The score is in. Remove your blocks to reveal the new territory.</span></p>
+            <button type="button" className="btn-press inline-flex min-h-11 items-center rounded-xl bg-coral px-4 text-sm font-black text-[#2a0d08]" onClick={removeBlocks} data-testid="remove-blocks">Remove blocks</button>
+          </div>
+        )}
         <section aria-label="Your turn" className="space-y-2 rounded-2xl bg-night-2 p-3" data-testid="block-panel">
           {me!.kind === "ai" ? (
             <p className="flex items-center gap-2 text-sm" aria-live="polite" data-testid="block-status">
@@ -261,7 +272,7 @@ export function GameView() {
             <b style={{ color: PLAYER_COLORS[me!.color].hex }}>{me!.name}</b>
             {state.status === "final_round" && <span className="ml-1 rounded-full bg-mustard px-2 py-0.5 text-[11px] font-black text-[#2a1d00]">Final round</span>}
             {" · "}
-            {busy ? <>Filling in the territory…</>
+            {anim?.stage === "confirmed" ? <>Move confirmed and scored.</> : busy ? <>Filling in the territory…</>
               : held && check ? (check.ok ? <><b className="text-[#3ddc97]">Fits.</b> Place the {PIECES[held.id].name} when it looks right.</> : <><b className="text-[#ff7a7a]">Can&apos;t place here.</b> {PLAY_REASON_TEXT[check.reason]}</>)
               : state.turn.hand.length ? (stuck ? <>No block fits anywhere. Confirm to end your turn.</> : <>Block {Math.min(blockNo, STRATA_RULES.blocksPerTurn)} of {STRATA_RULES.blocksPerTurn}: pick one up and place it. {note}</>) : <>All three blocks are down. Check the score below, then confirm. {note}</>}
           </p>
@@ -293,6 +304,7 @@ export function GameView() {
           </>)}
           {me!.kind === "ai" && note && <p className="text-xs text-chalk-dim">{note}</p>}
         </section>
+        </>
       )}
 
       <div className="flex flex-wrap gap-2" role="toolbar" aria-label="Camera">
