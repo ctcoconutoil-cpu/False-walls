@@ -262,7 +262,9 @@ export function GameView() {
           onMove={(x, y) => { if (humanTurn) setHeld((h) => (h ? { ...h, x, y } : h)); }} />
       </div>
 
-      <div className="px-3 py-1.5 text-center" aria-live="polite" data-testid="block-status">
+      {/* the blocks waiting for you sit straight under the board, small and seen from the front, with the message above them */}
+      <div className="bg-night-2 pb-1">
+      <div className="px-3 pt-1.5 text-center" aria-live="polite" data-testid="block-status">
         <p className="text-[13px] leading-snug">
           {state.status === "final_round" && !over && <span className="mr-1 rounded-full bg-mustard px-2 py-0.5 text-[11px] font-black text-[#2a1d00]">Final round</span>}
           <b style={{ color: PLAYER_COLORS[me2.color].hex }}>{me2.name}</b> <span className="text-chalk-dim">· {status}</span>
@@ -275,13 +277,12 @@ export function GameView() {
           </p>
         )}
       </div>
-
-      {/* the blocks waiting for you: their own row, clear of the board, seen from the front */}
-      <div className="mx-3 h-[22dvh] max-h-[170px] min-h-[96px] touch-manipulation overflow-hidden rounded-2xl bg-night-2" data-testid="strata-tray">
-        {!over && <TrayView items={tray} activeId={held?.id ?? null} onSelect={select} />}
+        <div className="h-[92px] touch-manipulation overflow-hidden" data-testid="strata-tray">
+          {!over && <TrayView items={tray} activeId={held?.id ?? null} onSelect={select} />}
+        </div>
       </div>
 
-      <div className="mt-2 space-y-2 px-3">
+      <div className="mt-1.5 space-y-1.5 px-3">
         <div className="flex items-start justify-around" role="toolbar" aria-label="Turn the block">
           {ctl("Left", "↺", () => transform(turnLeft), { disabled: !held || !mine, aria: "Rotate left" })}
           {ctl("Right", "↻", () => transform(rotateYaw), { disabled: !held || !mine, aria: "Rotate right" })}

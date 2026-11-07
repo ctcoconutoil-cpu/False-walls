@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
-import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
+import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { Line } from "@react-three/drei";
 import * as THREE from "three";
 import type { Board, Cell, PlayerColor } from "@/games/strata/engine/types";
@@ -150,46 +150,43 @@ function Selection({ board, cell }: { board: Board; cell: Cell | null }) {
   return <group position={[x, TOP + 0.02, z]}><Line points={pts} color="#FF6B4A" lineWidth={3} /></group>;
 }
 
-const FOV = 34;
+/** How much the board is stretched front to back so it fills the space it is given (1 = square tiles). */
+const StretchContext = createContext(1);
+export const useStretch = () => useContext(StretchContext);
+
+const TILT = (32 * Math.PI) / 180; // how far the camera leans toward you from straight above
+const aim = (cam: THREE.OrthographicCamera, zoom: number, flip: boolean) => {
+  const D = 60, sg = flip ? -1 : 1;
+  cam.up.set(0, 1, 0);
+  cam.position.set(0, D * Math.cos(TILT), sg * D * Math.sin(TILT));
+  cam.zoom = zoom; cam.near = 0.1; cam.far = 200;
+  cam.lookAt(0, 0, 0); cam.updateProjectionMatrix();
+};
 /**
- * A fixed camera looking straight down at the board, like the reference screens: no tilt and no turning.
- * It always shows the whole board, sized to fit the space it is given.
+ * Looks at the board from slightly in front and above with a flat (orthographic) camera, like a chess screen: the board reads
+ * as a flat rectangle, while every block shows its front and top, so the whole body of each block is visible. The board is
+ * stretched front to back just enough to fill the height it is given, so there is no empty space around it.
  */
-function TopCamera({ board, flip }: { board: Board; flip: boolean }) {
+function View({ board, flip, children }: { board: Board; flip: boolean; children: ReactNode }) {
   const { camera, size, invalidate } = useThree();
-  const cur = useRef<{ x: number; z: number; h: number } | null>(null);
-  const goal = useMemo(() => {
-    const tan = Math.tan((FOV * Math.PI) / 360);
-    const aspect = size.width / Math.max(1, size.height);
-    const bw = board.width * CELL + 0.9, bh = board.height * CELL + 0.9;
-    const full = Math.max(bw / (2 * tan * aspect), bh / (2 * tan));
-    return { x: 0, z: 0, h: full };
+  const { zoom, k } = useMemo(() => {
+    const W = board.width * CELL + 0.5, L = board.height * CELL + 0.5;
+    const z = size.width / W;
+    return { zoom: z, k: THREE.MathUtils.clamp((size.height * 0.99) / (z * L * Math.cos(TILT)), 1, 1.7) };
   }, [board, size]);
-  const place = (c: { x: number; z: number; h: number }) => {
-    camera.up.set(0, 0, flip ? 1 : -1); // the player's own side is at the bottom of the screen
-    camera.position.set(c.x, c.h, c.z + 0.0001);
-    camera.lookAt(c.x, 0, c.z);
-  };
-  useLayoutEffect(() => { if (!cur.current) cur.current = { ...goal }; place(cur.current); invalidate(); });
-  useFrame((_, dt) => {
-    const c = cur.current; if (!c) return;
-    const k = 1 - Math.pow(0.002, dt);
-    const near = Math.abs(c.x - goal.x) + Math.abs(c.z - goal.z) + Math.abs(c.h - goal.h) < 0.01;
-    if (near) { if (c.x !== goal.x || c.z !== goal.z || c.h !== goal.h) { c.x = goal.x; c.z = goal.z; c.h = goal.h; place(c); invalidate(); } return; }
-    c.x += (goal.x - c.x) * k; c.z += (goal.z - c.z) * k; c.h += (goal.h - c.h) * k;
-    place(c); invalidate();
-  });
-  return null;
+  useLayoutEffect(() => { aim(camera as THREE.OrthographicCamera, zoom, flip); invalidate(); }, [camera, zoom, flip, invalidate]);
+  return <StretchContext.Provider value={k}><group scale={[1, 1, k]}>{children}</group></StretchContext.Provider>;
 }
 
 export function BoardScene({ board, selected, onPick, children, flip = false }: { flip?: boolean; board: Board; selected: Cell | null; onPick: (c: Cell) => void; children?: ReactNode }) {
   return (
-    <Canvas flat frameloop="demand" dpr={[1, 2]} camera={{ position: [0, 20, 0.001], fov: FOV, near: 0.1, far: 80 }} gl={{ antialias: true, powerPreference: "high-performance" }}
+    <Canvas flat orthographic frameloop="demand" dpr={[1, 2]} camera={{ position: [0, 50, 32], zoom: 30, near: 0.1, far: 200 }} gl={{ antialias: true, powerPreference: "high-performance" }}
       style={{ touchAction: "none" }} onPointerMissed={() => onPick(null as unknown as Cell)}>
       <color attach="background" args={[BOARD_COLORS.backdrop]} />
       <ambientLight intensity={1.9} />
       <directionalLight position={[6, 12, 5]} intensity={1.1} />
       <hemisphereLight args={["#ffffff", "#2a1d4a", 0.35]} />
+      <View board={board} flip={flip}>
       {/* the slab the tiles sit in */}
       <mesh position={[0, -0.16, 0]}><boxGeometry args={[board.width * CELL + 0.7, 0.3, board.height * CELL + 0.7]} /><meshStandardMaterial color={BOARD_COLORS.line} roughness={0.7} /></mesh>
       <mesh position={[0, -0.02, 0]}><boxGeometry args={[board.width * CELL + 0.4, 0.05, board.height * CELL + 0.4]} /><meshStandardMaterial color="#d8d8d4" roughness={0.7} /></mesh>
@@ -199,7 +196,7 @@ export function BoardScene({ board, selected, onPick, children, flip = false }: 
       <Diamonds board={board} />
       <Selection board={board} cell={selected} />
       {children}
-      <TopCamera board={board} flip={flip} />
+      </View>
     </Canvas>
   );
 }

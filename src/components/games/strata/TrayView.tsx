@@ -12,7 +12,7 @@ function FrontCamera({ width, height }: { width: number; height: number }) {
   const { camera, size: vp, invalidate } = useThree();
   useLayoutEffect(() => {
     const tan = Math.tan((30 * Math.PI) / 360), aspect = vp.width / Math.max(1, vp.height);
-    const d = Math.max((width + 1) / (2 * tan * aspect), (height + 0.8) / (2 * tan));
+    const d = Math.max((width + 3) / (2 * tan * aspect), (height + 1.2) / (2 * tan)); // generous margins keep the blocks small
     camera.position.set(0, height / 2 + d * 0.16, d);
     camera.lookAt(0, height / 2, 0);
     camera.updateProjectionMatrix(); invalidate();

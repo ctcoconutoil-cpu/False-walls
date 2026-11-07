@@ -6,7 +6,7 @@ import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeom
 import type { Board, PlayerColor } from "@/games/strata/engine/types";
 import { size, type Cube, type Cubes } from "@/games/strata/engine/pieces";
 import type { Placement } from "@/games/strata/engine/placement";
-import { toWorld } from "./BoardScene";
+import { toWorld, useStretch } from "./BoardScene";
 import { Outline } from "./Territory";
 
 const TOP = 0.06; // board surface height
@@ -97,6 +97,7 @@ function Dropped({ board, piece, vanish }: { board: Board; piece: PlacedPiece; v
 export function Held({ board, cubes, x, y, placement, onMove, color }: { color?: PlayerColor | null; board: Board; cubes: Cubes; x: number; y: number; placement: Placement; onMove: (x: number, y: number) => void }) {
   const controls = useThree((s) => s.controls) as unknown as { enabled: boolean } | null;
   const dragging = useRef(false);
+  const k = useStretch();
   const s = size(cubes);
   const lift = placement.base + 1.1;
   const move = (e: ThreeEvent<PointerEvent>) => {
@@ -105,7 +106,7 @@ export function Held({ board, cubes, x, y, placement, onMove, color }: { color?:
     const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -(TOP + lift * UNIT + s.h / 2));
     const hit = new THREE.Vector3();
     if (!e.ray.intersectPlane(plane, hit)) return;
-    const cx = hit.x / 1 + (board.width - 1) / 2, cy = hit.z / 1 + (board.height - 1) / 2; // pointer in cell units
+    const cx = hit.x / 1 + (board.width - 1) / 2, cy = hit.z / k + (board.height - 1) / 2; // pointer in cell units
     const nx = Math.round(cx - (s.w - 1) / 2), ny = Math.round(cy - (s.d - 1) / 2);
     if (nx !== x || ny !== y) onMove(Math.max(-s.w, Math.min(board.width, nx)), Math.max(-s.d, Math.min(board.height, ny)));
   };
