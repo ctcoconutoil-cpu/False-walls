@@ -11,6 +11,8 @@ import { Outline } from "./Territory";
 
 const TOP = 0.06; // board surface height
 const UNIT = 1; // one cube is 1 unit tall
+/** On the board a standing block is drawn at half height, so it never hides the squares behind it (the way a chess piece leaves them in view). The tray draws blocks at full height. */
+const RISE = 0.5;
 const CUBE = 0.94;
 
 export type PlacedPiece = { id: number; world: Cube[] };
@@ -34,7 +36,7 @@ function useMaterials() {
 }
 
 /** A block made of real cubes with rounded edges and a shallow square on each top face, like the pieces in the reference. Positions are in cells. */
-export const PieceMesh = memo(function PieceMesh({ cubes, kind = "solid" }: { cubes: Cubes; kind?: MatKind }) {
+export const PieceMesh = memo(function PieceMesh({ cubes, kind = "solid", rise = 1 }: { cubes: Cubes; kind?: MatKind; rise?: number }) {
   const m = useMaterials();
   const s = size(cubes);
   const top = useMemo(() => { const t = new Set<string>(); for (const c of cubes) t.add(`${c[0]},${c[1]},${c[2] + 1}`); return (c: Cube) => !t.has(`${c[0]},${c[1]},${c[2] + 1}`); }, [cubes]);
@@ -42,9 +44,9 @@ export const PieceMesh = memo(function PieceMesh({ cubes, kind = "solid" }: { cu
   return (
     <group>
       {cubes.map((c, i) => (
-        <group key={i} position={[c[0] - (s.w - 1) / 2, (c[2] + 0.5) * UNIT, c[1] - (s.d - 1) / 2]}>
-          <mesh geometry={cubeGeo()} material={m[kind]} />
-          {kind === "solid" && top(c) && <mesh geometry={insetGeo} material={m.inset} rotation={[-Math.PI / 2, 0, 0]} position={[0, CUBE * UNIT * 0.5 + 0.004, 0]} />}
+        <group key={i} position={[c[0] - (s.w - 1) / 2, (c[2] + 0.5) * UNIT * rise, c[1] - (s.d - 1) / 2]}>
+          <mesh geometry={cubeGeo()} material={m[kind]} scale={[1, rise, 1]} />
+          {kind === "solid" && top(c) && <mesh geometry={insetGeo} material={m.inset} rotation={[-Math.PI / 2, 0, 0]} position={[0, CUBE * UNIT * 0.5 * rise + 0.004, 0]} />}
         </group>
       ))}
     </group>
@@ -55,7 +57,7 @@ export const PieceMesh = memo(function PieceMesh({ cubes, kind = "solid" }: { cu
 const anchor = (board: Board, cubes: Cubes, x: number, y: number, h: number): [number, number, number] => {
   const s = size(cubes);
   const [wx, wz] = toWorld(board, x + (s.w - 1) / 2, y + (s.d - 1) / 2);
-  return [wx, TOP + h * UNIT, wz];
+  return [wx, TOP + h * UNIT * RISE, wz];
 };
 
 /** Blocks standing on the board. A newly placed one drops in with a short ease. */
@@ -87,7 +89,7 @@ function Dropped({ board, piece, vanish }: { board: Board; piece: PlacedPiece; v
     ref.current.position.y = pos[1] + y.current;
     invalidate();
   });
-  return <group ref={ref}><PieceMesh cubes={local} /></group>;
+  return <group ref={ref}><PieceMesh cubes={local} rise={RISE} /></group>;
 }
 
 /**
@@ -103,7 +105,7 @@ export function Held({ board, cubes, x, y, placement, onMove, color }: { color?:
   const move = (e: ThreeEvent<PointerEvent>) => {
     if (!dragging.current) return;
     // intersect the pointer ray with a horizontal plane through the lifted block, so it doesn't jump when grabbed
-    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -(TOP + lift * UNIT + s.h / 2));
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -(TOP + lift * UNIT * RISE + (s.h * RISE) / 2));
     const hit = new THREE.Vector3();
     if (!e.ray.intersectPlane(plane, hit)) return;
     const cx = hit.x / 1 + (board.width - 1) / 2, cy = hit.z / k + (board.height - 1) / 2; // pointer in cell units
@@ -133,7 +135,7 @@ export function Held({ board, cubes, x, y, placement, onMove, color }: { color?:
         })}
       <group position={float} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
         onPointerOver={() => setCursor("grab")} onPointerOut={() => setCursor("")}>
-        <PieceMesh cubes={cubes} kind={placement.valid ? "solid" : "dim"} />
+        <PieceMesh cubes={cubes} kind={placement.valid ? "solid" : "dim"} rise={RISE} />
       </group>
     </>
   );
