@@ -75,6 +75,13 @@ export function GameView() {
   const removeBlocks = () => setAnim((a) => (a && a.stage === "confirmed" ? { ...a, stage: "reveal", vanish: true } : a));
 
   const me = state ? activePlayer(state) : null;
+  // turn the view so the mover's own colour is on the side nearest them; the computer's turn leaves it as it was
+  const [viewFlip, setViewFlip] = useState(false);
+  useEffect(() => {
+    if (!state || !me || me.kind !== "human") return;
+    const mine = state.board.cells.flat().filter((c) => c.startOf === me.color);
+    if (mine.length) setViewFlip(mine.reduce((a, c) => a + c.y, 0) / mine.length < state.board.height / 2);
+  }, [state, me]);
   const busy = !!anim;
   const humanTurn = !!state && state.status !== "finished" && !busy && me?.kind === "human";
   const standingBoard = anim?.before ?? state?.board ?? null;
@@ -238,8 +245,8 @@ export function GameView() {
           </li>); })}
       </ul>
 
-      <div className="relative h-[46vh] min-h-[320px] touch-none overflow-hidden rounded-3xl bg-night-2" data-testid="strata-board">
-        <PracticeScene color={me?.color ?? null} extras={extras} board={standingBoard ?? state.board} selected={null} onPick={(c) => { if (humanTurn && held && c) { const s = size(held.cubes); setHeld({ ...held, x: c.x - Math.floor(s.w / 2), y: c.y - Math.floor(s.d / 2) }); } }} cmd={cmd} placed={placed} tray={over ? [] : tray} held={over ? null : held} placement={shown}
+      <div className="relative -mx-4 h-[62vh] min-h-[400px] touch-none overflow-hidden bg-night-2" data-testid="strata-board">
+        <PracticeScene flip={viewFlip} color={me?.color ?? null} extras={extras} board={standingBoard ?? state.board} selected={null} onPick={(c) => { if (humanTurn && held && c) { const s = size(held.cubes); setHeld({ ...held, x: c.x - Math.floor(s.w / 2), y: c.y - Math.floor(s.d / 2) }); } }} cmd={cmd} placed={placed} tray={over ? [] : tray} held={over ? null : held} placement={shown}
           onSelectTray={select} onMove={(x, y) => { if (humanTurn) setHeld((h) => (h ? { ...h, x, y } : h)); }} />
         <p className="pointer-events-none absolute inset-x-0 bottom-2 text-center text-[11px] text-chalk-dim/80">{over ? "Game over" : anim?.stage === "confirmed" ? "Move confirmed. Remove the blocks to see the new territory." : busy ? "Filling in the new territory…" : held ? "Drag the lifted block, or tap a tile to move it" : "Tap one of your blocks below the board"}</p>
       </div>

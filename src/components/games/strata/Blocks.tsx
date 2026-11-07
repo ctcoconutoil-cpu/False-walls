@@ -34,7 +34,7 @@ function useMaterials() {
 }
 
 /** A block made of real cubes with rounded edges and a shallow square on each top face, like the pieces in the reference. Positions are in cells. */
-export const PieceMesh = memo(function PieceMesh({ cubes, kind = "solid", shadow = true }: { cubes: Cubes; kind?: MatKind; shadow?: boolean }) {
+export const PieceMesh = memo(function PieceMesh({ cubes, kind = "solid" }: { cubes: Cubes; kind?: MatKind }) {
   const m = useMaterials();
   const s = size(cubes);
   const top = useMemo(() => { const t = new Set<string>(); for (const c of cubes) t.add(`${c[0]},${c[1]},${c[2] + 1}`); return (c: Cube) => !t.has(`${c[0]},${c[1]},${c[2] + 1}`); }, [cubes]);
@@ -43,7 +43,7 @@ export const PieceMesh = memo(function PieceMesh({ cubes, kind = "solid", shadow
     <group>
       {cubes.map((c, i) => (
         <group key={i} position={[c[0] - (s.w - 1) / 2, (c[2] + 0.5) * UNIT, c[1] - (s.d - 1) / 2]}>
-          <mesh geometry={cubeGeo()} material={m[kind]} castShadow={shadow && kind === "solid"} receiveShadow />
+          <mesh geometry={cubeGeo()} material={m[kind]} />
           {kind === "solid" && top(c) && <mesh geometry={insetGeo} material={m.inset} rotation={[-Math.PI / 2, 0, 0]} position={[0, CUBE * UNIT * 0.5 + 0.004, 0]} />}
         </group>
       ))}
@@ -91,13 +91,13 @@ function Dropped({ board, piece, vanish }: { board: Board; piece: PlacedPiece; v
 }
 
 /** The blocks waiting beside the board. Tap one to pick it up. */
-export function Tray({ board, items, activeId, onSelect }: { board: Board; items: Array<{ id: string; cubes: Cubes }>; activeId: string | null; onSelect: (id: string) => void }) {
-  const perRow = 3, scale = 0.55, gapX = 3.1, gapZ = 2.3, z0 = board.height / 2 + 1.7;
+export function Tray({ board, items, activeId, onSelect, flip = false }: { flip?: boolean; board: Board; items: Array<{ id: string; cubes: Cubes }>; activeId: string | null; onSelect: (id: string) => void }) {
+  const perRow = 3, scale = 0.78, gapX = 3.7, gapZ = 3, z0 = board.height / 2 + 2.1;
   return (
     <>
       {items.map((it, i) => {
         const row = Math.floor(i / perRow), col = i % perRow, inRow = Math.min(perRow, items.length - row * perRow);
-        const x = (col - (inRow - 1) / 2) * gapX, z = z0 + row * gapZ;
+        const x = (col - (inRow - 1) / 2) * gapX * (flip ? -1 : 1), z = (flip ? -1 : 1) * (z0 + row * gapZ);
         return (
           <group key={it.id} position={[x, TOP, z]} scale={scale}
             onClick={(e: ThreeEvent<MouseEvent>) => { e.stopPropagation(); onSelect(it.id); }}

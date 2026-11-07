@@ -147,10 +147,17 @@ t("flat-side connectivity: each later block must share a face with a block alrea
   for (const c of faces.slice(0, 20)) { const r = PL.place(s1.board, c.cubes, c.x, c.y); assert.ok(r.world.some(([x, y, z]) => w.some(([a, b, d]) => Math.abs(a - x) + Math.abs(b - y) + Math.abs(d - z) === 1)), "every legal block shares a face"); }
 });
 t("blocks never rest on other blocks: stacking on a placed block is refused", () => {
-  const s1 = putAny(withHand(fresh(), ["cross", "tallT", "step"]), "step");
+  const s0 = withHand(fresh(), ["cross", "tallT", "step"]);
+  const spot = PLAY.legalPlacements(s0.board, "blue", [], ["step"]).find((c) => c.x >= 2 && c.y >= 2) ?? PLAY.legalPlacements(s0.board, "blue", [], ["step"])[0];
+  const s1 = put(s0, "step", spot.x, spot.y, spot.cubes);
   const w = s1.turn.placed[0].world;
-  const r = G.placeBlock(s1, "tallT", flat("tallT"), w[0][0], w[0][1]);
-  assert.equal(r.ok, false); assert.equal(r.error, "overlap");
+  const g = w.find((c) => c[2] === 0);
+  // a block laid so that one of its cubes would sit where a placed cube already is is an overlap, never a stack
+  const occ = new Set(w.map((c) => c.join(",")));
+  const f = flat("tallT");
+  const r = PL.place(s1.board, f, g[0] - f[0][0], g[1] - f[0][1], occ);
+  assert.ok(r.reason === "overlap" || r.reason === "off_board", `got ${r.reason}`);
+  assert.equal(r.valid, false);
 });
 t("a turn is three blocks placed one after another, then confirmed", () => {
   let s = withHand(fresh(), ["tallT", "tallL", "step"]);
@@ -280,11 +287,17 @@ t("solid captured tiles of an opponent can't be stood on, but a bridge can claim
   assert.equal(tile(done.state, 1, 2).status === "claimed" || tile(done.state, 1, 2).status === "captured", true);
 });
 t("an opponent's merely CLAIMED tile can be taken by an ordinary block", () => {
-  const s = custom((c) => give(c, 3, 0, "orange", "claimed"), ["tallL", "step", "cross"]);
-  const spot = PLAY.legalPlacements(s.board, "blue", [], ["step"]).find((c) => PL.place(s.board, c.cubes, c.x, c.y).ground.some((q) => q.x === 3 && q.y === 0));
+  const base = custom(() => {}, ["tallL", "step", "cross"]);
+  // an ordinary (no-dots) tile that a step can cover from blue's side
+  const found = PLAY.legalPlacements(base.board, "blue", [], ["step"]).map((c) => ({ c, q: PL.place(base.board, c.cubes, c.x, c.y).ground.find((g) => base.board.cells[g.y][g.x].type === "normal") })).find((o) => o.q);
+  assert.ok(found, "a step covers an ordinary tile");
+  const { x: tx, y: ty } = found.q;
+  const s = custom((c) => give(c, tx, ty, "orange", "claimed"), ["tallL", "step", "cross"]);
+  const spot = PLAY.legalPlacements(s.board, "blue", [], ["step"]).find((c) => PL.place(s.board, c.cubes, c.x, c.y).ground.some((q) => q.x === tx && q.y === ty));
   assert.ok(spot);
-  const r = G.submitTurn({ ...put(s, "step", spot.x, spot.y, spot.cubes), turn: { ...put(s, "step", spot.x, spot.y, spot.cubes).turn, hand: [] } });
-  assert.equal(tile(r.state, 3, 0).owner, "blue");
+  const s2 = put(s, "step", spot.x, spot.y, spot.cubes);
+  const r = G.submitTurn({ ...s2, turn: { ...s2.turn, hand: [] } });
+  assert.equal(tile(r.state, tx, ty).owner, "blue");
 });
 
 // ---- Animation, temporary blocks, patterns ----

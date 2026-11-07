@@ -19,7 +19,8 @@ export type SceneExtras = {
   vanish?: boolean;
 };
 
-export function PracticeScene({ board, selected, onPick, cmd, placed, tray, held, placement, onSelectTray, onMove, extras, color }: {
+export function PracticeScene({ board, selected, onPick, cmd, placed, tray, held, placement, onSelectTray, onMove, extras, color, flip = false }: {
+  flip?: boolean;
   color?: PlayerColor | null;
   extras?: SceneExtras;
   board: Board; selected: Cell | null; onPick: (c: Cell) => void; cmd: CameraCmd; placed: PlacedPiece[];
@@ -27,11 +28,11 @@ export function PracticeScene({ board, selected, onPick, cmd, placed, tray, held
   onSelectTray: (id: string) => void; onMove: (x: number, y: number) => void;
 }) {
   return (
-    <BoardScene board={board} selected={selected} onPick={onPick} cmd={cmd}>
+    <BoardScene board={board} selected={selected} onPick={onPick} cmd={cmd} flip={flip}>
       {extras?.outline && extras.outline.cells.length > 0 && <Outline board={board} cells={extras.outline.cells} color={extras.outline.color} strong={extras.outline.strong} />}
       {extras?.fill && <FillLayer board={board} plan={extras.fill.plan} onDone={extras.fill.onDone} />}
       <PlacedBlocks board={board} placed={placed} vanish={extras?.vanish} />
-      <Tray board={board} items={tray} activeId={held?.id ?? null} onSelect={onSelectTray} />
+      <Tray board={board} items={tray} activeId={held?.id ?? null} onSelect={onSelectTray} flip={flip} />
       {held && placement && <Held board={board} cubes={held.cubes} x={held.x} y={held.y} placement={placement} onMove={onMove} color={color ?? null} />}
     </BoardScene>
   );

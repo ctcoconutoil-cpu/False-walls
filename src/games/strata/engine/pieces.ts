@@ -43,16 +43,16 @@ export function orientations(cubes: Cubes, mirror = false): Cube[][] {
 export type PieceDef = { id: string; name: string; cubes: Cubes };
 
 /**
- * The six STRATA blocks, read from the reference image of the Custom Piece Set (left to right: cross, zigzag, tall T, tall L, bridge, step).
+ * The six STRATA blocks, copied from the reference image of the Custom Piece Set, each standing upright as pictured (left to right: cross, zigzag, tall T, tall L, bridge, staircase).
  * Each is five cubes joined face to face. The exact cube positions are estimated from the picture, so they live here as data and can be corrected in one place.
  */
 export const PIECES: Record<string, PieceDef> = {
-  cross: { id: "cross", name: "Cross", cubes: [[1, 0, 0], [0, 1, 0], [1, 1, 0], [2, 1, 0], [1, 2, 0]] },
+  cross: { id: "cross", name: "Cross", cubes: [[1, 0, 0], [0, 0, 1], [1, 0, 1], [2, 0, 1], [1, 0, 2]] },
   zigzag: { id: "zigzag", name: "Zigzag", cubes: [[0, 0, 0], [1, 0, 0], [1, 0, 1], [1, 0, 2], [2, 0, 2]] },
   tallT: { id: "tallT", name: "Tall T", cubes: [[0, 0, 0], [1, 0, 0], [2, 0, 0], [1, 0, 1], [1, 0, 2]] },
   tallL: { id: "tallL", name: "Tall L", cubes: [[0, 0, 0], [1, 0, 0], [2, 0, 0], [2, 0, 1], [2, 0, 2]] },
   bridge: { id: "bridge", name: "Bridge", cubes: [[0, 0, 0], [0, 0, 1], [1, 0, 1], [2, 0, 1], [2, 0, 0]] },
-  step: { id: "step", name: "Step", cubes: [[0, 0, 0], [0, 0, 1], [1, 0, 0], [1, 1, 0], [2, 1, 0]] },
+  step: { id: "step", name: "Step", cubes: [[0, 0, 2], [0, 0, 1], [1, 0, 1], [1, 0, 0], [2, 0, 0]] },
 };
 
 /** The blocks every player has to choose from. The three for a turn are dealt from these six. */

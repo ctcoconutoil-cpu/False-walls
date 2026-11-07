@@ -72,7 +72,7 @@ function Tiles({ board, onPick }: { board: Board; onPick: (c: Cell) => void }) {
     invalidate();
   }, [cells, board, invalidate]);
   return (
-    <instancedMesh ref={mesh} args={[undefined, undefined, cells.length]} receiveShadow
+    <instancedMesh ref={mesh} args={[undefined, undefined, cells.length]}
       onClick={(e: ThreeEvent<MouseEvent>) => { e.stopPropagation(); if (e.instanceId != null) onPick(cells[e.instanceId]); }}>
       <boxGeometry args={[1, 1, 1]} />
       <meshStandardMaterial roughness={0.55} metalness={0} />
@@ -152,26 +152,28 @@ function Selection({ board, cell }: { board: Board; cell: Cell | null }) {
 }
 
 /** Moves the camera to a view or zooms it, easing over ~0.7s, then hands control back to the player. */
-function CameraRig({ cmd }: { cmd: CameraCmd }) {
+function CameraRig({ cmd, flip }: { cmd: CameraCmd; flip: boolean }) {
   const { camera, size, invalidate } = useThree();
   const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3; update: () => void } | null;
   const goal = useRef<THREE.Vector3 | null>(null);
-  const last = useRef(-1); // -1 so the first run fits the camera to the screen
+  const last = useRef({ n: -1, f: false }); // n = -1 so the first run fits the camera to the screen
   useEffect(() => {
-    if (cmd.nonce === last.current) return;
-    last.current = cmd.nonce;
+    if (cmd.nonce === last.current.n && flip === last.current.f) return;
+    const kind = cmd.nonce === last.current.n ? "angled" : cmd.kind; // a change of side just turns the view round to face the player
+    last.current = { n: cmd.nonce, f: flip };
+    const sg = flip ? -1 : 1;
     const aspect = size.width / Math.max(1, size.height);
-    const fit = aspect < 1 ? 1 / Math.max(0.55, aspect) : 1; // pull back on tall phones so the whole board stays visible
-    if (cmd.kind === "angled") goal.current = new THREE.Vector3(0, 19 * fit, 8 * fit + 2.2);
-    else if (cmd.kind === "top") goal.current = new THREE.Vector3(0, 21 * fit, 2.2);
+    const fit = (aspect < 1 ? 1 / Math.max(0.55, aspect) : 1) * 0.93; // pull back on tall phones so the whole board stays visible
+    if (kind === "angled") goal.current = new THREE.Vector3(0, 19 * fit, sg * (8 * fit + 2.2));
+    else if (kind === "top") goal.current = new THREE.Vector3(0, 21 * fit, sg * 2.21);
     else {
       const t = controls?.target ?? new THREE.Vector3();
       const dir = camera.position.clone().sub(t);
-      const dist = THREE.MathUtils.clamp(dir.length() * (cmd.kind === "zoomIn" ? 0.8 : 1.25), 7, 28);
+      const dist = THREE.MathUtils.clamp(dir.length() * (kind === "zoomIn" ? 0.8 : 1.25), 7, 28);
       goal.current = t.clone().add(dir.setLength(dist));
     }
     invalidate();
-  }, [cmd, camera, controls, size, invalidate]);
+  }, [cmd, flip, camera, controls, size, invalidate]);
   useFrame((_, dt) => {
     if (!goal.current) return;
     camera.position.lerp(goal.current, 1 - Math.pow(0.0006, dt));
@@ -182,24 +184,24 @@ function CameraRig({ cmd }: { cmd: CameraCmd }) {
   return null;
 }
 
-export function BoardScene({ board, selected, onPick, cmd, children }: { board: Board; selected: Cell | null; onPick: (c: Cell) => void; cmd: CameraCmd; children?: ReactNode }) {
+export function BoardScene({ board, selected, onPick, cmd, children, flip = false }: { flip?: boolean; board: Board; selected: Cell | null; onPick: (c: Cell) => void; cmd: CameraCmd; children?: ReactNode }) {
   return (
-    <Canvas flat shadows="soft" frameloop="demand" dpr={[1, 2]} camera={{ position: [0, 19, 9], fov: 34, near: 0.1, far: 80 }} gl={{ antialias: true, powerPreference: "high-performance" }}
+    <Canvas flat frameloop="demand" dpr={[1, 2]} camera={{ position: [0, 19 * 0.93, (flip ? -1 : 1) * (8 * 0.93 + 2.2)], fov: 34, near: 0.1, far: 80 }} gl={{ antialias: true, powerPreference: "high-performance" }}
       style={{ touchAction: "none" }} onPointerMissed={() => onPick(null as unknown as Cell)}>
       <color attach="background" args={[BOARD_COLORS.backdrop]} />
       <ambientLight intensity={2.1} />
-      <directionalLight position={[3, 14, 6]} intensity={0.9} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-9} shadow-camera-right={9} shadow-camera-top={9} shadow-camera-bottom={-9} shadow-bias={-0.0004} />
+      <directionalLight position={[3, 14, 6]} intensity={0.9} />
       {/* the grid lines: a flat dark sheet under the tiles, no slab or frame */}
-      <mesh position={[0, 0.0, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow><planeGeometry args={[board.width * CELL + GAP, board.height * CELL + GAP]} /><meshBasicMaterial color={BOARD_COLORS.line} /></mesh>
+      <mesh position={[0, 0.0, 0]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[board.width * CELL + GAP, board.height * CELL + GAP]} /><meshBasicMaterial color={BOARD_COLORS.line} /></mesh>
       <Tiles board={board} onPick={onPick} />
       <Claimed board={board} />
       <Dots board={board} />
       <Diamonds board={board} />
       <Selection board={board} cell={selected} />
       {children}
-      <OrbitControls makeDefault enablePan={false} target={[0, 0, 2.2]} enableDamping dampingFactor={0.12} minDistance={7} maxDistance={30} minPolarAngle={0} maxPolarAngle={0.62} minAzimuthAngle={0} maxAzimuthAngle={0} rotateSpeed={0.5} zoomSpeed={0.8}
+      <OrbitControls makeDefault enablePan={false} target={[0, 0, (flip ? -1 : 1) * 2.2]} enableDamping dampingFactor={0.12} minDistance={7} maxDistance={30} minPolarAngle={0} maxPolarAngle={0.62} rotateSpeed={0.5} zoomSpeed={0.8}
         touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE }} />
-      <CameraRig cmd={cmd} />
+      <CameraRig cmd={cmd} flip={flip} />
     </Canvas>
   );
 }
