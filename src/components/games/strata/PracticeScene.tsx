@@ -10,6 +10,14 @@ import type { PlayerColor } from "@/games/strata/engine/types";
 
 export type HeldBlock = { id: string; cubes: Cubes; x: number; y: number };
 
+/** Keeps the block you are holding fully on the board: it can be moved anywhere, but never partly off the edge. */
+export function clampHeld(board: { width: number; height: number }, h: HeldBlock | null): HeldBlock | null {
+  if (!h) return h;
+  const w = Math.max(...h.cubes.map((c) => c[0])) + 1, d = Math.max(...h.cubes.map((c) => c[1])) + 1;
+  const x = Math.max(0, Math.min(board.width - w, h.x)), y = Math.max(0, Math.min(board.height - d, h.y));
+  return x === h.x && y === h.y ? h : { ...h, x, y };
+}
+
 export type SceneExtras = {
   /** The tiles under this turn's temporary blocks, tinted in the player's colour. */
   outline?: { cells: Array<{ x: number; y: number }>; color: PlayerColor; strong: boolean };

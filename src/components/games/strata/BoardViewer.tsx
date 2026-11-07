@@ -8,7 +8,7 @@ import { PLAYER_COLORS } from "@/games/strata/config/palette";
 import { PIECES, STARTER_SET, flip, rollSide, rotateYaw, size, tiltPitch, type Cubes } from "@/games/strata/engine/pieces";
 import { place, REASON_TEXT } from "@/games/strata/engine/placement";
 import type { Board, Cell } from "@/games/strata/engine/types";
-import type { HeldBlock } from "./PracticeScene";
+import { clampHeld, type HeldBlock } from "./PracticeScene";
 import type { PlacedPiece } from "./Blocks";
 import { cx } from "@/lib/utils";
 
@@ -30,7 +30,9 @@ const recentre = (prev: Cubes, next: Cubes, x: number, y: number) => {
 export function BoardViewer() {
   const [real] = useState<Board>(() => createBoard(BOARD_11));
   const [placed, setPlaced] = useState<PlacedPiece[]>([]);
-  const [held, setHeld] = useState<HeldBlock | null>(null);
+  const [held, setHeldRaw] = useState<HeldBlock | null>(null);
+  // whatever sets the held block (a tap, a drag, the keys, a turn) it always ends up fully on the board
+  const setHeld = useCallback((v: HeldBlock | null | ((h: HeldBlock | null) => HeldBlock | null)) => setHeldRaw((prev) => clampHeld(BOARD_11, typeof v === "function" ? v(prev) : v)), []);
   const [preview, setPreview] = useState(false);
   const [selected, setSelected] = useState<Cell | null>(null);
   const [gl] = useState(() => (typeof document === "undefined" ? true : hasWebGL()));

@@ -12,7 +12,7 @@ import { PLAY_REASON_TEXT } from "@/games/strata/engine/play";
 import { PIECES, flip, rollSide, rotateYaw, size, tiltPitch, type Cubes } from "@/games/strata/engine/pieces";
 import { place, type Placement } from "@/games/strata/engine/placement";
 import type { Board, PlayerColor } from "@/games/strata/engine/types";
-import type { HeldBlock, SceneExtras } from "./PracticeScene";
+import { clampHeld, type HeldBlock, type SceneExtras } from "./PracticeScene";
 import type { PlacedPiece } from "./Blocks";
 import { cx } from "@/lib/utils";
 
@@ -35,7 +35,9 @@ function hasWebGL() { try { const c = document.createElement("canvas"); return !
 export function GameView() {
   const [state, setState] = useState<GameState | null>(null);
   const [anim, setAnim] = useState<Anim | null>(null);
-  const [held, setHeld] = useState<HeldBlock | null>(null);
+  const [held, setHeldRaw] = useState<HeldBlock | null>(null);
+  // whatever sets the held block (a tap, a drag, the keys, a turn) it always ends up fully on the board
+  const setHeld = useCallback((v: HeldBlock | null | ((h: HeldBlock | null) => HeldBlock | null)) => setHeldRaw((prev) => clampHeld(BOARD_11, typeof v === "function" ? v(prev) : v)), []);
   const [note, setNote] = useState<string | null>(null);
   const [slots, setSlots] = useState<Array<{ name: string; kind: "human" | "ai"; level: Level }>>([
     { name: "Player 1", kind: "human", level: "intermediate" }, { name: "Computer", kind: "ai", level: "intermediate" },
@@ -164,14 +166,15 @@ export function GameView() {
     const onKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.closest("input,textarea,select")) return;
       const k = e.key.toLowerCase();
+      const f = viewFlip ? -1 : 1; // arrows follow the screen: the board is turned round for players whose corner is at the top
       if (k === "escape") setHeld(null);
       else if (!held || !humanTurn) return;
-      else if (k === "arrowleft") setHeld((h) => (h ? { ...h, x: h.x - 1 } : h)); else if (k === "arrowright") setHeld((h) => (h ? { ...h, x: h.x + 1 } : h)); else if (k === "arrowup") setHeld((h) => (h ? { ...h, y: h.y - 1 } : h)); else if (k === "arrowdown") setHeld((h) => (h ? { ...h, y: h.y + 1 } : h));
+      else if (k === "arrowleft") setHeld((h) => (h ? { ...h, x: h.x - f } : h)); else if (k === "arrowright") setHeld((h) => (h ? { ...h, x: h.x + f } : h)); else if (k === "arrowup") setHeld((h) => (h ? { ...h, y: h.y - f } : h)); else if (k === "arrowdown") setHeld((h) => (h ? { ...h, y: h.y + f } : h));
       else if (k === "r") transform(rotateYaw); else if (k === "t") transform(tiltPitch); else if (k === "f") transform(flip); else if (k === "enter") confirm(); else return;
       e.preventDefault();
     };
     window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey);
-  }, [held, humanTurn, transform, confirm]);
+  }, [held, humanTurn, transform, confirm, viewFlip, setHeld]);
 
   const btn = "btn-press inline-flex min-h-11 items-center justify-center rounded-xl bg-night-3 px-3.5 text-sm font-bold disabled:opacity-40";
   const dot = (c: PlayerColor) => <span aria-hidden className="inline-block h-3 w-3 rounded-sm" style={{ background: PLAYER_COLORS[c].hex }} />;

@@ -154,7 +154,7 @@ function Selection({ board, cell }: { board: Board; cell: Cell | null }) {
 const StretchContext = createContext(1);
 export const useStretch = () => useContext(StretchContext);
 
-const TILT = (32 * Math.PI) / 180; // how far the camera leans toward you from straight above
+const TILT = (24 * Math.PI) / 180; // how far the camera leans toward you from straight above
 const aim = (cam: THREE.OrthographicCamera, zoom: number, flip: boolean) => {
   const D = 60, sg = flip ? -1 : 1;
   cam.up.set(0, 1, 0);

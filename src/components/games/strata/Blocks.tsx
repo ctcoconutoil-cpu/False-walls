@@ -64,13 +64,13 @@ export function PlacedBlocks({ board, placed, vanish = false }: { board: Board; 
 }
 function Dropped({ board, piece, vanish }: { board: Board; piece: PlacedPiece; vanish: boolean }) {
   const ref = useRef<THREE.Group>(null);
-  const y = useRef(1.1);
+  const y = useRef(0);
   const k = useRef(1);
   const invalidate = useThree((s) => s.invalidate);
   const min = useMemo(() => ({ x: Math.min(...piece.world.map((c) => c[0])), y: Math.min(...piece.world.map((c) => c[1])), z: Math.min(...piece.world.map((c) => c[2])) }), [piece]);
   const local = useMemo(() => piece.world.map((c): Cube => [c[0] - min.x, c[1] - min.y, c[2] - min.z]), [piece, min]);
   const pos = useMemo(() => anchor(board, local, min.x, min.y, min.z), [board, local, min]);
-  // The group starts lifted and eases down; position is set here rather than as a prop so re-renders don't reset it.
+  // position is set here rather than as a prop so re-renders don't reset it.
   useLayoutEffect(() => { ref.current?.position.set(pos[0], pos[1] + y.current, pos[2]); invalidate(); }, [pos, invalidate]);
   useFrame((_, dt) => {
     if (ref.current && vanish && k.current > 0) {
@@ -91,15 +91,15 @@ function Dropped({ board, piece, vanish }: { board: Board; piece: PlacedPiece; v
 }
 
 /**
- * The block you are holding: lifted above the board with a shadow, plus a coloured preview where it will land and the
- * tiles it covers. Drag the lifted block to move it; it snaps to whole tiles.
+ * The block you are holding: it rests on the board where it would go (faded when it does not fit), with the tiles it covers
+ * outlined. Drag it to move it; it snaps to whole tiles and never leaves the board.
  */
 export function Held({ board, cubes, x, y, placement, onMove, color }: { color?: PlayerColor | null; board: Board; cubes: Cubes; x: number; y: number; placement: Placement; onMove: (x: number, y: number) => void }) {
   const controls = useThree((s) => s.controls) as unknown as { enabled: boolean } | null;
   const dragging = useRef(false);
   const k = useStretch();
   const s = size(cubes);
-  const lift = placement.base + 1.1;
+  const lift = placement.base; // the block rests on the board where it would go, it does not hover
   const move = (e: ThreeEvent<PointerEvent>) => {
     if (!dragging.current) return;
     // intersect the pointer ray with a horizontal plane through the lifted block, so it doesn't jump when grabbed
@@ -108,7 +108,7 @@ export function Held({ board, cubes, x, y, placement, onMove, color }: { color?:
     if (!e.ray.intersectPlane(plane, hit)) return;
     const cx = hit.x / 1 + (board.width - 1) / 2, cy = hit.z / k + (board.height - 1) / 2; // pointer in cell units
     const nx = Math.round(cx - (s.w - 1) / 2), ny = Math.round(cy - (s.d - 1) / 2);
-    if (nx !== x || ny !== y) onMove(Math.max(-s.w, Math.min(board.width, nx)), Math.max(-s.d, Math.min(board.height, ny)));
+    if (nx !== x || ny !== y) onMove(nx, ny); // the caller keeps it on the board
   };
   const down = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation(); dragging.current = true;
@@ -133,7 +133,7 @@ export function Held({ board, cubes, x, y, placement, onMove, color }: { color?:
         })}
       <group position={float} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
         onPointerOver={() => setCursor("grab")} onPointerOut={() => setCursor("")}>
-        <PieceMesh cubes={cubes} />
+        <PieceMesh cubes={cubes} kind={placement.valid ? "solid" : "dim"} />
       </group>
     </>
   );
