@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import { Line, OrbitControls } from "@react-three/drei";
+import { Line } from "@react-three/drei";
 import * as THREE from "three";
 import type { Board, Cell, PlayerColor } from "@/games/strata/engine/types";
 import { BOARD_COLORS, PLAYER_COLORS, PLAYER_PATTERN, type PatternId } from "@/games/strata/config/palette";
 
-export type CameraCmd = { kind: "angled" | "top" | "zoomIn" | "zoomOut"; nonce: number };
+/** Where the camera looks: a cell to zoom in on, or null for the whole board. */
+export type Focus = { x: number; y: number } | null;
 
 const CELL = 1;
 const GAP = 0.04;
@@ -151,42 +152,47 @@ function Selection({ board, cell }: { board: Board; cell: Cell | null }) {
   return <group position={[x, TOP + 0.02, z]}><Line points={pts} color="#FF6B4A" lineWidth={3} /></group>;
 }
 
-/** Moves the camera to a view or zooms it, easing over ~0.7s, then hands control back to the player. */
-function CameraRig({ cmd, flip }: { cmd: CameraCmd; flip: boolean }) {
+const FOV = 34;
+/**
+ * A fixed camera looking straight down at the board, like the reference screens: no tilt and no turning.
+ * It shows the whole board, and eases in a little on the block just placed so the placement is easy to see.
+ */
+function TopCamera({ board, flip, focus }: { board: Board; flip: boolean; focus: Focus }) {
   const { camera, size, invalidate } = useThree();
-  const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3; update: () => void } | null;
-  const goal = useRef<THREE.Vector3 | null>(null);
-  const last = useRef({ n: -1, f: false }); // n = -1 so the first run fits the camera to the screen
-  useEffect(() => {
-    if (cmd.nonce === last.current.n && flip === last.current.f) return;
-    const kind = cmd.nonce === last.current.n ? "angled" : cmd.kind; // a change of side just turns the view round to face the player
-    last.current = { n: cmd.nonce, f: flip };
-    const sg = flip ? -1 : 1;
+  const cur = useRef<{ x: number; z: number; h: number } | null>(null);
+  const goal = useMemo(() => {
+    const tan = Math.tan((FOV * Math.PI) / 360);
     const aspect = size.width / Math.max(1, size.height);
-    const fit = (aspect < 1 ? 1 / Math.max(0.55, aspect) : 1) * 1.0; // pull back on tall phones so the whole board stays visible
-    if (kind === "angled") goal.current = new THREE.Vector3(0, 11.5 * fit * 1.18, sg * (11 * fit * 1.18 + 2.2));
-    else if (kind === "top") goal.current = new THREE.Vector3(0, 18 * fit * 1.1, sg * 2.21);
-    else {
-      const t = controls?.target ?? new THREE.Vector3();
-      const dir = camera.position.clone().sub(t);
-      const dist = THREE.MathUtils.clamp(dir.length() * (kind === "zoomIn" ? 0.8 : 1.25), 7, 28);
-      goal.current = t.clone().add(dir.setLength(dist));
-    }
-    invalidate();
-  }, [cmd, flip, camera, controls, size, invalidate]);
+    const bw = board.width * CELL + 0.9, bh = board.height * CELL + 0.9;
+    const full = Math.max(bw / (2 * tan * aspect), bh / (2 * tan));
+    if (!focus) return { x: 0, z: 0, h: full };
+    const h = full * 0.78; // a gentle zoom: most of the board stays in view
+    const visW = 2 * h * tan * aspect, visH = 2 * h * tan;
+    const [fx, fz] = toWorld(board, focus.x, focus.y);
+    const lim = (half: number, vis: number) => Math.max(0, half - vis / 2);
+    const clamp = (v: number, m: number) => Math.max(-m, Math.min(m, v));
+    return { x: clamp(fx, lim(bw / 2, visW)), z: clamp(fz, lim(bh / 2, visH)), h };
+  }, [board, size, focus]);
+  const place = (c: { x: number; z: number; h: number }) => {
+    camera.up.set(0, 0, flip ? 1 : -1); // the player's own side is at the bottom of the screen
+    camera.position.set(c.x, c.h, c.z + 0.0001);
+    camera.lookAt(c.x, 0, c.z);
+  };
+  useLayoutEffect(() => { if (!cur.current) cur.current = { ...goal }; place(cur.current); invalidate(); });
   useFrame((_, dt) => {
-    if (!goal.current) return;
-    camera.position.lerp(goal.current, 1 - Math.pow(0.0006, dt));
-    controls?.update();
-    if (camera.position.distanceTo(goal.current) < 0.02) { camera.position.copy(goal.current); goal.current = null; }
-    invalidate();
+    const c = cur.current; if (!c) return;
+    const k = 1 - Math.pow(0.002, dt);
+    const near = Math.abs(c.x - goal.x) + Math.abs(c.z - goal.z) + Math.abs(c.h - goal.h) < 0.01;
+    if (near) { if (c.x !== goal.x || c.z !== goal.z || c.h !== goal.h) { c.x = goal.x; c.z = goal.z; c.h = goal.h; place(c); invalidate(); } return; }
+    c.x += (goal.x - c.x) * k; c.z += (goal.z - c.z) * k; c.h += (goal.h - c.h) * k;
+    place(c); invalidate();
   });
   return null;
 }
 
-export function BoardScene({ board, selected, onPick, cmd, children, flip = false }: { flip?: boolean; board: Board; selected: Cell | null; onPick: (c: Cell) => void; cmd: CameraCmd; children?: ReactNode }) {
+export function BoardScene({ board, selected, onPick, focus = null, children, flip = false }: { flip?: boolean; focus?: Focus; board: Board; selected: Cell | null; onPick: (c: Cell) => void; children?: ReactNode }) {
   return (
-    <Canvas flat frameloop="demand" dpr={[1, 2]} camera={{ position: [0, 11.5 * 1.18, (flip ? -1 : 1) * (11 * 1.18 + 2.2)], fov: 36, near: 0.1, far: 80 }} gl={{ antialias: true, powerPreference: "high-performance" }}
+    <Canvas flat frameloop="demand" dpr={[1, 2]} camera={{ position: [0, 20, 0.001], fov: FOV, near: 0.1, far: 80 }} gl={{ antialias: true, powerPreference: "high-performance" }}
       style={{ touchAction: "none" }} onPointerMissed={() => onPick(null as unknown as Cell)}>
       <color attach="background" args={[BOARD_COLORS.backdrop]} />
       <ambientLight intensity={1.9} />
@@ -201,9 +207,7 @@ export function BoardScene({ board, selected, onPick, cmd, children, flip = fals
       <Diamonds board={board} />
       <Selection board={board} cell={selected} />
       {children}
-      <OrbitControls makeDefault enablePan={false} target={[0, 0, (flip ? -1 : 1) * 3.4]} enableDamping dampingFactor={0.12} minDistance={7} maxDistance={28} minPolarAngle={0} maxPolarAngle={1.25} rotateSpeed={0.7} zoomSpeed={0.8}
-        touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE }} />
-      <CameraRig cmd={cmd} flip={flip} />
+      <TopCamera board={board} flip={flip} focus={focus} />
     </Canvas>
   );
 }

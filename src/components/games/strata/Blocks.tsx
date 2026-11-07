@@ -90,28 +90,6 @@ function Dropped({ board, piece, vanish }: { board: Board; piece: PlacedPiece; v
   return <group ref={ref}><PieceMesh cubes={local} /></group>;
 }
 
-/** The blocks waiting beside the board. Tap one to pick it up. */
-export function Tray({ board, items, activeId, onSelect, flip = false }: { flip?: boolean; board: Board; items: Array<{ id: string; cubes: Cubes }>; activeId: string | null; onSelect: (id: string) => void }) {
-  const perRow = 3, scale = 0.78, gapX = 3.7, gapZ = 3, z0 = board.height / 2 + 2.1;
-  return (
-    <>
-      {items.map((it, i) => {
-        const row = Math.floor(i / perRow), col = i % perRow, inRow = Math.min(perRow, items.length - row * perRow);
-        const x = (col - (inRow - 1) / 2) * gapX * (flip ? -1 : 1), z = (flip ? -1 : 1) * (z0 + row * gapZ);
-        return (
-          <group key={it.id} position={[x, TOP, z]} scale={scale}
-            onClick={(e: ThreeEvent<MouseEvent>) => { e.stopPropagation(); onSelect(it.id); }}
-            onPointerOver={() => setCursor("pointer")} onPointerOut={() => setCursor("")}>
-            <PieceMesh cubes={it.cubes} kind={activeId === it.id ? "dim" : "solid"} />
-            {/* a generous invisible hit area so small blocks are easy to tap on a phone */}
-            <mesh position={[0, 1, 0]}><boxGeometry args={[4.4, 3, 3.8]} /><meshBasicMaterial visible={false} /></mesh>
-          </group>
-        );
-      })}
-    </>
-  );
-}
-
 /**
  * The block you are holding: lifted above the board with a shadow, plus a coloured preview where it will land and the
  * tiles it covers. Drag the lifted block to move it; it snaps to whole tiles.

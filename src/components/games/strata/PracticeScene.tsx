@@ -2,8 +2,8 @@
 import type { Board, Cell } from "@/games/strata/engine/types";
 import type { Cubes } from "@/games/strata/engine/pieces";
 import type { Placement } from "@/games/strata/engine/placement";
-import { BoardScene, type CameraCmd } from "./BoardScene";
-import { Held, PlacedBlocks, Tray, type PlacedPiece } from "./Blocks";
+import { BoardScene, type Focus } from "./BoardScene";
+import { Held, PlacedBlocks, type PlacedPiece } from "./Blocks";
 import { FillLayer, Outline } from "./Territory";
 import type { FillStep } from "@/games/strata/engine/animation";
 import type { PlayerColor } from "@/games/strata/engine/types";
@@ -19,20 +19,20 @@ export type SceneExtras = {
   vanish?: boolean;
 };
 
-export function PracticeScene({ board, selected, onPick, cmd, placed, tray, held, placement, onSelectTray, onMove, extras, color, flip = false }: {
+export function PracticeScene({ board, selected, onPick, focus, placed, held, placement, onMove, extras, color, flip = false }: {
+  focus?: Focus;
   flip?: boolean;
   color?: PlayerColor | null;
   extras?: SceneExtras;
-  board: Board; selected: Cell | null; onPick: (c: Cell) => void; cmd: CameraCmd; placed: PlacedPiece[];
-  tray: Array<{ id: string; cubes: Cubes }>; held: HeldBlock | null; placement: Placement | null;
-  onSelectTray: (id: string) => void; onMove: (x: number, y: number) => void;
+  board: Board; selected: Cell | null; onPick: (c: Cell) => void; placed: PlacedPiece[];
+  held: HeldBlock | null; placement: Placement | null;
+  onMove: (x: number, y: number) => void;
 }) {
   return (
-    <BoardScene board={board} selected={selected} onPick={onPick} cmd={cmd} flip={flip}>
+    <BoardScene board={board} selected={selected} onPick={onPick} focus={focus} flip={flip}>
       {extras?.outline && extras.outline.cells.length > 0 && <Outline board={board} cells={extras.outline.cells} color={extras.outline.color} strong={extras.outline.strong} />}
       {extras?.fill && <FillLayer board={board} plan={extras.fill.plan} onDone={extras.fill.onDone} />}
       <PlacedBlocks board={board} placed={placed} vanish={extras?.vanish} />
-      <Tray board={board} items={tray} activeId={held?.id ?? null} onSelect={onSelectTray} flip={flip} />
       {held && placement && <Held board={board} cubes={held.cubes} x={held.x} y={held.y} placement={placement} onMove={onMove} color={color ?? null} />}
     </BoardScene>
   );

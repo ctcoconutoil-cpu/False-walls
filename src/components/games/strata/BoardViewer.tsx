@@ -8,11 +8,11 @@ import { PLAYER_COLORS } from "@/games/strata/config/palette";
 import { PIECES, STARTER_SET, flip, rollSide, rotateYaw, size, tiltPitch, type Cubes } from "@/games/strata/engine/pieces";
 import { place, REASON_TEXT } from "@/games/strata/engine/placement";
 import type { Board, Cell } from "@/games/strata/engine/types";
-import type { CameraCmd } from "./BoardScene";
 import type { HeldBlock } from "./PracticeScene";
 import type { PlacedPiece } from "./Blocks";
 import { cx } from "@/lib/utils";
 
+const TrayView = dynamic(() => import("./TrayView").then((m) => m.TrayView), { ssr: false, loading: () => <div className="fw-skel h-full w-full" aria-busy="true" /> });
 const PracticeScene = dynamic(() => import("./PracticeScene").then((m) => m.PracticeScene), { ssr: false, loading: () => <div className="fw-skel h-full w-full" aria-busy="true" /> });
 
 function hasWebGL() {
@@ -33,13 +33,11 @@ export function BoardViewer() {
   const [held, setHeld] = useState<HeldBlock | null>(null);
   const [preview, setPreview] = useState(false);
   const [selected, setSelected] = useState<Cell | null>(null);
-  const [cmd, setCmd] = useState<CameraCmd>({ kind: "angled", nonce: 0 });
   const [gl] = useState(() => (typeof document === "undefined" ? true : hasWebGL()));
   const [note, setNote] = useState<string | null>(null);
 
   const board = useMemo(() => (preview ? previewTerritory(real) : real), [real, preview]);
   const placement = useMemo(() => (held ? place(real, held.cubes, held.x, held.y, new Set(placed.flatMap((p) => p.world.map((c) => c.join(","))))) : null), [held, real, placed]);
-  const send = (kind: CameraCmd["kind"]) => setCmd((c) => ({ kind, nonce: c.nonce + 1 }));
 
   const select = useCallback((id: string) => {
     const cubes = PIECES[id].cubes as Cubes, s = size(cubes);
@@ -90,11 +88,12 @@ export function BoardViewer() {
   if (!gl) return <div className="rounded-2xl bg-night-2 p-5 text-sm text-chalk-dim">This device can&apos;t draw 3D graphics, which STRATA needs. Try another browser or turn on hardware acceleration.</div>;
   return (
     <div className="space-y-3">
-      <div className="relative h-[62vh] min-h-[380px] touch-none overflow-hidden rounded-3xl bg-night-2" data-testid="strata-board">
-        <PracticeScene board={board} selected={selected} onPick={onPick} cmd={cmd} placed={placed} tray={TRAY} held={held} placement={placement} onSelectTray={select}
+      <div className="relative aspect-[100/104] touch-none overflow-hidden rounded-3xl bg-night-2" data-testid="strata-board">
+        <PracticeScene board={board} selected={selected} onPick={onPick} placed={placed} held={held} placement={placement}
           onMove={(x, y) => setHeld((h) => (h ? { ...h, x, y } : h))} />
-        <p className="pointer-events-none absolute inset-x-0 bottom-2 text-center text-[11px] text-chalk-dim/80">{held ? "Drag the lifted block, or tap a tile to move it" : "Tap a block below the board to pick it up"}</p>
       </div>
+      <div className="mt-2 h-[150px] overflow-hidden rounded-2xl bg-night-2"><TrayView items={TRAY} activeId={held?.id ?? null} onSelect={select} /></div>
+      <p className="text-center text-[11px] text-chalk-dim/80">{held ? "Drag the lifted block, or tap a tile to move it" : "Tap a block below the board to pick it up"}</p>
 
       <section aria-label="Block controls" className="space-y-2 rounded-2xl bg-night-2 p-3" data-testid="block-panel">
         <p className="text-sm" aria-live="polite" data-testid="block-status">
@@ -119,11 +118,6 @@ export function BoardViewer() {
       </section>
 
       <div className="flex flex-wrap gap-2" role="toolbar" aria-label="Camera">
-        <button type="button" className={btn} onClick={() => send("angled")}>Angled</button>
-        <button type="button" className={btn} onClick={() => send("top")}>Top view</button>
-        <button type="button" className={btn} onClick={() => send("zoomIn")} aria-label="Zoom in">＋</button>
-        <button type="button" className={btn} onClick={() => send("zoomOut")} aria-label="Zoom out">－</button>
-        <button type="button" className={btn} onClick={() => { setSelected(null); send("angled"); }}>Reset</button>
         <button type="button" aria-pressed={preview} className={cx(btn, preview && "!bg-mustard !text-[#2a1d00]")} onClick={() => setPreview((p) => !p)}>Preview claimed and captured</button>
       </div>
       <div className="min-h-[4.5rem] rounded-2xl bg-night-2 p-3.5 text-sm" aria-live="polite">

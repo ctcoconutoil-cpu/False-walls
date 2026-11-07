@@ -12,11 +12,11 @@ import { PLAY_REASON_TEXT } from "@/games/strata/engine/play";
 import { PIECES, flip, rollSide, rotateYaw, size, tiltPitch, type Cubes } from "@/games/strata/engine/pieces";
 import { place, type Placement } from "@/games/strata/engine/placement";
 import type { Board, PlayerColor } from "@/games/strata/engine/types";
-import type { CameraCmd } from "./BoardScene";
 import type { HeldBlock, SceneExtras } from "./PracticeScene";
 import type { PlacedPiece } from "./Blocks";
 import { cx } from "@/lib/utils";
 
+const TrayView = dynamic(() => import("./TrayView").then((m) => m.TrayView), { ssr: false, loading: () => <div className="fw-skel h-full w-full" aria-busy="true" /> });
 const PracticeScene = dynamic(() => import("./PracticeScene").then((m) => m.PracticeScene), { ssr: false, loading: () => <div className="fw-skel h-full w-full" aria-busy="true" /> });
 
 const ORDER: PlayerColor[] = ["blue", "turquoise", "yellow", "orange"]; // opposite corners first, so a 2 player game is fair
@@ -36,7 +36,6 @@ export function GameView() {
   const [state, setState] = useState<GameState | null>(null);
   const [anim, setAnim] = useState<Anim | null>(null);
   const [held, setHeld] = useState<HeldBlock | null>(null);
-  const [cmd, setCmd] = useState<CameraCmd>({ kind: "angled", nonce: 0 });
   const [note, setNote] = useState<string | null>(null);
   const [slots, setSlots] = useState<Array<{ name: string; kind: "human" | "ai"; level: Level }>>([
     { name: "Player 1", kind: "human", level: "intermediate" }, { name: "Computer", kind: "ai", level: "intermediate" },
@@ -81,6 +80,13 @@ export function GameView() {
     const mine = state.board.cells.flat().filter((c) => c.startOf === me.color);
     if (mine.length) setViewFlip(mine.reduce((a, c) => a + c.y, 0) / mine.length < state.board.height / 2);
   }, [state, me]);
+  // once a block is down the view eases in a little on it; it goes back to the whole board when the move is confirmed
+  const lastBlock = state?.turn.placed[state.turn.placed.length - 1];
+  const focus = useMemo(() => {
+    if (!lastBlock || anim) return null;
+    const xs = lastBlock.world.map((c) => c[0]), ys = lastBlock.world.map((c) => c[1]);
+    return { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
+  }, [lastBlock, anim]);
   const busy = !!anim;
   const humanTurn = !!state && state.status !== "finished" && !busy && me?.kind === "human";
   const standingBoard = anim?.before ?? state?.board ?? null;
@@ -103,7 +109,6 @@ export function GameView() {
     fill: anim?.stage === "reveal" ? { plan: anim.plan, onDone: animDone } : undefined,
     vanish: anim?.vanish,
   }), [state, anim, preview, animDone]);
-  const send = (kind: CameraCmd["kind"]) => setCmd((c) => ({ kind, nonce: c.nonce + 1 }));
 
   const select = (id: string) => { if (!humanTurn) return; const cubes = PIECES[id].cubes as Cubes, s = size(cubes); setHeld({ id, cubes, x: Math.round((BOARD_11.width - s.w) / 2), y: Math.round((BOARD_11.height - s.d) / 2) }); setNote(null); };
   const transform = useCallback((fn: (c: Cubes) => Cubes) => setHeld((h) => { if (!h) return h; const cubes = fn(h.cubes); return { ...h, cubes, ...recentre(h.cubes, cubes, h.x, h.y) }; }), []);
@@ -244,11 +249,16 @@ export function GameView() {
           </li>); })}
       </ul>
 
-      <div className="relative -mx-4 h-[62vh] min-h-[400px] touch-none overflow-hidden bg-night-2" data-testid="strata-board">
-        <PracticeScene flip={viewFlip} color={me?.color ?? null} extras={extras} board={standingBoard ?? state.board} selected={null} onPick={(c) => { if (humanTurn && held && c) { const s = size(held.cubes); setHeld({ ...held, x: c.x - Math.floor(s.w / 2), y: c.y - Math.floor(s.d / 2) }); } }} cmd={cmd} placed={placed} tray={over ? [] : tray} held={over ? null : held} placement={shown}
-          onSelectTray={select} onMove={(x, y) => { if (humanTurn) setHeld((h) => (h ? { ...h, x, y } : h)); }} />
-        <p className="pointer-events-none absolute inset-x-0 bottom-2 text-center text-[11px] text-chalk-dim/80">{over ? "Game over" : anim?.stage === "confirmed" ? "Move confirmed. The blocks are coming off." : busy ? "Filling in the new territory…" : held ? "Drag the lifted block, or tap a tile to move it" : "Tap one of your blocks below the board"}</p>
+      <div className="relative -mx-4 aspect-[100/104] touch-none overflow-hidden bg-night-2" data-testid="strata-board">
+        <PracticeScene flip={viewFlip} color={me?.color ?? null} extras={extras} board={standingBoard ?? state.board} selected={null} onPick={(c) => { if (humanTurn && held && c) { const s = size(held.cubes); setHeld({ ...held, x: c.x - Math.floor(s.w / 2), y: c.y - Math.floor(s.d / 2) }); } }} focus={focus} placed={placed} held={over ? null : held} placement={shown}
+          onMove={(x, y) => { if (humanTurn) setHeld((h) => (h ? { ...h, x, y } : h)); }} />
       </div>
+
+      {/* the blocks waiting for you: their own row, well clear of the board, seen from the front */}
+      <div className="mt-6 h-[150px] touch-manipulation overflow-hidden rounded-2xl bg-night-2" data-testid="strata-tray">
+        {!over && <TrayView items={tray} activeId={held?.id ?? null} onSelect={select} />}
+      </div>
+      <p className="text-center text-[11px] text-chalk-dim/80">{over ? "Game over" : anim?.stage === "confirmed" ? "Move confirmed. The blocks are coming off." : busy ? "Filling in the new territory…" : held ? "Drag the lifted block, or tap a tile to move it" : "Tap one of your blocks below the board"}</p>
 
       {over ? (
         <section className="space-y-3 rounded-2xl bg-night-2 p-4" aria-label="Result" data-testid="result">
@@ -306,14 +316,6 @@ export function GameView() {
         </section>
         </>
       )}
-
-      <div className="flex flex-wrap gap-2" role="toolbar" aria-label="Camera">
-        <button type="button" className={btn} onClick={() => send("angled")}>Angled</button>
-        <button type="button" className={btn} onClick={() => send("top")}>Top view</button>
-        <button type="button" className={btn} onClick={() => send("zoomIn")} aria-label="Zoom in">＋</button>
-        <button type="button" className={btn} onClick={() => send("zoomOut")} aria-label="Zoom out">－</button>
-        <button type="button" className={btn} onClick={() => send("angled")}>Reset</button>
-      </div>
     </div>
   );
 }
