@@ -2,7 +2,7 @@
 import type { Board, Cell } from "@/games/strata/engine/types";
 import type { Cubes } from "@/games/strata/engine/pieces";
 import type { Placement } from "@/games/strata/engine/placement";
-import { BoardScene, type Focus } from "./BoardScene";
+import { BoardScene } from "./BoardScene";
 import { Held, PlacedBlocks, type PlacedPiece } from "./Blocks";
 import { FillLayer, Outline } from "./Territory";
 import type { FillStep } from "@/games/strata/engine/animation";
@@ -19,8 +19,7 @@ export type SceneExtras = {
   vanish?: boolean;
 };
 
-export function PracticeScene({ board, selected, onPick, focus, placed, held, placement, onMove, extras, color, flip = false }: {
-  focus?: Focus;
+export function PracticeScene({ board, selected, onPick, placed, held, placement, onMove, extras, color, flip = false }: {
   flip?: boolean;
   color?: PlayerColor | null;
   extras?: SceneExtras;
@@ -29,7 +28,7 @@ export function PracticeScene({ board, selected, onPick, focus, placed, held, pl
   onMove: (x: number, y: number) => void;
 }) {
   return (
-    <BoardScene board={board} selected={selected} onPick={onPick} focus={focus} flip={flip}>
+    <BoardScene board={board} selected={selected} onPick={onPick} flip={flip}>
       {extras?.outline && extras.outline.cells.length > 0 && <Outline board={board} cells={extras.outline.cells} color={extras.outline.color} strong={extras.outline.strong} />}
       {extras?.fill && <FillLayer board={board} plan={extras.fill.plan} onDone={extras.fill.onDone} />}
       <PlacedBlocks board={board} placed={placed} vanish={extras?.vanish} />

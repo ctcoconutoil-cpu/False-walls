@@ -6,8 +6,6 @@ import * as THREE from "three";
 import type { Board, Cell, PlayerColor } from "@/games/strata/engine/types";
 import { BOARD_COLORS, PLAYER_COLORS, PLAYER_PATTERN, type PatternId } from "@/games/strata/config/palette";
 
-/** Where the camera looks: a cell to zoom in on, or null for the whole board. */
-export type Focus = { x: number; y: number } | null;
 
 const CELL = 1;
 const GAP = 0.04;
@@ -155,9 +153,9 @@ function Selection({ board, cell }: { board: Board; cell: Cell | null }) {
 const FOV = 34;
 /**
  * A fixed camera looking straight down at the board, like the reference screens: no tilt and no turning.
- * It shows the whole board, and eases in a little on the block just placed so the placement is easy to see.
+ * It always shows the whole board, sized to fit the space it is given.
  */
-function TopCamera({ board, flip, focus }: { board: Board; flip: boolean; focus: Focus }) {
+function TopCamera({ board, flip }: { board: Board; flip: boolean }) {
   const { camera, size, invalidate } = useThree();
   const cur = useRef<{ x: number; z: number; h: number } | null>(null);
   const goal = useMemo(() => {
@@ -165,14 +163,8 @@ function TopCamera({ board, flip, focus }: { board: Board; flip: boolean; focus:
     const aspect = size.width / Math.max(1, size.height);
     const bw = board.width * CELL + 0.9, bh = board.height * CELL + 0.9;
     const full = Math.max(bw / (2 * tan * aspect), bh / (2 * tan));
-    if (!focus) return { x: 0, z: 0, h: full };
-    const h = full * 0.78; // a gentle zoom: most of the board stays in view
-    const visW = 2 * h * tan * aspect, visH = 2 * h * tan;
-    const [fx, fz] = toWorld(board, focus.x, focus.y);
-    const lim = (half: number, vis: number) => Math.max(0, half - vis / 2);
-    const clamp = (v: number, m: number) => Math.max(-m, Math.min(m, v));
-    return { x: clamp(fx, lim(bw / 2, visW)), z: clamp(fz, lim(bh / 2, visH)), h };
-  }, [board, size, focus]);
+    return { x: 0, z: 0, h: full };
+  }, [board, size]);
   const place = (c: { x: number; z: number; h: number }) => {
     camera.up.set(0, 0, flip ? 1 : -1); // the player's own side is at the bottom of the screen
     camera.position.set(c.x, c.h, c.z + 0.0001);
@@ -190,7 +182,7 @@ function TopCamera({ board, flip, focus }: { board: Board; flip: boolean; focus:
   return null;
 }
 
-export function BoardScene({ board, selected, onPick, focus = null, children, flip = false }: { flip?: boolean; focus?: Focus; board: Board; selected: Cell | null; onPick: (c: Cell) => void; children?: ReactNode }) {
+export function BoardScene({ board, selected, onPick, children, flip = false }: { flip?: boolean; board: Board; selected: Cell | null; onPick: (c: Cell) => void; children?: ReactNode }) {
   return (
     <Canvas flat frameloop="demand" dpr={[1, 2]} camera={{ position: [0, 20, 0.001], fov: FOV, near: 0.1, far: 80 }} gl={{ antialias: true, powerPreference: "high-performance" }}
       style={{ touchAction: "none" }} onPointerMissed={() => onPick(null as unknown as Cell)}>
@@ -207,7 +199,7 @@ export function BoardScene({ board, selected, onPick, focus = null, children, fl
       <Diamonds board={board} />
       <Selection board={board} cell={selected} />
       {children}
-      <TopCamera board={board} flip={flip} focus={focus} />
+      <TopCamera board={board} flip={flip} />
     </Canvas>
   );
 }

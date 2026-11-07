@@ -80,13 +80,6 @@ export function GameView() {
     const mine = state.board.cells.flat().filter((c) => c.startOf === me.color);
     if (mine.length) setViewFlip(mine.reduce((a, c) => a + c.y, 0) / mine.length < state.board.height / 2);
   }, [state, me]);
-  // once a block is down the view eases in a little on it; it goes back to the whole board when the move is confirmed
-  const lastBlock = state?.turn.placed[state.turn.placed.length - 1];
-  const focus = useMemo(() => {
-    if (!lastBlock || anim) return null;
-    const xs = lastBlock.world.map((c) => c[0]), ys = lastBlock.world.map((c) => c[1]);
-    return { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
-  }, [lastBlock, anim]);
   const busy = !!anim;
   const humanTurn = !!state && state.status !== "finished" && !busy && me?.kind === "human";
   const standingBoard = anim?.before ?? state?.board ?? null;
@@ -188,7 +181,7 @@ export function GameView() {
   // ---------- setup ----------
   if (!state) {
     return (
-      <div className="space-y-5">
+      <div className="mx-auto h-dvh max-w-2xl space-y-5 overflow-y-auto px-4 pb-8 pt-4">
         <div><Link href="/games/strata" className="text-sm text-chalk-dim underline">STRATA</Link><h1 className="display mt-1 text-3xl font-black">Pass and play</h1><p className="mt-1 text-chalk-dim">Take turns on one device. Everything is calculated on your device, so it works offline once the page has loaded.</p></div>
         {saved && saved.state.status !== "finished" && (
           <div className="flex items-center justify-between gap-3 rounded-2xl bg-night-2 p-4"><span className="text-sm"><b>Game in progress</b><span className="block text-chalk-dim">{saved.state.players.map((p) => p.name).join(" vs ")} · turn {saved.state.turnNumber}</span></span>
@@ -233,88 +226,86 @@ export function GameView() {
   const over = state.status === "finished" && !anim;
   const w = over ? winners(state) : [];
   const blockNo = STRATA_RULES.blocksPerTurn - state.turn.hand.length + (state.turn.hand.length ? 1 : 0);
+  const me2 = me!;
+  const round = "btn-press grid shrink-0 place-items-center rounded-full border-2 border-mustard/60 bg-night-2 text-xl font-black leading-none shadow-[0_3px_0_#0b0714] disabled:opacity-35";
+  const ctl = (label: string, glyph: string, on: () => void, opts: { disabled?: boolean; big?: boolean; tone?: "coral" | "mustard"; testid?: string; aria?: string } = {}) => (
+    <button type="button" disabled={opts.disabled} onClick={on} data-testid={opts.testid} aria-label={opts.aria ?? label} className="flex flex-col items-center gap-1 disabled:opacity-100">
+      <span className={cx(round, opts.big ? "h-14 w-14 text-2xl" : "h-11 w-11", opts.tone === "coral" && !opts.disabled && "!border-coral !bg-coral !text-[#2a0d08]", opts.tone === "mustard" && !opts.disabled && "!border-mustard !bg-mustard !text-[#2a1d00]", opts.disabled && "opacity-35")}>{glyph}</span>
+      <span className={cx("text-[11px] font-bold", opts.disabled ? "text-chalk-dim/50" : "text-chalk")}>{label}</span>
+    </button>
+  );
+  const status = over ? "Game over"
+    : anim?.stage === "confirmed" ? "Move confirmed. The blocks are coming off."
+    : busy ? "Filling in the new territory…"
+    : me2.kind === "ai" ? `${me2.name} is ${held ? "placing a block…" : "thinking…"}`
+    : held && check ? (check.ok ? `Fits. Place the ${PIECES[held.id].name} when it looks right.` : `Can't place here. ${PLAY_REASON_TEXT[check.reason]}`)
+    : state.turn.hand.length ? (stuck ? "No block fits anywhere. Confirm to end your turn." : `Block ${Math.min(blockNo, STRATA_RULES.blocksPerTurn)} of ${STRATA_RULES.blocksPerTurn}: tap a block below to pick it up. ${note ?? ""}`)
+    : `All three blocks are down. Check the score, then confirm. ${note ?? ""}`;
+  const mine = !over && me2.kind === "human";
   return (
-    <div className="space-y-3">
-      <header className="flex items-center justify-between gap-3">
-        <h1 className="display text-xl font-black tracking-[0.14em]">STRATA</h1>
-        <div className="flex gap-3 text-sm"><Link href="/games/strata/how-to-play" className="underline">Rules</Link><button type="button" className="underline" onClick={() => { if (over || window.confirm("Leave this game? It will be lost.")) leave(); }}>{over ? "Done" : "Leave"}</button></div>
+    <div className="mx-auto flex h-dvh max-w-md flex-col overflow-hidden bg-night pb-[max(8px,env(safe-area-inset-bottom))]">
+      <header className="flex items-center gap-2 border-b-2 border-mustard/50 bg-night-2 px-2 pb-2 pt-[max(8px,env(safe-area-inset-top))]">
+        <button type="button" aria-label={over ? "Done" : "Leave game"} className="btn-press grid h-10 w-10 shrink-0 place-items-center rounded-full text-2xl text-mustard" onClick={() => { if (over || window.confirm("Leave this game? It will be lost.")) leave(); }}>‹</button>
+        <ul className="grid min-w-0 flex-1 gap-1.5" style={{ gridTemplateColumns: `repeat(${state.players.length}, minmax(0, 1fr))` }} aria-label="Scores">
+          {state.players.map((pl, i) => { const r = standing.find((x) => x.index === i)!; const on = !over && state.turn.player === i; return (
+            <li key={pl.id} aria-current={on ? "true" : undefined} className="min-w-0 rounded-xl bg-night px-1.5 py-1 text-center" style={on ? { boxShadow: `0 0 0 2px ${PLAYER_COLORS[pl.color].hex}` } : undefined}>
+              <div className="flex items-center justify-center gap-1 truncate text-[11px] leading-tight text-chalk-dim">{dot(pl.color)}<span className="truncate">{pl.kind === "ai" ? "🤖 " : ""}{pl.name}</span></div>
+              <div className="display text-xl font-black leading-none" data-testid={`score-${i}`}>{r.score}</div>
+              <div className="truncate text-[10px] leading-tight text-chalk-dim">{r.claimed} claimed · {r.captured} captured</div>
+            </li>); })}
+        </ul>
+        <Link href="/games/strata/how-to-play" aria-label="Rules" className="btn-press grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-mustard/60 text-base font-black text-mustard">?</Link>
       </header>
 
-      <ul className="grid gap-2" style={{ gridTemplateColumns: `repeat(${state.players.length}, minmax(0, 1fr))` }} aria-label="Scores">
-        {state.players.map((p, i) => { const r = standing.find((x) => x.index === i)!; const on = !over && state.turn.player === i; return (
-          <li key={p.id} aria-current={on ? "true" : undefined} className={cx("rounded-2xl bg-night-2 p-2.5 text-center", on && "ring-2")} style={on ? { boxShadow: `0 0 0 2px ${PLAYER_COLORS[p.color].hex}` } : undefined}>
-            <div className="flex items-center justify-center gap-1.5 truncate text-xs text-chalk-dim">{dot(p.color)}<span className="truncate">{p.kind === "ai" ? "🤖 " : ""}{p.name}</span></div>
-            <div className="display text-2xl font-black leading-tight" data-testid={`score-${i}`}>{r.score}</div>
-            <div className="text-[11px] text-chalk-dim">{r.claimed} claimed · {r.captured} captured</div>
-          </li>); })}
-      </ul>
-
-      <div className="relative -mx-4 aspect-[100/104] touch-none overflow-hidden bg-night-2" data-testid="strata-board">
-        <PracticeScene flip={viewFlip} color={me?.color ?? null} extras={extras} board={standingBoard ?? state.board} selected={null} onPick={(c) => { if (humanTurn && held && c) { const s = size(held.cubes); setHeld({ ...held, x: c.x - Math.floor(s.w / 2), y: c.y - Math.floor(s.d / 2) }); } }} focus={focus} placed={placed} held={over ? null : held} placement={shown}
+      <div className="relative min-h-0 flex-1 touch-none overflow-hidden" data-testid="strata-board">
+        <PracticeScene flip={viewFlip} color={me?.color ?? null} extras={extras} board={standingBoard ?? state.board} selected={null} onPick={(c) => { if (humanTurn && held && c) { const s = size(held.cubes); setHeld({ ...held, x: c.x - Math.floor(s.w / 2), y: c.y - Math.floor(s.d / 2) }); } }} placed={placed} held={over ? null : held} placement={shown}
           onMove={(x, y) => { if (humanTurn) setHeld((h) => (h ? { ...h, x, y } : h)); }} />
       </div>
 
-      {/* the blocks waiting for you: their own row, well clear of the board, seen from the front */}
-      <div className="mt-6 h-[150px] touch-manipulation overflow-hidden rounded-2xl bg-night-2" data-testid="strata-tray">
+      <div className="px-3 py-1.5 text-center" aria-live="polite" data-testid="block-status">
+        <p className="text-[13px] leading-snug">
+          {state.status === "final_round" && !over && <span className="mr-1 rounded-full bg-mustard px-2 py-0.5 text-[11px] font-black text-[#2a1d00]">Final round</span>}
+          <b style={{ color: PLAYER_COLORS[me2.color].hex }}>{me2.name}</b> <span className="text-chalk-dim">· {status}</span>
+        </p>
+        {mine && preview && (
+          <p className="mt-0.5 text-[13px]" data-testid="score-preview">
+            <b>If you confirm: </b>
+            <span className="text-chalk-dim">claimed {preview.gain.claimed >= 0 ? "+" : ""}{preview.gain.claimed}×{STRATA_RULES.claimedPoints}, captured +{preview.gain.captured}×{STRATA_RULES.capturedPoints}{preview.gain.heightBonus > 0 ? `, height bonus +${preview.gain.heightBonus}` : ""}{preview.opponentLoss > 0 ? `, taken from others −${preview.opponentLoss}` : ""} = </span>
+            <b style={{ color: PLAYER_COLORS[me2.color].hex }}>{preview.gain.total >= 0 ? "+" : ""}{preview.gain.total}</b>
+          </p>
+        )}
+      </div>
+
+      {/* the blocks waiting for you: their own row, clear of the board, seen from the front */}
+      <div className="mx-3 h-[22dvh] max-h-[170px] min-h-[96px] touch-manipulation overflow-hidden rounded-2xl bg-night-2" data-testid="strata-tray">
         {!over && <TrayView items={tray} activeId={held?.id ?? null} onSelect={select} />}
       </div>
-      <p className="text-center text-[11px] text-chalk-dim/80">{over ? "Game over" : anim?.stage === "confirmed" ? "Move confirmed. The blocks are coming off." : busy ? "Filling in the new territory…" : held ? "Drag the lifted block, or tap a tile to move it" : "Tap one of your blocks below the board"}</p>
 
-      {over ? (
-        <section className="space-y-3 rounded-2xl bg-night-2 p-4" aria-label="Result" data-testid="result">
-          <h2 className="display text-2xl font-black">{w.length > 1 ? "It's a tie" : `${w[0].name} wins`}</h2>
-          <ol className="space-y-1.5">{standing.map((r, i) => <li key={r.player.id} className="flex items-center gap-2 text-sm"><span className="w-5 text-chalk-dim">{i + 1}.</span>{dot(r.player.color)}<b className="flex-1 truncate">{r.player.name}</b><span>{r.score} pts</span><span className="text-xs text-chalk-dim">{r.claimed} claimed · {r.captured} captured</span></li>)}</ol>
-          <p className="text-xs text-chalk-dim">{state.history.length} turns played.</p>
-          <div className="flex flex-wrap gap-2"><button type="button" className={cx(btn, "!bg-coral !text-[#2a0d08]")} onClick={() => start(state.players)}>Rematch</button><button type="button" className={btn} onClick={leave}>New game</button><Link href="/games" className={btn}>Games</Link><Link href="/" className={btn}>Back to False Walls</Link></div>
-        </section>
-      ) : (
-        <>
-        <section aria-label="Your turn" className="space-y-2 rounded-2xl bg-night-2 p-3" data-testid="block-panel">
-          {me!.kind === "ai" ? (
-            <p className="flex items-center gap-2 text-sm" aria-live="polite" data-testid="block-status">
-              <b style={{ color: PLAYER_COLORS[me!.color].hex }}>🤖 {me!.name}</b>
-              {state.status === "final_round" && <span className="rounded-full bg-mustard px-2 py-0.5 text-[11px] font-black text-[#2a1d00]">Final round</span>}
-              <span className="text-chalk-dim">{held ? "is placing a block…" : "is thinking…"}</span>
-              <span aria-hidden className="ml-auto flex gap-1">{[0, 1, 2].map((i) => <i key={i} className="fw-twinkle block h-1.5 w-1.5 rounded-full bg-coral" style={{ animationDelay: `${i * 0.2}s` }} />)}</span>
-            </p>
-          ) : (<>
-          <p className="text-sm" aria-live="polite" data-testid="block-status">
-            <b style={{ color: PLAYER_COLORS[me!.color].hex }}>{me!.name}</b>
-            {state.status === "final_round" && <span className="ml-1 rounded-full bg-mustard px-2 py-0.5 text-[11px] font-black text-[#2a1d00]">Final round</span>}
-            {" · "}
-            {anim?.stage === "confirmed" ? <>Move confirmed and scored.</> : busy ? <>Filling in the territory…</>
-              : held && check ? (check.ok ? <><b className="text-[#3ddc97]">Fits.</b> Place the {PIECES[held.id].name} when it looks right.</> : <><b className="text-[#ff7a7a]">Can&apos;t place here.</b> {PLAY_REASON_TEXT[check.reason]}</>)
-              : state.turn.hand.length ? (stuck ? <>No block fits anywhere. Confirm to end your turn.</> : <>Block {Math.min(blockNo, STRATA_RULES.blocksPerTurn)} of {STRATA_RULES.blocksPerTurn}: pick one up and place it. {note}</>) : <>All three blocks are down. Check the score below, then confirm. {note}</>}
-          </p>
-          {preview && (
-            <div className="rounded-xl bg-night p-2.5 text-sm" data-testid="score-preview" aria-live="polite">
-              <b>If you confirm</b>
-              <ul className="mt-1 space-y-0.5 text-chalk-dim">
-                <li>Claimed tiles: <b className="text-chalk">{preview.gain.claimed >= 0 ? "+" : ""}{preview.gain.claimed}</b> × {STRATA_RULES.claimedPoints} points</li>
-                <li>Captured tiles: <b className="text-chalk">+{preview.gain.captured}</b> × {STRATA_RULES.capturedPoints} points</li>
-                {preview.gain.heightBonus > 0 && <li>Height tile capture bonus: <b className="text-chalk">+{preview.gain.heightBonus}</b></li>}
-                {preview.opponentLoss > 0 && <li>Taken from others: <b className="text-chalk">−{preview.opponentLoss}</b></li>}
-              </ul>
-              <p className="mt-1 font-black">Total <span style={{ color: PLAYER_COLORS[me!.color].hex }}>{preview.gain.total >= 0 ? "+" : ""}{preview.gain.total}</span> points</p>
-            </div>
-          )}
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className={btn} disabled={!held} onClick={() => transform(turnLeft)} aria-label="Rotate left">↺ Left</button>
-            <button type="button" className={btn} disabled={!held} onClick={() => transform(rotateYaw)} aria-label="Rotate right">↻ Right</button>
-            <button type="button" className={btn} disabled={!held} onClick={() => transform(tiltPitch)} aria-label="Tip forward">⤵ Tip</button>
-            <button type="button" className={btn} disabled={!held} onClick={() => transform(rollSide)} aria-label="Roll sideways">⟳ Roll</button>
-            <button type="button" className={btn} disabled={!held} onClick={() => transform(flip)} aria-label="Flip (mirror)">⇋ Flip</button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className={cx(btn, "!bg-coral !text-[#2a0d08]")} disabled={!held || !check?.ok || busy} onClick={confirm} data-testid="confirm">Place block</button>
-            <button type="button" className={btn} disabled={!held} onClick={() => setHeld(null)}>Put back</button>
-            <button type="button" className={btn} disabled={state.turn.placed.length === 0 || busy} onClick={undo} data-testid="undo">Undo block</button>
-            <button type="button" className={cx(btn, submit_ok && "!bg-mustard !text-[#2a1d00]")} disabled={!submit_ok || busy} onClick={endTurn} data-testid="end-turn">Confirm move</button>
-          </div>
-          </>)}
-          {me!.kind === "ai" && note && <p className="text-xs text-chalk-dim">{note}</p>}
-        </section>
-        </>
+      <div className="mt-2 space-y-2 px-3">
+        <div className="flex items-start justify-around" role="toolbar" aria-label="Turn the block">
+          {ctl("Left", "↺", () => transform(turnLeft), { disabled: !held || !mine, aria: "Rotate left" })}
+          {ctl("Right", "↻", () => transform(rotateYaw), { disabled: !held || !mine, aria: "Rotate right" })}
+          {ctl("Tip", "⤵", () => transform(tiltPitch), { disabled: !held || !mine, aria: "Tip forward" })}
+          {ctl("Roll", "⟳", () => transform(rollSide), { disabled: !held || !mine, aria: "Roll sideways" })}
+          {ctl("Flip", "⇋", () => transform(flip), { disabled: !held || !mine, aria: "Flip (mirror)" })}
+        </div>
+        <div className="flex items-start justify-around" role="toolbar" aria-label="Your move">
+          {ctl("Put back", "✕", () => setHeld(null), { disabled: !held || !mine })}
+          {ctl("Undo", "↶", undo, { disabled: !mine || state.turn.placed.length === 0 || busy, testid: "undo", aria: "Undo block" })}
+          {ctl("Place", "⬇", confirm, { disabled: !mine || !held || !check?.ok || busy, big: true, tone: "coral", testid: "confirm", aria: "Place block" })}
+          {ctl("Confirm", "✓", endTurn, { disabled: !mine || !submit_ok || busy, big: true, tone: "mustard", testid: "end-turn", aria: "Confirm move" })}
+        </div>
+      </div>
+
+      {over && (
+        <div className="fixed inset-0 z-[70] grid place-items-center bg-night/90 p-4">
+          <section className="w-full max-w-sm space-y-3 rounded-2xl bg-night-2 p-4" aria-label="Result" data-testid="result">
+            <h2 className="display text-2xl font-black">{w.length > 1 ? "It's a tie" : `${w[0].name} wins`}</h2>
+            <ol className="space-y-1.5">{standing.map((r, i) => <li key={r.player.id} className="flex items-center gap-2 text-sm"><span className="w-5 text-chalk-dim">{i + 1}.</span>{dot(r.player.color)}<b className="flex-1 truncate">{r.player.name}</b><span>{r.score} pts</span><span className="text-xs text-chalk-dim">{r.claimed} claimed · {r.captured} captured</span></li>)}</ol>
+            <p className="text-xs text-chalk-dim">{state.history.length} turns played.</p>
+            <div className="flex flex-wrap gap-2"><button type="button" className={cx(btn, "!bg-coral !text-[#2a0d08]")} onClick={() => start(state.players)}>Rematch</button><button type="button" className={btn} onClick={leave}>New game</button><Link href="/games" className={btn}>Games</Link></div>
+          </section>
+        </div>
       )}
     </div>
   );
