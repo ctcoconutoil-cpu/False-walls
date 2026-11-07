@@ -9,7 +9,7 @@ import { BOARD_COLORS, PLAYER_COLORS, PLAYER_PATTERN, type PatternId } from "@/g
 export type CameraCmd = { kind: "angled" | "top" | "zoomIn" | "zoomOut"; nonce: number };
 
 const CELL = 1;
-const GAP = 0.05;
+const GAP = 0.04;
 const TOP = 0.06; // thickness of a tile
 
 /** World position of the centre of a cell. The board is centred on the origin. */
@@ -163,9 +163,9 @@ function CameraRig({ cmd, flip }: { cmd: CameraCmd; flip: boolean }) {
     last.current = { n: cmd.nonce, f: flip };
     const sg = flip ? -1 : 1;
     const aspect = size.width / Math.max(1, size.height);
-    const fit = (aspect < 1 ? 1 / Math.max(0.55, aspect) : 1) * 0.93; // pull back on tall phones so the whole board stays visible
-    if (kind === "angled") goal.current = new THREE.Vector3(0, 19 * fit, sg * (8 * fit + 2.2));
-    else if (kind === "top") goal.current = new THREE.Vector3(0, 21 * fit, sg * 2.21);
+    const fit = (aspect < 1 ? 1 / Math.max(0.55, aspect) : 1) * 1.0; // pull back on tall phones so the whole board stays visible
+    if (kind === "angled") goal.current = new THREE.Vector3(0, 11.5 * fit * 1.18, sg * (11 * fit * 1.18 + 2.2));
+    else if (kind === "top") goal.current = new THREE.Vector3(0, 18 * fit * 1.1, sg * 2.21);
     else {
       const t = controls?.target ?? new THREE.Vector3();
       const dir = camera.position.clone().sub(t);
@@ -186,20 +186,22 @@ function CameraRig({ cmd, flip }: { cmd: CameraCmd; flip: boolean }) {
 
 export function BoardScene({ board, selected, onPick, cmd, children, flip = false }: { flip?: boolean; board: Board; selected: Cell | null; onPick: (c: Cell) => void; cmd: CameraCmd; children?: ReactNode }) {
   return (
-    <Canvas flat frameloop="demand" dpr={[1, 2]} camera={{ position: [0, 19 * 0.93, (flip ? -1 : 1) * (8 * 0.93 + 2.2)], fov: 34, near: 0.1, far: 80 }} gl={{ antialias: true, powerPreference: "high-performance" }}
+    <Canvas flat frameloop="demand" dpr={[1, 2]} camera={{ position: [0, 11.5 * 1.18, (flip ? -1 : 1) * (11 * 1.18 + 2.2)], fov: 36, near: 0.1, far: 80 }} gl={{ antialias: true, powerPreference: "high-performance" }}
       style={{ touchAction: "none" }} onPointerMissed={() => onPick(null as unknown as Cell)}>
       <color attach="background" args={[BOARD_COLORS.backdrop]} />
-      <ambientLight intensity={2.1} />
-      <directionalLight position={[3, 14, 6]} intensity={0.9} />
-      {/* the grid lines: a flat dark sheet under the tiles, no slab or frame */}
-      <mesh position={[0, 0.0, 0]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[board.width * CELL + GAP, board.height * CELL + GAP]} /><meshBasicMaterial color={BOARD_COLORS.line} /></mesh>
+      <ambientLight intensity={1.9} />
+      <directionalLight position={[6, 12, 5]} intensity={1.1} />
+      <hemisphereLight args={["#ffffff", "#2a1d4a", 0.35]} />
+      {/* the slab the tiles sit in */}
+      <mesh position={[0, -0.16, 0]}><boxGeometry args={[board.width * CELL + 0.7, 0.3, board.height * CELL + 0.7]} /><meshStandardMaterial color={BOARD_COLORS.line} roughness={0.7} /></mesh>
+      <mesh position={[0, -0.02, 0]}><boxGeometry args={[board.width * CELL + 0.4, 0.05, board.height * CELL + 0.4]} /><meshStandardMaterial color="#d8d8d4" roughness={0.7} /></mesh>
       <Tiles board={board} onPick={onPick} />
       <Claimed board={board} />
       <Dots board={board} />
       <Diamonds board={board} />
       <Selection board={board} cell={selected} />
       {children}
-      <OrbitControls makeDefault enablePan={false} target={[0, 0, (flip ? -1 : 1) * 2.2]} enableDamping dampingFactor={0.12} minDistance={7} maxDistance={30} minPolarAngle={0} maxPolarAngle={0.62} rotateSpeed={0.5} zoomSpeed={0.8}
+      <OrbitControls makeDefault enablePan={false} target={[0, 0, (flip ? -1 : 1) * 3.4]} enableDamping dampingFactor={0.12} minDistance={7} maxDistance={28} minPolarAngle={0} maxPolarAngle={1.25} rotateSpeed={0.7} zoomSpeed={0.8}
         touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE }} />
       <CameraRig cmd={cmd} flip={flip} />
     </Canvas>

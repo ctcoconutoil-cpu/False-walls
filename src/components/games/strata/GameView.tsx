@@ -25,7 +25,7 @@ const turnLeft = (c: Cubes) => rotateYaw(rotateYaw(rotateYaw(c)));
 const recentre = (prev: Cubes, next: Cubes, x: number, y: number) => { const a = size(prev), b = size(next); return { x: Math.round(x + (a.w - b.w) / 2), y: Math.round(y + (a.d - b.d) / 2) }; };
 
 type Saved = { state: GameState };
-type Anim = { plan: FillStep[]; before: Board; blocks: PlacedPiece[]; vanish: boolean; /** "confirmed": score is in, blocks still stand, waiting for Remove blocks. "reveal": blocks shrink away and the colour fills in. */ stage: "confirmed" | "reveal"; color: PlayerColor; mover: "human" | "ai" };
+type Anim = { plan: FillStep[]; before: Board; blocks: PlacedPiece[]; vanish: boolean; /** "confirmed": score is in, blocks still stand, for a moment before they come off by themselves. "reveal": blocks shrink away and the colour fills in. */ stage: "confirmed" | "reveal"; color: PlayerColor; mover: "human" | "ai" };
 const load = (): Saved | null => { try { const r = localStorage.getItem(KEY); return r ? (JSON.parse(r) as Saved) : null; } catch { return null; } };
 const save = (v: Saved | null) => { try { if (v) localStorage.setItem(KEY, JSON.stringify(v)); else localStorage.removeItem(KEY); } catch { /* storage can be unavailable; the game still works */ } };
 const newSeed = () => (Math.floor(Math.random() * 2 ** 31) >>> 0) || 1;
@@ -64,16 +64,15 @@ export function GameView() {
     const plan = fillPlan(sub.resolution, sub.blocks);
     commitState(sub.state);
     if (plan.length) {
-      // Stage 1: the move is confirmed and scored, but the blocks stay put. Stage 2 (removeBlocks) takes them away and reveals the territory.
+      // Stage 1: the move is confirmed and scored and the blocks stay put for a moment. Stage 2 takes them away by itself and reveals the territory.
       const mover = activePlayer(s);
       setAnim({ plan, before: s.board, blocks, vanish: false, stage: "confirmed", color: mover.color, mover: mover.kind });
-      if (mover.kind === "ai") window.setTimeout(() => setAnim((a) => (a && a.plan === plan && a.stage === "confirmed" ? { ...a, stage: "reveal", vanish: true } : a)), 1100);
+      window.setTimeout(() => setAnim((a) => (a && a.plan === plan && a.stage === "confirmed" ? { ...a, stage: "reveal", vanish: true } : a)), mover.kind === "ai" ? 1100 : 800);
     }
     return sub;
   };
   const animDone = useCallback(() => setAnim(null), []);
-  const removeBlocks = () => setAnim((a) => (a && a.stage === "confirmed" ? { ...a, stage: "reveal", vanish: true } : a));
-
+  
   const me = state ? activePlayer(state) : null;
   // turn the view so the mover's own colour is on the side nearest them; the computer's turn leaves it as it was
   const [viewFlip, setViewFlip] = useState(false);
@@ -248,7 +247,7 @@ export function GameView() {
       <div className="relative -mx-4 h-[62vh] min-h-[400px] touch-none overflow-hidden bg-night-2" data-testid="strata-board">
         <PracticeScene flip={viewFlip} color={me?.color ?? null} extras={extras} board={standingBoard ?? state.board} selected={null} onPick={(c) => { if (humanTurn && held && c) { const s = size(held.cubes); setHeld({ ...held, x: c.x - Math.floor(s.w / 2), y: c.y - Math.floor(s.d / 2) }); } }} cmd={cmd} placed={placed} tray={over ? [] : tray} held={over ? null : held} placement={shown}
           onSelectTray={select} onMove={(x, y) => { if (humanTurn) setHeld((h) => (h ? { ...h, x, y } : h)); }} />
-        <p className="pointer-events-none absolute inset-x-0 bottom-2 text-center text-[11px] text-chalk-dim/80">{over ? "Game over" : anim?.stage === "confirmed" ? "Move confirmed. Remove the blocks to see the new territory." : busy ? "Filling in the new territory…" : held ? "Drag the lifted block, or tap a tile to move it" : "Tap one of your blocks below the board"}</p>
+        <p className="pointer-events-none absolute inset-x-0 bottom-2 text-center text-[11px] text-chalk-dim/80">{over ? "Game over" : anim?.stage === "confirmed" ? "Move confirmed. The blocks are coming off." : busy ? "Filling in the new territory…" : held ? "Drag the lifted block, or tap a tile to move it" : "Tap one of your blocks below the board"}</p>
       </div>
 
       {over ? (
@@ -260,12 +259,6 @@ export function GameView() {
         </section>
       ) : (
         <>
-        {anim?.stage === "confirmed" && anim.mover === "human" && (
-          <div className="flex items-center gap-3 rounded-2xl bg-night-2 p-3" role="status">
-            <p className="flex-1 text-sm"><b>Move confirmed.</b> <span className="text-chalk-dim">The score is in. Remove your blocks to reveal the new territory.</span></p>
-            <button type="button" className="btn-press inline-flex min-h-11 items-center rounded-xl bg-coral px-4 text-sm font-black text-[#2a0d08]" onClick={removeBlocks} data-testid="remove-blocks">Remove blocks</button>
-          </div>
-        )}
         <section aria-label="Your turn" className="space-y-2 rounded-2xl bg-night-2 p-3" data-testid="block-panel">
           {me!.kind === "ai" ? (
             <p className="flex items-center gap-2 text-sm" aria-live="polite" data-testid="block-status">

@@ -41,8 +41,8 @@ export default function HowToPlay() {
           <li>Pick up a block, turn it, move it over the board and press <b className="text-chalk">Place block</b>. Green fits, red doesn&apos;t. Do the same for the second and third.</li>
           <li>The tiles under your blocks are outlined in your colour. No score is shown yet.</li>
           <li>Once all {R.blocksPerTurn} are down, the game checks the whole arrangement and shows what the move would score. You can still undo blocks.</li>
-          <li>Press <b className="text-chalk">Confirm move</b>. Your score updates, but the blocks stay standing so everyone can see what you built.</li>
-          <li>Press <b className="text-chalk">Remove blocks</b>. The blocks shrink away and your colour fills the tiles you claimed or captured. The computer does this step by itself.</li>
+          <li>Press <b className="text-chalk">Confirm move</b>. Your score updates and everyone sees what you built.</li>
+          <li>A moment later the blocks shrink away by themselves and your colour fills the tiles you claimed or captured.</li>
         </ol></section>
 
       <section className="space-y-2"><H id="rules">Where blocks can go</H>

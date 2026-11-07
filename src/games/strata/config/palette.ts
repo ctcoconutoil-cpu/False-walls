@@ -10,8 +10,8 @@ export const PLAYER_COLORS: Record<PlayerColor, { name: string; hex: string; dee
   rose: { name: "Rose", hex: "#D1466B", deep: "#9a2c4a" },
 };
 
-/** Flat on-screen board like the reference app: cream tiles, thin black grid lines, near-black blocked tiles, warm tan table. */
-export const BOARD_COLORS = { tile: "#F5F1E6", line: "#0d0f16", black: "#0d1020", frame: "#e9e9e6", dot: "#15151a", backdrop: "#d9c6a3" };
+/** The 3D board: pale tiles on a light slab, near-black blocked tiles, dark purple table. */
+export const BOARD_COLORS = { tile: "#F6F6F4", line: "#c9c9c6", black: "#17171b", frame: "#e9e9e6", dot: "#1c1c20", backdrop: "#1b1230" };
 
 /**
  * Territory patterns. A pattern is only a look for CLAIMED tiles (captured tiles are solid); it never changes how a tile plays.
