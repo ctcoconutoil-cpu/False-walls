@@ -22,13 +22,7 @@ function describe(n: Notif): { text: string; href: string } {
     case "reaction": return { text: `${who} reacted to your wall.`, href: post };
     case "follow": return { text: `${who} followed you.`, href: n.actor ? `/profile/${n.actor.username}` : "/inbox" };
     case "chain": return { text: `${who} built a related wall from yours.`, href: post };
-    case "badge": return { text: `You earned a badge: ${String(n.data.name ?? "")}.`, href: n.data.adventure ? "/adventure/rewards" : "/profile/me" };
-    case "adventure": {
-      const team = n.data.team_id ? `/adventure/team/${String(n.data.team_id)}` : "/adventure";
-      if (n.data.event === "invite") return { text: `${who} invited you to the team ${String(n.data.name ?? "")}.`, href: "/adventure" };
-      if (n.data.event === "complete") return { text: `Your team ${String(n.data.name ?? "")} finished its collection.`, href: team };
-      return { text: `You unlocked ${String(n.data.name ?? "a reward")}.`, href: "/adventure/rewards" };
-    }
+    case "badge": return { text: `You earned a badge: ${String(n.data.name ?? "")}.`, href: "/profile/me" };
     default: return { text: "Something new on the walls.", href: post };
   }
 }
@@ -98,7 +92,7 @@ export default async function Inbox({ searchParams }: { searchParams: Promise<{ 
         {(unreadC.count ?? 0) > 0 && <MarkRead />}
         <ul className="space-y-2">{rows.map((n) => { const d = describe(n); return (
           <li key={n.id}><Link href={d.href} className={cx("flex items-center gap-3 rounded-2xl p-3", n.read_at ? "bg-night-2" : "bg-night-3 ring-2 ring-mustard/60")}>
-            {n.actor ? <Avatar user={n.actor} size={36} /> : <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-night text-lg">{n.kind === "badge" ? "★" : n.kind === "adventure" ? "🧭" : "?"}</span>}
+            {n.actor ? <Avatar user={n.actor} size={36} /> : <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-night text-lg">{n.kind === "badge" ? "★" :  "?"}</span>}
             <span className="min-w-0 flex-1"><span className="block">{d.text}</span><span className="block text-xs text-chalk-dim">{timeAgo(n.created_at)}</span></span>
             {!n.read_at && <span className="sr-only">Unread</span>}
           </Link></li>); })}</ul>

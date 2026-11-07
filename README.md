@@ -70,12 +70,6 @@ Supabase (required); SMTP provider (recommended for production email); image-mod
 - **Link previews:** `/w/<token>`, `/q/<token>` and public `/post/<id>` pages serve Open Graph and Twitter card images (`/card` routes, 1200x630). Concealed content never appears in a preview; only the clue does.
 - Set `NEXT_PUBLIC_SITE_URL` to your live address so shared links and previews point at the right domain.
 
-## Adventure (optional game mode)
+## The Wall
 
-Explore stays the default. Adventure is opt-in from the 🧭 tab: pick a professional collection, solve a riddle (or silhouette, or direct clue) and the object appears in the maze for you to walk up to and collect.
-
-- **Migrations:** `0015_adventure.sql` (tables, RPCs, Fire reaction gate, storage bucket) and `0016_adventure_seed.sql` (12 professions, 100 objects, riddles, 12 milestones). Apply both after 0014.
-- **Server rules:** riddle answers never reach the browser. Unlocks, uniqueness (one find per player per object, one per team per object), milestone awards and the Fire reaction gate are all enforced in SECURITY DEFINER RPCs. Adventure tables have RLS on and no policies.
-- **Teams:** invite mutual follows, accept or decline, shared progress, per-member contributions, separate team chat (polled every 5s) with its own unread indicator.
-- **Admin:** `/admin/adventure` adds professions, objects (with image upload), riddles, placement, and milestones with no code changes.
-- **Limits:** the maze is 2D. Object art is emoji unless an image is uploaded. Placement is deterministic on the client, so the server cannot verify the avatar's position; it relies on unlock, uniqueness, rate limiting and the active-profession check. The 20-collection milestone needs more than the 12 seeded professions.
+One endless brick wall you swipe along sideways. Every post hangs on it as a physical object (framed photo, poster, coloured board, notice board, plaque). Tap one and it comes forward and opens; close it and the wall is exactly where you left it. Built with CSS 3D transforms, a native horizontal scroller and an intercepting route (`/wall/@modal/(..)post/[id]`), so no WebGL. The layout (`src/lib/wall/layout.ts`) is a pure function of the posts, so placement is stable.

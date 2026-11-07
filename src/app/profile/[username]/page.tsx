@@ -1,5 +1,3 @@
-import { getProfileAdventure } from "@/lib/data/adventure";
-import { Medal } from "@/components/adventure/Bits";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getViewer } from "@/lib/data/session";
@@ -31,7 +29,6 @@ export default async function Profile({ params }: { params: Promise<{ username: 
   const p = data as Pub;
   const self = p.is_self;
 
-  const adv = await getProfileAdventure(p.id);
   const [wallsRes, picsRes, answersRes, allBadges] = await Promise.all([
     p.show_walls ? supabase.from("posts").select(POST_SELECT).eq("author_id", p.id).eq("status", "active").neq("type", "picture").order("created_at", { ascending: false }).limit(24) : Promise.resolve({ data: [] }),
     p.show_pictures ? supabase.from("posts").select(POST_SELECT).eq("author_id", p.id).eq("status", "active").eq("type", "picture").order("created_at", { ascending: false }).limit(24) : Promise.resolve({ data: [] }),
@@ -72,14 +69,6 @@ export default async function Profile({ params }: { params: Promise<{ username: 
           <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {STAT_LABELS.map(([k, l]) => <div key={k} className="rounded-2xl bg-night-2 p-3"><dd className="display text-3xl text-mustard">{p.stats![k] ?? 0}</dd><dt className="text-xs text-chalk-dim">{l}</dt></div>)}
           </dl>
-        </section>
-      )}
-
-      {adv && (adv.badges.length > 0 || adv.fire) && (
-        <section aria-labelledby="adv-badges" className="space-y-3">
-          <h2 id="adv-badges" className="text-2xl">Adventure {adv.fire && <span className="fw-flicker inline-block" title="Animated Fire unlocked">🔥</span>}</h2>
-          <p className="text-sm text-chalk-dim">Level {adv.level}{adv.fire ? " · Fire unlocked" : ""}</p>
-          <ul className="flex flex-wrap gap-3">{adv.badges.map((b) => <li key={b.slug} title={b.title} className="flex w-[72px] flex-col items-center gap-1 text-center"><Medal r={{ ...b, earned: true }} size={56} /><span className="text-[11px] leading-tight text-chalk-dim">{b.title}</span></li>)}</ul>
         </section>
       )}
 

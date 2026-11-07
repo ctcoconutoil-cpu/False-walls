@@ -1,8 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import type { AreaSlug, Post, ReactionKind } from "@/lib/types";
-import { SLOTS_PER_SECTION } from "@/lib/maze/layout";
+import type { Post, ReactionKind } from "@/lib/types";
 
 export const POST_SELECT =
   "*, author:profiles!posts_author_id_fkey(id,username,display_name,avatar_style,avatar_color,avatar_url), media:post_media(storage_path,width,height,alt_text,is_hidden), prompt:random_prompts(text)";
@@ -25,42 +24,6 @@ export async function hydratePosts(supabase: SupabaseClient, rows: Row[]): Promi
     prompt_text: r.prompt?.text ?? null,
     media: (r.media ?? []).filter((m) => !m.is_hidden).map((m) => ({ ...m, url: urls.get(m.storage_path) })),
   })) as Post[];
-}
-
-export type AreaItem = { slot: number; post: Post };
-
-export async function getAreaItems(area: AreaSlug, section: number, tab: "trending" | "newest" = "trending") {
-  const supabase = await createClient();
-  const from = section * SLOTS_PER_SECTION;
-
-  if (area === "trending") {
-    if (tab === "newest") {
-      const { data } = await supabase.from("posts").select(POST_SELECT).eq("status", "active").eq("visibility", "public")
-        .order("created_at", { ascending: false }).range(from, from + SLOTS_PER_SECTION);
-      const posts = await hydratePosts(supabase, (data ?? []) as unknown as Row[]);
-      return { items: posts.slice(0, SLOTS_PER_SECTION).map((post, i) => ({ slot: from + i, post })), hasMore: posts.length > SLOTS_PER_SECTION };
-    }
-    const { data: ranked } = await supabase.rpc("trending_posts", { p_limit: SLOTS_PER_SECTION + 1, p_offset: from, p_area: null, p_type: null });
-    const ids = ((ranked ?? []) as { post_id: string }[]).map((r) => r.post_id);
-    if (!ids.length) return { items: [] as AreaItem[], hasMore: false };
-    const { data } = await supabase.from("posts").select(POST_SELECT).in("id", ids);
-    const byId = new Map(((await hydratePosts(supabase, (data ?? []) as unknown as Row[]))).map((p) => [p.id, p]));
-    // Only publicly discoverable posts appear in the Wall; followers-only posts stay on profiles and in threads.
-    const ordered = (ids.map((id) => byId.get(id)).filter(Boolean) as Post[]).filter((p) => p.visibility === "public");
-    return { items: ordered.slice(0, SLOTS_PER_SECTION).map((post, i) => ({ slot: from + i, post })), hasMore: ordered.length > SLOTS_PER_SECTION };
-  }
-
-  const [{ data }, { data: last }] = await Promise.all([
-    supabase.from("wall_locations")
-      .select(`slot_index, post:posts!inner(${POST_SELECT})`)
-      .eq("area_slug", area).gte("slot_index", from).lt("slot_index", from + SLOTS_PER_SECTION).order("slot_index"),
-    supabase.from("wall_locations").select("slot_index").eq("area_slug", area).order("slot_index", { ascending: false }).limit(1),
-  ]);
-  const rows = ((data ?? []) as unknown as { slot_index: number; post: Row }[]).filter((r) => r.post.visibility === "public");
-  const posts = await hydratePosts(supabase, rows.map((r) => r.post));
-  const items: AreaItem[] = rows.map((r, i) => ({ slot: r.slot_index, post: posts[i] }));
-  const maxSlot = (last?.[0]?.slot_index as number | undefined) ?? 0;
-  return { items, hasMore: maxSlot >= from + SLOTS_PER_SECTION };
 }
 
 export type DiscoverFilter = "new" | "trending";

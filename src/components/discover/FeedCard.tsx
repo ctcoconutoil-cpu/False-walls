@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AREAS, POST_TYPES } from "@/lib/constants";
+import { POST_TYPES } from "@/lib/constants";
 import type { Post } from "@/lib/types";
 import { Avatar, SampleTag } from "@/components/ui";
 import { WallItem } from "@/components/maze/WallItem";
@@ -19,8 +19,6 @@ export function FeedCard({ post }: { post: Post }) {
         <div className="min-w-0 space-y-1">
           <p className="flex flex-wrap items-center gap-x-2 text-xs font-bold text-chalk-dim">
             <span>{t.label}</span>
-            <span aria-hidden>·</span>
-            <Link href={`/wall/${post.area_slug}`} className="underline">{AREAS[post.area_slug].name}</Link>
             {post.is_sample && <SampleTag />}
           </p>
           {headline && <Link href={`/post/${post.id}`} className="display line-clamp-3 block text-lg leading-snug">{headline}</Link>}

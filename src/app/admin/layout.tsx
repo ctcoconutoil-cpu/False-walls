@@ -7,7 +7,7 @@ export const metadata = { title: "Admin", robots: { index: false, follow: false 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const { profile } = await requireStaff();
   const isAdmin = profile.role === "admin";
-  const tabs = [["/admin", "Overview"], ["/admin/reports", "Reports"], ["/admin/content", "Content"], ["/admin/users", "Users"], ...(isAdmin ? [["/admin/prompts", "Prompts"], ["/admin/adventure", "Adventure"], ["/admin/badges", "Badges"]] : []), ["/admin/log", "Log"]];
+  const tabs = [["/admin", "Overview"], ["/admin/reports", "Reports"], ["/admin/content", "Content"], ["/admin/users", "Users"], ...(isAdmin ? [["/admin/prompts", "Prompts"], ["/admin/badges", "Badges"]] : []), ["/admin/log", "Log"]];
   return (
     <div className="min-h-dvh bg-night">
       <header className="border-b-4 border-mustard bg-night-2 px-4 py-3">

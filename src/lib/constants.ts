@@ -1,4 +1,4 @@
-import type { AreaSlug, ClueStyle, FalseWallKind, PostType, ReactionKind, WallColor } from "./types";
+import type { ClueStyle, FalseWallKind, PostType, ReactionKind, WallColor } from "./types";
 
 export const TAGLINE = "Look closer. There's more behind the wall.";
 
@@ -53,19 +53,6 @@ export const REACTIONS: { kind: ReactionKind; label: string; glyph: string; colo
   { kind: "thought_provoking", label: "Thought-provoking", glyph: "🤔", color: "#7BC4FF" },
   { kind: "like", label: "Like", glyph: "❤️", color: "#FF4D6D" },
 ];
-
-/** The Animated Fire is a reward from Adventure, so it sits apart from the five everyone can use. */
-export const FIRE = { kind: "fire" as const, label: "Fire", color: "#FF6A3D" };
-
-export const AREAS: Record<AreaSlug, { name: string; blurb: string; wall: string; floor: string; accent: string; mortar: string; tagline: string }> = {
-  main: { name: "Main Wall", blurb: "The crossroads. Every kind of wall turns up here.", wall: "#B4503A", floor: "#2B2540", accent: "#F2573F", mortar: "#7C3425", tagline: "Where it starts" },
-  trending: { name: "Trending Wall", blurb: "Conversations people are genuinely talking about.", wall: "#4B2C86", floor: "#1B1233", accent: "#FF7BA9", mortar: "#30195C", tagline: "Lit up tonight" },
-  hidden: { name: "Hidden Wall", blurb: "Quiet corners with thoughts people almost kept to themselves.", wall: "#24365F", floor: "#101728", accent: "#5DB7FF", mortar: "#16213D", tagline: "Keep your voice down" },
-  picture: { name: "Picture Wall", blurb: "Photographs pinned up with a question attached.", wall: "#2F6F68", floor: "#13292A", accent: "#19B5A5", mortar: "#1E4A45", tagline: "Take a closer look" },
-  question: { name: "Question Wall", blurb: "Open invitations: ask what you have always wondered.", wall: "#B98A1F", floor: "#2D2410", accent: "#F7B538", mortar: "#80600F", tagline: "Go on, ask" },
-  community: { name: "Community Wall", blurb: "Prompt answers and the chains they grow into.", wall: "#6A8F2E", floor: "#1B2610", accent: "#B5E04A", mortar: "#486420", tagline: "Everyone's mural" },
-};
-export const AREA_ORDER: AreaSlug[] = ["main", "trending", "hidden", "picture", "question", "community"];
 
 export const LIMITS = {
   title: 120, body: 1000, clue: 140, hidden: 2000, question: 500, reply: 600, answer: 1000, bio: 200, caption: 120,
