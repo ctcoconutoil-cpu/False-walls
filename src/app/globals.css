@@ -161,12 +161,12 @@ html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-
 .wp-logo-eye { position: absolute; top: 0; left: 10px; width: 26px; height: 12px; }
 .wp-logo-text { font-family: "Anton", var(--font-display), sans-serif; font-size: 25px; line-height: .9; text-transform: uppercase; letter-spacing: .02em; color: #fff; transform: skewX(-6deg); text-shadow: 0 2px 0 rgba(0,0,0,.55); }
 .wp-logo-marks { position: absolute; right: -16px; top: 4px; width: 17px; height: 17px; }
-.wp-scroller { position: relative; flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; scrollbar-width: none; cursor: grab; outline: none; -webkit-tap-highlight-color: transparent; background: #2a110c url(/wall/brick-tile.webp) 0 0 / 256px 112px; }
+.wp-scroller { position: relative; flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; scrollbar-width: none; cursor: grab; outline: none; -webkit-tap-highlight-color: transparent; background: #2a110c var(--brick, url(/wall/brick-tile.webp)) 0 0 / 256px 112px; }
 .wp-scroller::-webkit-scrollbar { display: none; }
 .wp-scroller.is-dragging { cursor: grabbing; }
 .wp-scroller.has-focus { overflow-y: hidden; touch-action: none; cursor: default; }
 .wp-track { position: relative; margin: 0 auto; }
-.wp-stage { overflow: clip; position: absolute; left: 0; top: 0; transform-origin: 0 0; background: url(/wall/brick-tile.webp) 0 0 / 256px 112px; box-shadow: 0 0 40px 10px rgba(0,0,0,.5); }
+.wp-stage { overflow: clip; position: absolute; left: 0; top: 0; transform-origin: 0 0; background: var(--brick, url(/wall/brick-tile.webp)) 0 0 / 256px 112px; box-shadow: 0 0 40px 10px rgba(0,0,0,.5); }
 .wp-backdrop { position: absolute; left: 0; pointer-events: none; overflow: visible; }
 /* Fixed lighting over the screen: a darker foot and soft shoulders, so the wall feels lit from above. */
 .wp-light { position: absolute; left: 0; right: 0; bottom: 0; top: 64px; pointer-events: none; z-index: 3; background: linear-gradient(to bottom, rgba(0,0,0,.34), transparent 14%, transparent 80%, rgba(0,0,0,.45)); }
@@ -232,3 +232,66 @@ html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-
 
 .wp-end { position: absolute; left: 50%; bottom: 24px; translate: -50% 0; width: 230px; margin: 0; padding: 10px 12px; text-align: center; color: #F6EFE4; font-family: "Caveat Brush", "Segoe Print", cursive; font-size: 22px; line-height: 1; background: #29252A; border-radius: 4px; box-shadow: inset 0 0 0 3px rgba(255,255,255,.12), 2px 3px 0 #050405, 8px 14px 14px rgba(0,0,0,.45); transform: rotate(-1.5deg); z-index: 2; }
 .wp-end span { display: block; color: #F9A719; font-size: 24px; }
+[data-brick="charcoal"] { --brick: url(/wall/bricks/charcoal.webp); }
+[data-brick="navy"] { --brick: url(/wall/bricks/navy.webp); }
+[data-brick="plum"] { --brick: url(/wall/bricks/plum.webp); }
+[data-brick="forest"] { --brick: url(/wall/bricks/forest.webp); }
+[data-brick="sand"] { --brick: url(/wall/bricks/sand.webp); }
+[data-brick="classic"] { --brick: url(/wall/bricks/classic.webp); }
+
+/* ============ Private walls ============ */
+.pw-strip { position: relative; z-index: 25; display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: #1d0b2a; color: #f1e4fa; font-size: 13px; border-bottom: 1px solid #46225f; }
+.pw-strip p { margin: 0; line-height: 1.25; }
+.pw-tools { gap: 8px; }
+.pw-tools button { flex: 1; border-radius: 999px; background: #F9A719; color: #2a1a05; font-weight: 900; font-size: 13px; padding: 9px 6px; min-height: 40px; }
+.pw-tools button[aria-pressed="true"] { background: #E51F2B; color: #fff; }
+.pw-count, .pw-tap { display: flex; align-items: center; justify-content: space-between; gap: 4px; width: 100%; padding: 2.5px 6px; border-radius: 99px; background: rgba(0,0,0,.38); color: #fff; font-size: 8.5px; font-weight: 800; }
+.pw-tap { justify-content: center; letter-spacing: .04em; padding: 4px 6px; }
+.pw-count b { font-size: 13px; font-weight: 900; line-height: 1; }
+.pw-count em { font-style: normal; border-radius: 99px; padding: 1px 5px; background: #F9A719; color: #2a1a05; font-weight: 900; }
+.pw-glow { animation: pw-pulse 2.6s ease-in-out infinite; }
+@keyframes pw-pulse { 0%, 100% { filter: drop-shadow(0 0 3px rgba(255,200,120,.35)); } 50% { filter: drop-shadow(0 0 13px rgba(255,205,130,.95)); } }
+.pw-empty { display: grid; place-items: center; border: 2px dashed rgba(255,255,255,.45); border-radius: 4px; background: rgba(0,0,0,.2); color: rgba(255,255,255,.8); font-size: 38px; font-weight: 300; cursor: pointer; }
+.pw-empty::before { content: ""; position: absolute; top: 6px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: rgba(255,255,255,.5); }
+.pw-empty-quiet { border-color: rgba(255,255,255,.2); cursor: default; }
+.pw-note { position: absolute; z-index: 4; left: 50%; top: -10px; width: 56px; height: 42px; pointer-events: none; background: #f6efe2 repeating-linear-gradient(transparent 0 7px, rgba(0,0,0,.1) 7px 8px); box-shadow: 1px 2px 0 rgba(0,0,0,.3), 4px 7px 8px rgba(0,0,0,.4); transform: translateX(calc(-50% + (var(--n) - 1) * 24px)) rotate(calc((var(--n) - 1) * 10deg)); animation: pw-drop .55s cubic-bezier(.3,1.5,.5,1) both; }
+.pw-note::before { content: ""; position: absolute; top: -4px; left: 14px; width: 26px; height: 9px; background: rgba(240,230,190,.85); }
+@keyframes pw-drop { from { opacity: 0; translate: 0 -30px; scale: 1.5; } to { opacity: 1; translate: 0 0; scale: 1; } }
+.pw-remove { position: absolute; z-index: 6; top: -9px; right: -9px; width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; background: #E51F2B; color: #fff; font-weight: 900; font-size: 14px; }
+
+.pw-overlay { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; background: rgba(8,3,12,.8); animation: pw-fade .25s ease both; }
+@keyframes pw-fade { from { opacity: 0; } to { opacity: 1; } }
+.pw-scene { perspective: 1500px; --k: 3; }
+.pw-flip { position: relative; width: calc(100px * var(--k)); height: calc(150px * var(--k)); transform-style: preserve-3d; transition: transform .85s cubic-bezier(.2,.8,.2,1); }
+.pw-flip[data-stage="0"] { transform: translateY(70px) scale(.55) rotateZ(-8deg); }
+.pw-flip[data-stage="1"] { transform: translateY(0) scale(1) rotateZ(-2deg); }
+.pw-flip[data-stage="2"] { transform: rotateY(180deg); }
+.pw-face { position: absolute; inset: 0; border-radius: calc(3px * var(--k)); backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.pw-scale { position: relative; width: 100px; height: 150px; transform: scale(var(--k)); transform-origin: 0 0; }
+.pw-back { transform: rotateY(180deg); display: flex; flex-direction: column; align-items: stretch; gap: 10px; padding: 16px 16px 14px; overflow: hidden; }
+.pw-back-head { position: relative; display: flex; align-items: center; gap: 8px; }
+.pw-back-icon { color: var(--acc); line-height: 0; }
+.pw-back-title { flex: 1; min-width: 0; font-family: "Caveat Brush", cursive; font-size: 30px; line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pw-x { width: 34px; height: 34px; border-radius: 50%; background: rgba(0,0,0,.32); color: #fff; font-weight: 900; }
+.pw-form { position: relative; display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; }
+.pw-paper { flex: 1; min-height: 0; border: 0; resize: none; outline: none; border-radius: 4px; padding: 10px 12px; color: #2a1a05; background: #f6efe2 repeating-linear-gradient(transparent 0 27px, rgba(0,0,0,.09) 27px 28px); font-family: "Caveat Brush", "Segoe Print", cursive; font-size: 23px; line-height: 28px; transform: rotate(-1deg); box-shadow: 2px 4px 0 rgba(0,0,0,.25), 6px 10px 16px rgba(0,0,0,.3); }
+textarea.pw-paper:focus { box-shadow: 0 0 0 3px #F9A719, 6px 10px 16px rgba(0,0,0,.3); }
+.pw-meta { display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; opacity: .85; }
+.pw-err { margin: 0; padding: 6px 8px; border-radius: 8px; background: rgba(0,0,0,.42); font-size: 12px; font-weight: 700; }
+.pw-send { border-radius: 14px; padding: 12px; background: #1a1024; color: #fff; font-weight: 900; font-size: 16px; box-shadow: 0 4px 0 rgba(0,0,0,.4); }
+.pw-send:disabled { opacity: .5; }
+.pw-ghost { border: 2px solid currentColor; border-radius: 14px; padding: 10px 16px; font-weight: 800; background: transparent; color: inherit; }
+.pw-done { justify-content: center; }
+.pw-stuck-note { flex: none; flex-grow: 0; min-height: 96px; max-height: 38%; margin: 0; overflow: auto; animation: pw-stick .8s cubic-bezier(.3,1.4,.5,1) both; }
+@keyframes pw-stick { from { opacity: 0; transform: scale(1.6) rotate(-10deg) translateY(-50px); } to { opacity: 1; transform: rotate(-1.5deg); } }
+.pw-done-title { margin: 2px 0 0; text-align: center; font-family: "Caveat Brush", cursive; font-size: 36px; line-height: 1; }
+.pw-done-actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.pw-own { text-align: center; font-size: 12px; font-weight: 800; text-decoration: underline; }
+
+.pw-msg { border-radius: 6px; padding: 38px 24px 54px; display: flex; align-items: center; justify-content: center; color: #2a1a05; background: #f6efe2 repeating-linear-gradient(transparent 0 33px, rgba(0,0,0,.07) 33px 34px); box-shadow: 2px 3px 0 rgba(0,0,0,.28), 10px 16px 26px rgba(0,0,0,.45); touch-action: pan-y; cursor: grab; }
+.pw-msg-text { margin: 0; max-height: 100%; overflow: hidden; text-align: center; line-height: 1.04; word-break: break-word; font-family: "Caveat Brush", "Segoe Print", cursive; }
+.pw-msg-meta { position: absolute; left: 20px; right: 20px; bottom: 15px; margin: 0; display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 800; color: #6b5a45; }
+.pw-msg-meta b { border-radius: 99px; padding: 2px 9px; font-size: 10px; letter-spacing: .06em; }
+.pw-tape { position: absolute; top: -11px; width: 72px; height: 24px; background: rgba(240,230,190,.88); transform: rotate(-5deg); box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+.pw-tape + .pw-tape { transform: rotate(4deg); }
+@media (prefers-reduced-motion: reduce) { .pw-glow, .pw-note, .pw-stuck-note, .pw-overlay { animation: none; } .pw-flip { transition-duration: .01s; } }

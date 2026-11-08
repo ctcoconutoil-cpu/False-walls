@@ -27,8 +27,8 @@ const P: Record<WallIconKey, ReactNode> = {
 };
 
 /** The post icons. They draw in the current text colour so each board can tint its own. */
-export function WallIcon({ name, size = 24, className }: { name: string; size?: number; className?: string }) {
+export function WallIcon({ name, size = 24, className, color }: { name: string; size?: number; className?: string; color?: string }) {
   const body = P[name as WallIconKey] ?? P.star;
-  return <svg aria-hidden viewBox="0 0 24 24" width={size} height={size} fill="currentColor" className={className}>{body}</svg>;
+  return <svg aria-hidden viewBox="0 0 24 24" width={size} height={size} fill={color ?? "currentColor"} className={className}>{body}</svg>;
 }
 export function isWallIcon(s: string | null | undefined): s is WallIconKey { return !!s && s in P; }

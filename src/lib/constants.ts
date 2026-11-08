@@ -79,3 +79,21 @@ export const REPORT_REASONS = [
   { value: "spam", label: "Spam" },
   { value: "other", label: "Something else" },
 ] as const;
+
+/** Brick colours a member can choose for their private wall. */
+export const BRICKS = [
+  { key: "classic", name: "Classic red", swatch: "#9a2f22" },
+  { key: "charcoal", name: "Charcoal", swatch: "#48454a" },
+  { key: "navy", name: "Midnight blue", swatch: "#26437a" },
+  { key: "plum", name: "Plum", swatch: "#6a2a7c" },
+  { key: "forest", name: "Forest", swatch: "#265a3c" },
+  { key: "sand", name: "Sand", swatch: "#d3b998" },
+] as const;
+export type BrickKey = (typeof BRICKS)[number]["key"];
+export const isBrick = (v: string): v is BrickKey => BRICKS.some((b) => b.key === v);
+/** Keeps at most three words as someone types, so card text can never run long. */
+export function clampWords(v: string): string {
+  const parts = v.replace(/\s+/g, " ").split(" ");
+  const filled = parts.filter(Boolean);
+  return filled.length > MAX_WALL_WORDS ? filled.slice(0, MAX_WALL_WORDS).join(" ") : parts.join(" ").replace(/^ /, "");
+}

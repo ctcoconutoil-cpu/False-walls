@@ -40,7 +40,7 @@ export function WallHeader({ unread, onHome }: { unread: number; onHome: () => v
         </button>
         {open && (
           <div role="menu" className="absolute right-0 top-12 z-50 w-48 overflow-hidden rounded-2xl border-2 border-night-3 bg-night-2 py-1 shadow-2xl">
-            {[["/saved", "Saved"], ["/settings", "Settings"], ["/guidelines", "Guidelines"], ["/privacy", "Privacy"]].map(([href, label]) => (
+            {[["/private", "My private wall"], ["/saved", "Saved"], ["/settings", "Settings"], ["/guidelines", "Guidelines"], ["/privacy", "Privacy"]].map(([href, label]) => (
               <Link key={href} href={href} role="menuitem" className="block px-4 py-3 text-sm font-bold text-chalk active:bg-night-3">{label}</Link>
             ))}
           </div>

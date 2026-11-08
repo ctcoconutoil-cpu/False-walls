@@ -8,15 +8,15 @@ import { timeAgo } from "@/lib/utils";
 
 /** The six palette colours; teal and lime (older posts) read as blue and gold. */
 export type Tone = "red" | "gold" | "blue" | "purple" | "beige" | "char";
-const TONE: Record<WallColor, Tone> = { coral: "red", mustard: "gold", sky: "blue", teal: "blue", violet: "purple", rose: "beige", slate: "char", lime: "gold" };
+export const TONE: Record<WallColor, Tone> = { coral: "red", mustard: "gold", sky: "blue", teal: "blue", violet: "purple", rose: "beige", slate: "char", lime: "gold" };
 const DEFAULT_ICON = { ask_me: "mega", hidden_thought: "eye", false_wall: "ask", prompt_response: "star", picture: "camera" } as const;
 
 export const toneOf = (post: WallPost): Tone => (post.type === "hidden_thought" ? "purple" : TONE[post.wall_color] ?? "red");
 export const iconOf = (post: WallPost) => (isWallIcon(post.wall_icon) ? post.wall_icon : DEFAULT_ICON[post.type]);
 /** The one to three words a post shows on the wall. */
 export const wallText = (post: WallPost) => (post.title ?? "").trim();
-const compact = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, "")}k` : String(n));
-const sizeFor = (t: string) => { const w = Math.max(...t.split(/\s+/).map((x) => x.length), 1); return w <= 5 ? 27 : w <= 7 ? 23 : w <= 9 ? 19 : 15; };
+export const compact = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, "")}k` : String(n));
+export const sizeFor = (t: string) => { const w = Math.max(...t.split(/\s+/).map((x) => x.length), 1); return w <= 5 ? 27 : w <= 7 ? 23 : w <= 9 ? 19 : 15; };
 
 /** Hand-drawn flourishes that sit under the words: swooshes, curved arrows, ticks, loops. Each post gets one, chosen from its own text. */
 const FLOURISHES: React.ReactNode[] = [

@@ -15,7 +15,7 @@ const ICONS: Record<string, ReactNode> = {
 
 export function Dock({ username, unread }: { username: string | null; unread: number }) {
   const path = usePathname();
-  const hidden = HIDE.includes(path) || path.startsWith("/admin") || path.startsWith("/auth") || path.startsWith("/w/") || path.startsWith("/q/");
+  const hidden = HIDE.includes(path) || path.startsWith("/admin") || path.startsWith("/auth") || path.startsWith("/w/") || path.startsWith("/u/") || path.startsWith("/q/");
   useEffect(() => { document.documentElement.style.setProperty("--dock", hidden ? "0px" : "76px"); }, [hidden]);
   if (hidden) return null;
   const item = (href: string, label: string, icon: string, active: boolean, badge?: number) => (
