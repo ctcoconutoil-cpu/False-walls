@@ -13,8 +13,10 @@ type Row = Omit<Post, "media" | "prompt_text"> & {
 
 /** Attaches short-lived signed URLs for visible (non-concealed) images and flattens joins. */
 export async function hydratePosts(supabase: SupabaseClient, rows: Row[]): Promise<Post[]> {
-  const paths = rows.flatMap((r) => (r.media ?? []).filter((m) => !m.is_hidden).map((m) => m.storage_path));
-  const urls = new Map<string, string>();
+  const all = rows.flatMap((r) => (r.media ?? []).filter((m) => !m.is_hidden).map((m) => m.storage_path));
+  // Sample posts point at pictures that ship with the app ("sample/…"); everything else is a private upload that needs a signed link.
+  const paths = all.filter((p) => !p.startsWith("sample/"));
+  const urls = new Map<string, string>(all.filter((p) => p.startsWith("sample/")).map((p) => [p, `/wall/${p.replace("sample/", "samples/")}`]));
   if (paths.length) {
     const { data } = await supabase.storage.from("post-media").createSignedUrls(paths, 3600);
     data?.forEach((d) => { if (d.path && d.signedUrl) urls.set(d.path, d.signedUrl); });

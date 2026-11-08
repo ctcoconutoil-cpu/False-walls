@@ -3,15 +3,22 @@ import type { ClueStyle, FalseWallKind, PostType, ReactionKind, WallColor } from
 export const TAGLINE = "Look closer. There's more behind the wall.";
 
 export const WALL_COLORS: Record<WallColor, { name: string; base: string; dark: string; ink: string }> = {
-  coral: { name: "Coral", base: "#F2573F", dark: "#B93A27", ink: "#2A0D08" },
-  mustard: { name: "Mustard", base: "#F7B538", dark: "#BE8618", ink: "#2C1E02" },
-  teal: { name: "Teal", base: "#19B5A5", dark: "#0E7F73", ink: "#04201C" },
-  violet: { name: "Violet", base: "#8C5CF5", dark: "#5E34C2", ink: "#150833" },
-  sky: { name: "Sky", base: "#5DB7FF", dark: "#2E86CC", ink: "#06213A" },
-  lime: { name: "Lime", base: "#B5E04A", dark: "#80A722", ink: "#1B2705" },
-  rose: { name: "Rose", base: "#FF7BA9", dark: "#CC4F7D", ink: "#350A1C" },
-  slate: { name: "Slate", base: "#6E7691", dark: "#464C66", ink: "#0C0E18" },
+  coral: { name: "Bright red", base: "#E51F2B", dark: "#A8121C", ink: "#FFFFFF" },
+  mustard: { name: "Golden yellow", base: "#F9A719", dark: "#C77F08", ink: "#2A1A05" },
+  teal: { name: "Electric blue", base: "#1879D2", dark: "#0F5599", ink: "#FFFFFF" },
+  violet: { name: "Deep purple", base: "#30123F", dark: "#1B0827", ink: "#F1E4FA" },
+  sky: { name: "Electric blue", base: "#1879D2", dark: "#0F5599", ink: "#FFFFFF" },
+  lime: { name: "Golden yellow", base: "#F9A719", dark: "#C77F08", ink: "#2A1A05" },
+  rose: { name: "Dusty pink", base: "#D5B5A5", dark: "#A98672", ink: "#3A1D14" },
+  slate: { name: "Charcoal black", base: "#29252A", dark: "#121013", ink: "#F6EFE4" },
 };
+/** The six colours the app offers; teal and lime stay valid in the database for older posts and look like blue and gold. */
+export const WALL_COLOR_CHOICES = ["coral", "mustard", "sky", "violet", "rose", "slate"] as const;
+/** The icon an author puts on their post. Keys are stored in posts.wall_icon (8 characters at most). */
+export const WALL_ICON_KEYS = ["crown", "flame", "heart", "eye", "ask", "mega", "star", "music", "plane", "camera", "ghost", "bolt", "moon", "book", "coffee", "game", "ball", "globe", "bulb", "chat", "rocket", "key"] as const;
+export type WallIconKey = (typeof WALL_ICON_KEYS)[number];
+export const MAX_WALL_WORDS = 3;
+export function wordCount(s: string | null | undefined): number { return (s ?? "").trim().split(/\s+/).filter(Boolean).length; }
 
 export const AVATAR_STYLES = ["blob", "brick", "door", "star", "eye", "bolt"] as const;
 export const AVATAR_COLORS = ["#F2573F", "#F7B538", "#19B5A5", "#8C5CF5", "#5DB7FF", "#B5E04A", "#FF7BA9", "#E9E7F5"];

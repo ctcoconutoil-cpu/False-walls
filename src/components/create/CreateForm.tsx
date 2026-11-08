@@ -4,21 +4,20 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Button, Field, Notice, inputCls } from "@/components/ui";
 import { ImagePicker } from "@/components/ui/ImagePicker";
-import { WallItem } from "@/components/maze/WallItem";
+import { IconPicker } from "@/components/create/IconPicker";
+import { WallCard } from "@/components/wall/WallCard";
+import type { WallPost } from "@/lib/data/wall";
 import { createPost } from "@/lib/actions/posts";
-import { CLUE_STYLES, FALSE_WALL_KINDS, LIMITS, POST_TYPES, WALL_COLORS } from "@/lib/constants";
-import type { ClueStyle, FalseWallKind, Post, PostType, WallColor } from "@/lib/types";
+import { CLUE_STYLES, FALSE_WALL_KINDS, LIMITS, MAX_WALL_WORDS, POST_TYPES, WALL_COLORS, WALL_COLOR_CHOICES, wordCount } from "@/lib/constants";
+import type { ClueStyle, FalseWallKind, PostType, WallColor } from "@/lib/types";
 import { cx } from "@/lib/utils";
 
-const AREA_CHOICES: Record<PostType, { value: string; label: string }[]> = {
-  ask_me: [{ value: "question", label: "Question Wall" }, { value: "main", label: "Main Wall" }],
-  hidden_thought: [{ value: "hidden", label: "Hidden Wall" }, { value: "main", label: "Main Wall" }],
-  picture: [{ value: "picture", label: "Picture Wall" }, { value: "main", label: "Main Wall" }],
-  prompt_response: [{ value: "community", label: "Community Wall" }, { value: "main", label: "Main Wall" }],
-  false_wall: [{ value: "main", label: "Main Wall" }, { value: "hidden", label: "Hidden Wall" }],
+const SUGGEST: Record<PostType, string[]> = {
+  ask_me: ["Ask Me Anything", "Roast Me", "Spill It"], picture: ["Good Vibes", "Golden Hour", "Weekend Mood"], hidden_thought: ["Hidden Thoughts", "Secret Crush", "Unsent Message"],
+  prompt_response: ["Hot Take", "Travel", "Coffee Talk"], false_wall: ["What Should I Do?", "Pick One", "Truth Time"],
 };
-const ASK_SUGGEST = ["Ask me something you've always wondered.", "Ask me anything about my day.", "Ask me for advice, I'll be honest."];
-const PIC_SUGGEST = ["What do you think about this?", "Describe this picture.", "What's your first impression?", "What story does this picture tell?"];
+/** Words beyond the third are refused as you type, so the wall text can never run long. */
+function clampWords(v: string): string { const parts = v.replace(/\s+/g, " ").split(" "); const filled = parts.filter(Boolean); return filled.length > MAX_WALL_WORDS ? filled.slice(0, MAX_WALL_WORDS).join(" ") : parts.join(" ").replace(/^ /, ""); }
 
 type Props = { type: PostType; label: string; prompts: { id: string; text: string }[]; isTeen: boolean; anonymousAllowed: boolean; chainParent: string | null; chainAnswer: string | null; chainTitle: string | null; initialPrompt: string | null };
 
@@ -27,7 +26,8 @@ export function CreateForm({ type, label, prompts, isTeen, anonymousAllowed, cha
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState(""); const [body, setBody] = useState(""); const [clue, setClue] = useState(""); const [hidden, setHidden] = useState("");
-  const [color, setColor] = useState<WallColor>(type === "ask_me" ? "mustard" : type === "hidden_thought" ? "mustard" : "coral");
+  const [color, setColor] = useState<WallColor>(type === "ask_me" ? "mustard" : type === "hidden_thought" ? "violet" : type === "picture" ? "slate" : type === "false_wall" ? "sky" : "coral");
+  const [icon, setIcon] = useState("");
   const [kind, setKind] = useState<FalseWallKind>("story"); const [style, setStyle] = useState<ClueStyle>("crack");
   const [prompt, setPrompt] = useState<string>(initialPrompt ?? prompts[0]?.id ?? "");
   const [options, setOptions] = useState(["", ""]); const [pollQ, setPollQ] = useState("");
@@ -37,13 +37,11 @@ export function CreateForm({ type, label, prompts, isTeen, anonymousAllowed, cha
   const needsImages = type === "picture" || (type === "false_wall" && kind === "photo");
   const concealed = type === "hidden_thought" || type === "false_wall";
 
-  const preview: Post = useMemo(() => ({
-    id: "preview", author_id: null, type, title: title || (type === "picture" ? "Your question goes here" : type === "ask_me" ? "Ask me something…" : null),
-    body: type === "prompt_response" ? body || "Your answer goes here" : type === "hidden_thought" ? body || "Something you're thinking" : body || null,
-    clue: clue || (concealed ? "Your clue appears here" : null), prompt_id: null, false_wall_kind: kind, clue_style: style, wall_color: color,
+  const preview = useMemo(() => ({
+    id: "preview", author_id: null, type, title: title || "Your words", body: null, clue: clue || null, prompt_id: null, false_wall_kind: kind, clue_style: style, wall_color: color, wall_icon: icon || null,
     visibility, reveal_mode: reveal, allow_anonymous_questions: true, allow_replies: true, allow_chains: true, area_slug: "main", is_sample: false, status: "active",
-    created_at: new Date().toISOString(), author: null, media: [],
-  }), [type, title, body, clue, kind, style, color, visibility, reveal, concealed]);
+    created_at: new Date().toISOString(), author: null, media: [], likes: 0, comments: 0,
+  }) as unknown as WallPost, [type, title, clue, kind, style, color, icon, visibility, reveal]);
 
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -57,7 +55,6 @@ export function CreateForm({ type, label, prompts, isTeen, anonymousAllowed, cha
     });
   }
 
-  const areas = AREA_CHOICES[type];
   const pollReady = options.filter((o) => o.trim()).length >= 2;
 
   return (
@@ -70,12 +67,17 @@ export function CreateForm({ type, label, prompts, isTeen, anonymousAllowed, cha
       {chainParent && <Notice>Related wall: this will link to “{chainTitle ?? "the original wall"}”.<input type="hidden" name="chain_parent" value={chainParent} />{chainAnswer && <input type="hidden" name="chain_answer" value={chainAnswer} />}</Notice>}
       {error && <Notice tone="error">{error}</Notice>}
 
+      <section aria-labelledby="onwall" className="space-y-4 rounded-2xl bg-night-2 p-4">
+        <h2 id="onwall" className="text-lg">On the wall</h2>
+        <Field label="Your words (1 to 3)" counter={`${wordCount(title)}/${MAX_WALL_WORDS} words`} hint="Short and bold. This is what everyone sees on the wall; the rest goes inside the post.">
+          <input name="title" required maxLength={36} value={title} onChange={(e) => setTitle(clampWords(e.target.value))} className={inputCls} placeholder="Ask Me Anything" autoComplete="off" />
+        </Field>
+        <Chips items={SUGGEST[type]} onPick={setTitle} />
+        <IconPicker value={icon} onChange={setIcon} />
+      </section>
+
       {type === "ask_me" && (
         <>
-          <Field label="Your invitation" counter={`${title.length}/${LIMITS.title}`}>
-            <input name="title" required minLength={3} maxLength={LIMITS.title} value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} placeholder="Ask me something you've always wondered." />
-          </Field>
-          <Chips items={ASK_SUGGEST} onPick={setTitle} />
           <Field label="More detail (optional)" counter={`${body.length}/${LIMITS.body}`}><textarea name="body" rows={3} maxLength={LIMITS.body} value={body} onChange={(e) => setBody(e.target.value)} className={inputCls} /></Field>
         </>
       )}
@@ -97,10 +99,6 @@ export function CreateForm({ type, label, prompts, isTeen, anonymousAllowed, cha
       {type === "picture" && (
         <>
           <ImagePicker name="images" label="Pictures" max={LIMITS.images} maxBytes={LIMITS.imageBytes} hint="Up to 4 JPEG, PNG or WebP images. They're shrunk automatically and location data is removed." onFiles={setImages} />
-          <Field label="Question or caption" counter={`${title.length}/${LIMITS.title}`}>
-            <input name="title" required minLength={3} maxLength={LIMITS.title} value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} />
-          </Field>
-          <Chips items={PIC_SUGGEST} onPick={setTitle} />
           <Field label="Describe it for people who can't see it (optional)" hint="Alt text helps screen reader users."><input name="alt" maxLength={200} className={inputCls} /></Field>
           <Field label="More detail (optional)"><textarea name="body" rows={2} maxLength={LIMITS.body} value={body} onChange={(e) => setBody(e.target.value)} className={inputCls} /></Field>
           <Notice>Only post pictures you took or have permission to share. Don't post pictures of other people without their agreement.</Notice>
@@ -177,7 +175,7 @@ export function CreateForm({ type, label, prompts, isTeen, anonymousAllowed, cha
 
       <fieldset><legend className="mb-2 text-sm font-semibold">Wall colour</legend>
         <div className="flex flex-wrap gap-2">
-          {(Object.keys(WALL_COLORS) as WallColor[]).map((c) => (
+          {(WALL_COLOR_CHOICES as readonly WallColor[]).map((c) => (
             <label key={c} className={cx("grid h-11 w-11 cursor-pointer place-items-center rounded-full border-4", color === c ? "border-chalk" : "border-night-3")} style={{ background: WALL_COLORS[c].base }}>
               <input type="radio" name="wall_color" value={c} checked={color === c} onChange={() => setColor(c)} className="sr-only" /><span className="sr-only">{WALL_COLORS[c].name}</span>
             </label>
@@ -187,14 +185,12 @@ export function CreateForm({ type, label, prompts, isTeen, anonymousAllowed, cha
 
       <section aria-labelledby="preview" className="space-y-2">
         <h2 id="preview" className="text-lg">Preview</h2>
-        <div className="mx-auto h-40 w-40"><WallItem post={preview} compact /></div>
+        <div className="relative mx-auto h-[162px] w-[108px]"><WallCard post={preview} p={{ variant: 0, seed: 0.3 }} /></div>
       </section>
 
       <section aria-labelledby="settings" className="space-y-4 rounded-2xl bg-night-2 p-4">
         <h2 id="settings" className="text-lg">Settings</h2>
-        <Field label="Where does it go?">
-          <select name="area_slug" className={inputCls} defaultValue={areas[0].value}>{areas.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}</select>
-        </Field>
+        <input type="hidden" name="area_slug" value="main" />
         <Field label="Who can see it?" hint={isTeen ? "Under-18 accounts default to followers only." : undefined}>
           <select name="visibility" value={visibility} onChange={(e) => setVisibility(e.target.value as "public" | "followers")} className={inputCls}>
             <option value="public">Everyone</option><option value="followers">Followers only</option>
@@ -214,7 +210,7 @@ export function CreateForm({ type, label, prompts, isTeen, anonymousAllowed, cha
         <Check name="allow_chains" label="Allow related walls" defaultChecked note="Others can build a connected wall from this one." />
       </section>
 
-      <Button type="submit" size="lg" disabled={pending || (needsImages && images === 0) || (type === "false_wall" && kind === "poll" && !pollReady)} className="w-full">{pending ? "Publishing…" : "Publish"}</Button>
+      <Button type="submit" size="lg" disabled={pending || wordCount(title) < 1 || !icon || (needsImages && images === 0) || (type === "false_wall" && kind === "poll" && !pollReady)} className="w-full">{pending ? "Publishing…" : "Publish"}</Button>
       {needsImages && images === 0 && <p className="text-center text-xs text-chalk-dim">Add at least one picture to publish.</p>}
     </form>
   );

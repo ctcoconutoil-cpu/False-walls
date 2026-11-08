@@ -1,22 +1,27 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { POST_SELECT, hydratePosts } from "@/lib/data/posts";
+import { MAX_WALL_WORDS, wordCount } from "@/lib/constants";
 import type { Post } from "@/lib/types";
 
 /** A post as it hangs on the Wall: the post itself plus the two numbers shown on its corner. */
 export type WallPost = Post & { likes: number; comments: number };
-export const WALL_PAGE = 24;
+export const WALL_PAGE = 30;
+const RAW = 60;
+
+/** The Wall only carries posts whose wall text is one to three words, so every board reads at a glance. */
+export const fitsWall = (p: Post) => { const n = wordCount(p.title); return n >= 1 && n <= MAX_WALL_WORDS; };
 
 /**
- * One page of the Wall, newest first. It reads the same posts, through the same row-level security and the same
- * "publicly discoverable only" rule, as Discover, so the two screens never disagree about what is visible.
+ * A page of the Wall, newest first. It reads the same posts, through the same row-level security and the same
+ * "publicly discoverable only" rule, as Discover. `next` is the raw offset to ask for next, or null at the end.
  */
-export async function getWallPage(offset: number): Promise<{ posts: WallPost[]; hasMore: boolean }> {
+export async function getWallPage(offset: number): Promise<{ posts: WallPost[]; next: number | null }> {
   const supabase = await createClient();
   const { data } = await supabase.from("posts").select(POST_SELECT).eq("status", "active").eq("visibility", "public")
-    .order("created_at", { ascending: false }).order("id").range(offset, offset + WALL_PAGE);
-  const rows = (data ?? []) as never[];
-  const posts = (await hydratePosts(supabase, rows)).slice(0, WALL_PAGE);
+    .order("created_at", { ascending: false }).order("id").range(offset, offset + RAW - 1);
+  const raw = (data ?? []) as never[];
+  const posts = (await hydratePosts(supabase, raw)).filter(fitsWall);
   const ids = posts.map((p) => p.id);
   const likes = new Map<string, number>(), comments = new Map<string, number>();
   if (ids.length) {
@@ -29,12 +34,12 @@ export async function getWallPage(offset: number): Promise<{ posts: WallPost[]; 
     ((an.data ?? []) as { post_id: string }[]).forEach((r) => comments.set(r.post_id, (comments.get(r.post_id) ?? 0) + 1));
     ((rp.data ?? []) as { post_id: string }[]).forEach((r) => comments.set(r.post_id, (comments.get(r.post_id) ?? 0) + 1));
   }
-  return { posts: posts.map((p) => ({ ...p, likes: likes.get(p.id) ?? 0, comments: comments.get(p.id) ?? 0 })), hasMore: (data ?? []).length > WALL_PAGE };
+  return { posts: posts.map((p) => ({ ...p, likes: likes.get(p.id) ?? 0, comments: comments.get(p.id) ?? 0 })), next: raw.length === RAW ? offset + RAW : null };
 }
 
 /** How many public posts are newer than the newest one the viewer has on screen. */
 export async function countNewerPosts(newestIso: string): Promise<number> {
   const supabase = await createClient();
-  const { count } = await supabase.from("posts").select("id", { count: "exact", head: true }).eq("status", "active").eq("visibility", "public").gt("created_at", newestIso);
-  return count ?? 0;
+  const { data } = await supabase.from("posts").select("title").eq("status", "active").eq("visibility", "public").gt("created_at", newestIso).limit(40);
+  return (data ?? []).filter((r) => { const n = wordCount(r.title as string | null); return n >= 1 && n <= MAX_WALL_WORDS; }).length;
 }

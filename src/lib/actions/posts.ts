@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/supabase/claims";
 import { friendlyError } from "@/lib/errors";
 import { processImage, moderateImage } from "@/lib/images";
-import { LIMITS, FALSE_WALL_KINDS, CLUE_STYLES, WALL_COLORS } from "@/lib/constants";
+import { LIMITS, FALSE_WALL_KINDS, CLUE_STYLES, WALL_COLORS, WALL_ICON_KEYS, MAX_WALL_WORDS, wordCount } from "@/lib/constants";
 import type { ActionResult, FalseWallKind, PostType, ReactionKind } from "@/lib/types";
 import { isUuid } from "@/lib/utils";
 
@@ -25,6 +25,12 @@ export async function createPost(fd: FormData): Promise<ActionResult<{ id: strin
   const hidden = text(fd, "hidden_text", LIMITS.hidden);
   if ((title?.length ?? 0) > LIMITS.title || (body?.length ?? 0) > LIMITS.body || (clue?.length ?? 0) > LIMITS.clue || (hidden?.length ?? 0) > LIMITS.hidden)
     return { ok: false, error: friendlyError("invalid_length") };
+
+  // Every post shows one to three words and a big icon on the wall.
+  const wallWords = wordCount(title);
+  const icon = String(fd.get("wall_icon") ?? "");
+  if (wallWords < 1 || wallWords > MAX_WALL_WORDS) return { ok: false, error: `Use one to ${MAX_WALL_WORDS} words for what shows on the wall.` };
+  if (!(WALL_ICON_KEYS as readonly string[]).includes(icon)) return { ok: false, error: "Pick an icon for your post." };
 
   const kind = (fd.get("false_wall_kind") as FalseWallKind | null) || null;
   const style = (fd.get("clue_style") as string | null) || null;
@@ -77,6 +83,7 @@ export async function createPost(fd: FormData): Promise<ActionResult<{ id: strin
     if (uploaded.length) await supabase.storage.from("post-media").remove(uploaded);
     return { ok: false, error: friendlyError(error) };
   }
+  await supabase.rpc("set_post_icon", { p_id: pid, p_icon: icon });
   revalidatePath("/wall", "layout");
   revalidatePath("/profile", "layout");
   return { ok: true, id: data as string };
