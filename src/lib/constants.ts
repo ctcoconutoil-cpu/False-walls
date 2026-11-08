@@ -35,8 +35,7 @@ export const POST_TYPES: Record<PostType, { label: string; blurb: string; icon: 
 export const WALL_ICONS = ["🧱", "❓", "🔥", "👀", "💬", "🏆", "💡", "❤️", "⭐", "🌙", "🎵", "🎨", "📸", "🎮", "📚", "⚽", "🍜", "☕", "🌍", "🦋", "🔮", "🗝️", "🎭", "🌈"] as const;
 
 export const CREATE_ROUTES: Record<string, PostType> = {
-  "ask-me": "ask_me", "hidden-thought": "hidden_thought", "picture-wall": "picture",
-  "random-prompt": "prompt_response", "false-wall": "false_wall",
+  "picture-wall": "picture", "false-wall": "false_wall",
 };
 export const TYPE_TO_ROUTE: Record<PostType, string> = {
   ask_me: "ask-me", hidden_thought: "hidden-thought", picture: "picture-wall", prompt_response: "random-prompt", false_wall: "false-wall",
@@ -97,3 +96,8 @@ export function clampWords(v: string): string {
   const filled = parts.filter(Boolean);
   return filled.length > MAX_WALL_WORDS ? filled.slice(0, MAX_WALL_WORDS).join(" ") : parts.join(" ").replace(/^ /, "");
 }
+
+export const EXPERIENCE_CATEGORIES = { music: "Music", games: "Games", food: "Food", travel: "Travel", film: "Film", sports: "Sports", art: "Art", learning: "Learning", wellness: "Wellness", nightlife: "Nightlife", community: "Community", other: "Other" } as const;
+export type ExperienceCategory = keyof typeof EXPERIENCE_CATEGORIES;
+export const isExperienceCategory = (v: unknown): v is ExperienceCategory => typeof v === "string" && v in EXPERIENCE_CATEGORIES;
+export const GIST_MAX = 280;

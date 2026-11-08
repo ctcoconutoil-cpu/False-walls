@@ -65,7 +65,7 @@ export function OwnerTools({ open, onClose, tab, setTab, brick, onBrick, cards, 
             <input className={cx(inputCls, "mt-1.5")} value={title} maxLength={36} onChange={(e) => setTitle(clampWords(e.target.value))} placeholder="Roast Me" autoComplete="off" required />
           </label>
           <div className="flex flex-wrap gap-2">
-            {["Roast Me", "Hot Take", "Spill It", "Ask Me Why", "Secrets"].map((t) => (
+            {["Roast Me", "Hot Take", "Spill It", "Ask Me Why"].map((t) => (
               <button key={t} type="button" onClick={() => setTitle(t)} className="rounded-full border-2 border-night-3 px-3 py-1.5 text-xs font-bold text-chalk">{t}</button>
             ))}
           </div>

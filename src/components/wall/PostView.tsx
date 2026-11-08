@@ -8,7 +8,7 @@ import { ShareButton } from "@/components/share/ShareSheet";
 import { WallItem } from "@/components/maze/WallItem";
 import { RevealPanel } from "@/components/wall/RevealPanel";
 import { ChainStrip } from "@/components/wall/ChainStrip";
-import { AnswerActions, AskBox, DiscoveryPing, OwnerTools, PostToolbar, ReactionBar, ReplyActions, ReplyBox } from "@/components/wall/Interactions";
+import { AnswerActions, DiscoveryPing, OwnerTools, PostToolbar, ReactionBar, ReplyActions, ReplyBox } from "@/components/wall/Interactions";
 import { CurtainOpen } from "@/components/maze/Curtain";
 import { POST_TYPES } from "@/lib/constants";
 import { isUuid, timeAgo } from "@/lib/utils";
@@ -56,8 +56,6 @@ export async function PostView({ id, modal = false }: { id: string; modal?: bool
     pendingQuestions = count ?? 0;
   }
 
-  const askReason = post.is_sample ? "This is sample content, so it can't receive questions." : post.author_id === null ? "Questions are off for this wall." : undefined;
-  const canAsk = !post.is_sample && !!post.author_id && !owner && post.status === "active";
   const replies = thread.replies as unknown as Reply[];
   const topLevel = replies.filter((r) => !r.parent_reply_id && !r.answer_id);
   const childrenOf = (rid: string) => replies.filter((r) => r.parent_reply_id === rid);
@@ -127,8 +125,6 @@ export async function PostView({ id, modal = false }: { id: string; modal?: bool
           )}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <PostToolbar postId={post.id} saved={thread.saved} loggedIn={loggedIn} isPublic={post.visibility === "public" && !post.is_sample} owner={owner} />
-            {canAsk && <AskBox postId={post.id} loggedIn={loggedIn} allowAnonymous={post.allow_anonymous_questions} canAsk />}
-            {!canAsk && !owner && <AskBox postId={post.id} loggedIn={loggedIn} allowAnonymous={false} canAsk={false} reason={askReason} />}
           </div>
           {owner && (
             <div className="space-y-3 rounded-2xl bg-night-2 p-3">

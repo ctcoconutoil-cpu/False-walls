@@ -5,8 +5,7 @@ import type { PostType } from "@/lib/types";
 
 export const metadata = { title: "Create" };
 const ORDER: { type: PostType; color: keyof typeof WALL_COLORS }[] = [
-  { type: "ask_me", color: "mustard" }, { type: "hidden_thought", color: "rose" }, { type: "picture", color: "sky" },
-  { type: "prompt_response", color: "teal" }, { type: "false_wall", color: "violet" },
+  { type: "picture", color: "sky" }, { type: "false_wall", color: "violet" },
 ];
 
 export default async function CreateMenu({ searchParams }: { searchParams: Promise<{ chain_parent?: string; chain_answer?: string }> }) {
@@ -29,6 +28,18 @@ export default async function CreateMenu({ searchParams }: { searchParams: Promi
             </li>
           );
         })}
+        <li>
+          <Link href="/create/experience" className="btn-press flex items-center gap-4 rounded-2xl bg-[#F9A719] p-4 text-[#2c1e02] shadow-[0_5px_0_#a86d06]">
+            <span aria-hidden className="display grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-black/15 text-3xl">★</span>
+            <span><span className="display block text-xl">Experience</span><span className="block text-sm font-medium opacity-85">A title, picture and link for something to do or go to, with an optional date and time. Shows in Discover.</span></span>
+          </Link>
+        </li>
+        <li>
+          <Link href="/discover?tab=gist" className="btn-press flex items-center gap-4 rounded-2xl bg-[#1879D2] p-4 text-white shadow-[0_5px_0_#0d3f73]">
+            <span aria-hidden className="display grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-black/15 text-3xl">“</span>
+            <span><span className="display block text-xl">Gist</span><span className="block text-sm font-medium opacity-85">A quick update for the people who follow you and the people you follow. Shows in Discover.</span></span>
+          </Link>
+        </li>
         <li>
           <Link href="/create/private" className="btn-press flex items-center gap-4 rounded-2xl border-2 border-dashed border-mustard bg-night-2 p-4">
             <span aria-hidden className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-night-3 text-3xl">🔒</span>

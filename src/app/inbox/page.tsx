@@ -50,7 +50,7 @@ export default async function Inbox({ searchParams }: { searchParams: Promise<{ 
         <div role="group" aria-label="Filter questions" className="mb-4 flex gap-2">
           {(["all", "anonymous", "identified"] as const).map((f) => <Link key={f} href={`/inbox?tab=questions&filter=${f}`} aria-current={filter === f} className={cx("rounded-full px-3.5 py-2 text-sm font-bold capitalize", filter === f ? "bg-chalk text-night" : "bg-night-3")}>{f}</Link>)}
         </div>
-        {rows.length === 0 ? <Empty title="No pending questions" action={<Link href="/create/ask-me" className="font-bold text-mustard underline">Create an Ask Me wall</Link>}>When someone asks you something, it lands here. You decide what to answer.</Empty>
+        {rows.length === 0 ? <Empty title="No pending questions" action={<Link href="/private" className="font-bold text-mustard underline">Open your private wall</Link>}>When someone asks you something, it lands here. You decide what to answer.</Empty>
           : <div className="space-y-3">{rows.map((r) => <QuestionCard key={r.id} q={r} />)}</div>}
 
       </>

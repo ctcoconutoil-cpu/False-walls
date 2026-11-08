@@ -1,4 +1,7 @@
 const MESSAGES: Record<string, string> = {
+  teen_restricted: "Experiences can only be posted by adult accounts.",
+  invalid_url: "Add a full link that starts with https://",
+  date_past: "Pick a date and time that hasn't passed yet.",
   not_authenticated: "Log in to do that.",
   not_found: "That wall is no longer available.",
   invalid_options: "Add between 3 and 10 numbered options.",
