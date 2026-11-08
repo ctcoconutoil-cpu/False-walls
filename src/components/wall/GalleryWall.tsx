@@ -145,7 +145,7 @@ export function GalleryWall({ initial, next: initialNext, unread }: { initial: W
 
   const shown = slots.filter((p) => p.bay >= firstBay || p.key === focus?.key);
   const stageStyle = { width: DW, height: total, transform: `scale(${s})` } as CSSProperties;
-  const bays = Array.from({ length: lastBay - firstBay + 1 }, (_, i) => firstBay + i);
+  const bays = Array.from({ length: lastBay - firstBay + 1 }, (_, i) => firstBay + i).filter((b) => b * BAYH < total - 150);
 
   return (
     <div className="wp-root">

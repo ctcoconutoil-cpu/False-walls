@@ -166,7 +166,7 @@ html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-
 .wp-scroller.is-dragging { cursor: grabbing; }
 .wp-scroller.has-focus { overflow-y: hidden; touch-action: none; cursor: default; }
 .wp-track { position: relative; margin: 0 auto; }
-.wp-stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; background: url(/wall/brick-tile.webp) 0 0 / 256px 112px; box-shadow: 0 0 40px 10px rgba(0,0,0,.5); }
+.wp-stage { overflow: clip; position: absolute; left: 0; top: 0; transform-origin: 0 0; background: url(/wall/brick-tile.webp) 0 0 / 256px 112px; box-shadow: 0 0 40px 10px rgba(0,0,0,.5); }
 .wp-backdrop { position: absolute; left: 0; pointer-events: none; overflow: visible; }
 /* Fixed lighting over the screen: a darker foot and soft shoulders, so the wall feels lit from above. */
 .wp-light { position: absolute; left: 0; right: 0; bottom: 0; top: 64px; pointer-events: none; z-index: 3; background: linear-gradient(to bottom, rgba(0,0,0,.34), transparent 14%, transparent 80%, rgba(0,0,0,.45)); }
