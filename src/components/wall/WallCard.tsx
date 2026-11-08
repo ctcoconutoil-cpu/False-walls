@@ -18,15 +18,24 @@ export const wallText = (post: WallPost) => (post.title ?? "").trim();
 const compact = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, "")}k` : String(n));
 const sizeFor = (t: string) => { const w = Math.max(...t.split(/\s+/).map((x) => x.length), 1); return w <= 5 ? 27 : w <= 7 ? 23 : w <= 9 ? 19 : 15; };
 
-/** Hand-drawn flourishes that sit under the words. */
+/** Hand-drawn flourishes that sit under the words: swooshes, curved arrows, ticks, loops. Each post gets one, chosen from its own text. */
+const FLOURISHES: React.ReactNode[] = [
+  <path key="0" d="M3 14C20 6 50 4 77 10C52 8 24 11 3 14z" fill="currentColor" strokeWidth="1.6" />,
+  <g key="1"><path d="M4 15C24 8 48 6 68 8" /><path d="M60 2l10 6-8 7" /></g>,
+  <g key="2"><path d="M4 8C26 3 52 3 76 7" /><path d="M10 15C30 10 54 10 70 13" /></g>,
+  <path key="3" d="M3 11c7-8 11 8 18 0s11 8 18 0 11 8 18 0 8 4 14 0" />,
+  <path key="4" d="M3 15C22 14 40 14 56 12c10-1 14-8 8-9s-8 8 2 9c4 .4 8-.2 12-1" />,
+  <g key="5"><path d="M4 16C24 6 56 6 76 16" /><path d="M18 8 15 2M30 5V-1M42 4V-2M54 5l2-6M66 9l4-5" /></g>,
+  <g key="6"><path d="M4 10H72" /><path d="M62 3l11 7-11 7" /></g>,
+  <g key="7"><path d="M4 17C20 16 28 8 42 9c10 1 16-3 30-9" /><path d="M58 0h14v13" /></g>,
+  <path key="8" d="M4 14 14 4l8 11 10-11 8 11 10-11 8 11 10-8" />,
+  <g key="9"><path d="M4 12C26 8 50 8 70 12" /><path d="M73 5v6M70 8h6M10 3v4M8 5h4" /></g>,
+  <g key="10"><path d="M4 12C22 4 46 4 74 11" /><path d="M16 15C34 11 52 11 66 14" strokeWidth="1.8" /></g>,
+  <g key="11"><path d="M6 15C26 8 54 8 72 3" /><path d="M72 3 62 3M72 3l-2 10" /></g>,
+];
+export const flourishFor = (key: string) => { let h = 7; for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0; return h % FLOURISHES.length; };
 export function Flourish({ kind, className }: { kind: number; className?: string }) {
-  const p = [
-    <path key="a" d="M4 12C20 5 44 4 76 9" />,
-    <path key="b" d="M4 9c8-6 12 6 20 0s12 6 20 0 12 6 20 0 8 2 12 0" />,
-    <g key="c"><path d="M4 13C24 12 44 10 64 4" /><path d="M54 3 65 4 61 14" /></g>,
-    <g key="d"><path d="M6 11C24 6 40 6 70 9" /><path d="M20 3v4M40 1v5M60 3v4" /></g>,
-  ];
-  return <svg aria-hidden viewBox="0 0 80 16" className={className} fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">{p[kind % p.length]}</svg>;
+  return <svg aria-hidden viewBox="-2 -4 84 26" className={className} fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">{FLOURISHES[kind % FLOURISHES.length]}</svg>;
 }
 
 export function Who({ post }: { post: WallPost }) {
@@ -73,7 +82,7 @@ export function WallCard({ post, p }: { post: WallPost; p: Pick<Slot, "variant" 
       <span aria-hidden className="wp-bricktex" />
       <span className={`wp-icon ${ic === "ask" ? "wp-icon-disc" : ""}`}><WallIcon name={ic} size={ic === "ask" ? 30 : 34} /></span>
       <span className="wp-words" style={{ fontSize: sizeFor(words) }}>{words}</span>
-      <Flourish kind={Math.floor(p.seed * 4)} className="wp-flourish" />
+      <Flourish kind={flourishFor(`${post.id}${words}`)} className="wp-flourish" />
       <span className="wp-foot"><Who post={post} /><Count post={post} /></span>
       <i aria-hidden className="wp-sheen" />
     </span>
