@@ -1,10 +1,12 @@
 "use server";
 import { createHash } from "node:crypto";
+import sharp from "sharp";
 import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { friendlyError } from "@/lib/errors";
-import { WALL_ICON_KEYS, isBrick } from "@/lib/constants";
+import { BG_UPLOAD, WALL_ICON_KEYS, isBrick } from "@/lib/constants";
+import { moderateImage, processImage } from "@/lib/images";
 import { isUuid } from "@/lib/utils";
 import type { ActionResult } from "@/lib/types";
 
@@ -105,3 +107,29 @@ export async function sendToCard(cardId: string, body: string, slug: string): Pr
   return OK;
 }
 
+
+/** Uses the member's own picture as the wall background. It is cropped to 1080 x 1920 (portrait, 9:16). */
+export async function uploadWallBackground(fd: FormData): Promise<ActionResult> {
+  const file = fd.get("image");
+  if (!(file instanceof File) || file.size === 0) return { ok: false, error: "Choose a picture first." };
+  const supabase = await createClient();
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) return fail("not_authenticated");
+  const { data: wall } = await supabase.from("private_walls").select("bg_path").eq("owner_id", u.user.id).maybeSingle();
+  if (!wall) return fail("no_wall");
+  let buf: Buffer;
+  try {
+    const checked = await processImage(file, "post"); // type, size and content checks
+    if ((await moderateImage(checked.buffer)) === "flagged") return fail("image_flagged");
+    buf = await sharp(Buffer.from(await file.arrayBuffer()), { limitInputPixels: 40_000_000 }).rotate()
+      .resize(BG_UPLOAD.width, BG_UPLOAD.height, { fit: "cover", position: "centre" }).webp({ quality: 78 }).toBuffer();
+  } catch (e) { return fail(e instanceof Error ? e.message : "invalid_image"); }
+  const path = `${u.user.id}/${Date.now()}.webp`;
+  const up = await supabase.storage.from("wall-backgrounds").upload(path, buf, { contentType: "image/webp" });
+  if (up.error) return fail("invalid_image");
+  const { error } = await supabase.from("private_walls").update({ brick: "custom", bg_path: path, updated_at: new Date().toISOString() }).eq("owner_id", u.user.id);
+  if (error) { await supabase.storage.from("wall-backgrounds").remove([path]); return fail(error); }
+  if (wall.bg_path) await supabase.storage.from("wall-backgrounds").remove([wall.bg_path as string]);
+  revalidatePath("/private");
+  return OK;
+}

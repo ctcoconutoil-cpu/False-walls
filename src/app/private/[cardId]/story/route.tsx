@@ -14,6 +14,7 @@ const PILL: Record<WallColor, { bg: string; ink: string }> = {
   coral: { bg: "#E51F2B", ink: "#FFFFFF" }, mustard: { bg: "#F9A719", ink: "#2A1A05" }, teal: { bg: "#1879D2", ink: "#FFFFFF" }, sky: { bg: "#1879D2", ink: "#FFFFFF" },
   violet: { bg: "#8B4CC4", ink: "#FFFFFF" }, lime: { bg: "#F9A719", ink: "#2A1A05" }, rose: { bg: "#D5B5A5", ink: "#3A1D14" }, slate: { bg: "#F6EFE4", ink: "#29252A" },
 };
+const BRICK_PNG = new Set(["classic", "charcoal", "navy", "plum", "forest", "sand"]);
 const clean = (s: string) => s.replace(/[\p{Extended_Pictographic}‍️]/gu, "").replace(/\s+/g, " ").trim();
 const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s);
 
@@ -37,10 +38,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ cardId: 
   if (!wall) return new Response("Not found", { status: 404 });
 
   const origin = new URL(req.url).origin;
+  const pic = ["art1", "art2", "life1", "life2"].includes(wall.brick as string);
   const pub = (f: string) => readFile(path.join(process.cwd(), "public", f));
-  const [fontBuf, brickBuf] = await Promise.all([pub("fonts/caveat-brush.woff"), pub(`wall/bricks/${wall.brick}.png`)]);
+  const [fontBuf, brickBuf] = await Promise.all([pub("fonts/caveat-brush.woff"), pic ? pub(`wall/bg/${wall.brick}.jpg`) : pub(`wall/bricks/${BRICK_PNG.has(wall.brick as string) ? wall.brick : "classic"}.png`)]);
   const font = fontBuf.buffer.slice(fontBuf.byteOffset, fontBuf.byteOffset + fontBuf.byteLength) as ArrayBuffer;
-  const brick = `data:image/png;base64,${brickBuf.toString("base64")}`;
+  const brick = `data:image/${pic ? "jpeg" : "png"};base64,${brickBuf.toString("base64")}`;
   const color = (card.color as WallColor) in WALL_COLORS ? (card.color as WallColor) : "coral";
   const c = WALL_COLORS[color], pill = PILL[color];
   const icon = isWallIcon(card.icon as string) ? (card.icon as string) : "star";
@@ -51,7 +53,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ cardId: 
 
   return new ImageResponse(
     (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 1080, height: 1920, position: "relative", fontFamily: "Brush", backgroundColor: "#2a110c", backgroundImage: `url(${brick})`, backgroundSize: "768px 336px" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 1080, height: 1920, position: "relative", fontFamily: "Brush", backgroundColor: "#2a110c", backgroundImage: `url(${brick})`, backgroundSize: pic ? "1080px 1920px" : "768px 336px" }}>
         <div style={{ display: "flex", position: "absolute", top: 0, left: 0, width: 1080, height: 1920, backgroundImage: "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.05) 28%, rgba(0,0,0,0.05) 66%, rgba(0,0,0,0.7) 100%)" }} />
         <div style={{ display: "flex", marginTop: 90, fontSize: 70, color: "#FFFFFF", letterSpacing: 6, textShadow: "0 4px 0 rgba(0,0,0,0.5)" }}>FALSE WALLS</div>
 

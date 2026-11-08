@@ -14,5 +14,5 @@ export default async function PrivateWallPage() {
   if (!wall) return <PrivateSetup username={profile.username} />;
   const [{ posts }, templates] = await Promise.all([getWallPage(0), getTemplatePosts(user.id)]);
   const owner: WallOwner = { username: profile.username, display_name: profile.display_name, avatar_style: profile.avatar_style, avatar_color: profile.avatar_color, avatar_url: profile.avatar_url };
-  return <div data-nopad=""><PrivateWallView mode="owner" slug={wall.slug} brick={wall.brick} cards={wall.cards} owner={owner} candidates={[...templates, ...posts]} isActive={wall.isActive} /></div>;
+  return <div data-nopad=""><PrivateWallView mode="owner" slug={wall.slug} brick={wall.brick} bg={wall.bg} cards={wall.cards} owner={owner} candidates={[...templates, ...posts]} isActive={wall.isActive} /></div>;
 }

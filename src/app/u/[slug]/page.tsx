@@ -20,5 +20,5 @@ export default async function VisitorWall({ params }: { params: Promise<{ slug: 
   const w = await getPublicPrivateWall(slug);
   if (!w) notFound();
   const alreadySent = !!(await cookies()).get(`fw_sent_${w.slug.toLowerCase()}`);
-  return <div data-nopad=""><PrivateWallView alreadySent={alreadySent} mode="visitor" slug={w.slug} brick={w.brick} cards={w.cards} owner={w.owner} accepting={w.accepting} /></div>;
+  return <div data-nopad=""><PrivateWallView alreadySent={alreadySent} mode="visitor" slug={w.slug} brick={w.brick} bg={w.bg} cards={w.cards} owner={w.owner} accepting={w.accepting} /></div>;
 }

@@ -6,13 +6,11 @@ import { FlipComposer } from "@/components/private/FlipComposer";
 import { OwnerTools } from "@/components/private/OwnerTools";
 import { PromptCard } from "@/components/private/PromptCard";
 import { Avatar } from "@/components/ui";
-import { WallBackdrop } from "@/components/wall/WallBackdrop";
 import { WallCard, wallText } from "@/components/wall/WallCard";
 import { removeCard } from "@/lib/actions/private";
-import type { BrickKey } from "@/lib/constants";
+import { isPicture, type BrickKey } from "@/lib/constants";
 import type { ViewCard, WallOwner } from "@/lib/data/private";
 import type { WallPost } from "@/lib/data/wall";
-import { BAYH, DW, PER_BAY, layoutBay } from "@/lib/wall/layout";
 
 const MAX_W = 560;
 type Mode = "owner" | "visitor";
@@ -21,8 +19,8 @@ type Mode = "owner" | "visitor";
  * A private wall: the same brick wall as the Main Wall, with the owner's prompt cards (and any public posts they
  * pinned) hanging on it. Visitors tap a prompt to send an anonymous message; the owner taps one to read what arrived.
  */
-export function PrivateWallView({ mode, slug, brick: initialBrick, cards, owner, accepting = true, candidates = [], isActive = true, alreadySent = false }: {
-  alreadySent?: boolean; mode: Mode; slug: string; brick: BrickKey; cards: ViewCard[]; owner: WallOwner; accepting?: boolean; candidates?: WallPost[]; isActive?: boolean;
+export function PrivateWallView({ mode, slug, brick: initialBrick, cards, owner, accepting = true, candidates = [], isActive = true, alreadySent = false, bg = null }: {
+  bg?: string | null; alreadySent?: boolean; mode: Mode; slug: string; brick: BrickKey; cards: ViewCard[]; owner: WallOwner; accepting?: boolean; candidates?: WallPost[]; isActive?: boolean;
 }) {
   const router = useRouter();
   const [brick, setBrick] = useState(initialBrick);
@@ -42,16 +40,11 @@ export function PrivateWallView({ mode, slug, brick: initialBrick, cards, owner,
     return () => ro.disconnect();
   }, []);
 
-  const s = Math.min(box.w, MAX_W) / DW;
-  const bays = Math.max(1, Math.ceil(cards.length / PER_BAY));
-  const empties = mode === "owner" || cards.length < PER_BAY ? bays * PER_BAY - cards.length : 0;
-  const items = useMemo(() => [...cards.map((c) => c.id), ...Array.from({ length: empties }, (_, i) => `empty-${i}`)], [cards, empties]);
-  const slots = useMemo(() => {
-    const lp = items.map((id) => ({ id, type: "ask_me" as const, hasImage: false }));
-    return Array.from({ length: Math.max(1, Math.ceil(items.length / PER_BAY)) }, (_, b) => layoutBay(b, lp, false)).flat();
-  }, [items]);
-  const total = Math.max(1, Math.ceil(items.length / PER_BAY)) * BAYH + 40;
-  const byId = new Map(cards.map((c) => [c.id, c]));
+  // Two cards to a row, standing straight on a ledge. One card on its own is shown large and centred.
+  const GAP = 16;
+  const usable = Math.min(box.w, MAX_W) - 36;
+  const cw = cards.length === 1 ? Math.min(Math.max(usable * 0.72, 150), 300) : Math.max(110, (usable - GAP) / 2);
+  const rows = useMemo(() => { const r: ViewCard[][] = []; for (let i = 0; i < cards.length; i += 2) r.push(cards.slice(i, i + 2)); return r; }, [cards]);
   const link = () => `${location.origin}/u/${slug}`;
   const copy = async () => {
     try {
@@ -64,7 +57,7 @@ export function PrivateWallView({ mode, slug, brick: initialBrick, cards, owner,
   const unreadTotal = cards.reduce((n, c) => n + (c.unread ?? 0), 0);
 
   return (
-    <div className="wp-root" data-brick={brick}>
+    <div className="wp-root" data-brick={brick} data-pic={isPicture(brick) ? "" : undefined} style={brick === "custom" && bg ? ({ "--pic": `url(${bg})` } as CSSProperties) : undefined}>
       <header className="wp-header">
         {mode === "owner" ? (
           <Link href="/wall" aria-label="Back to the Wall" className="grid h-11 w-11 place-items-center rounded-full text-white active:bg-white/10">
@@ -97,49 +90,47 @@ export function PrivateWallView({ mode, slug, brick: initialBrick, cards, owner,
       )}
 
       <div ref={scroller} className="wp-scroller" tabIndex={0} role="region" aria-label={mode === "owner" ? "Your private wall" : `${name}'s wall`}>
-        <div className="wp-track" style={{ width: DW * s, height: total * s }}>
-          <div className="wp-stage" style={{ width: DW, height: total, transform: `scale(${s})` } as CSSProperties}>
-            {Array.from({ length: Math.ceil(items.length / PER_BAY) || 1 }, (_, b) => <WallBackdrop key={b} bay={b} />)}
-            {slots.map((p) => {
-              const card = byId.get(items[p.postIndex]);
-              const style = { left: p.x, top: p.y, width: p.w, height: p.h, "--z": 1 + p.depth, "--rot": p.rot.toFixed(2), "--ry": p.ry.toFixed(2) } as CSSProperties;
-              if (!card) {
-                return (
-                  <div key={p.key} className="wp-pos" style={style}>
-                    <div className="wp-tilt">
-                      {mode === "owner" ? (
-                        <button type="button" className="wp-hit pw-empty" onClick={() => setTools({ open: true, tab: "card" })} aria-label="Add a card here"><span aria-hidden>+</span></button>
-                      ) : <span className="wp-hit pw-empty pw-empty-quiet" aria-hidden />}
-                    </div>
-                  </div>
-                );
-              }
-              const prompt = card.kind === "prompt";
-              const canSend = mode === "visitor" && prompt && accepting && isActive && !sentOnce;
-              const inner = prompt ? <PromptCard card={card} mode={mode} seed={p.seed} /> : <WallCard post={card.post as WallPost} p={p} />;
-              const label = prompt ? (mode === "owner" ? `${card.title}: ${card.total ?? 0} messages${card.unread ? `, ${card.unread} new` : ""}` : `Send a message: ${card.title}`) : `Open post: ${wallText(card.post as WallPost)}`;
-              return (
-                <div key={p.key} className="wp-pos" style={style}>
-                  <div className={`wp-tilt ${canSend ? "pw-glow" : ""}`}>
-                    {prompt && mode === "owner" && !editing ? (
-                      <Link href={`/private/${card.id}`} className="wp-hit" aria-label={label} draggable={false}>{inner}</Link>
-                    ) : prompt ? (
-                      <button type="button" className="wp-hit" aria-label={label} disabled={mode === "visitor" ? !canSend : editing} onClick={() => canSend && setComposing(card)}>{inner}</button>
-                    ) : (
-                      <Link href={`/post/${card.post_id}`} className="wp-hit" aria-label={label} draggable={false}>{inner}</Link>
-                    )}
-                    {Array.from({ length: Math.min(stuck[card.id] ?? 0, 3) }, (_, i) => (
-                      <i key={i} aria-hidden className="pw-note" style={{ "--n": i } as CSSProperties} />
-                    ))}
-                    {mode === "owner" && editing && (
-                      <button type="button" className="pw-remove" aria-label={`Remove ${prompt ? card.title : "post"} from your wall`} onClick={() => remove(card.id)}>✕</button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+        {cards.length === 0 ? (
+          <div className="pw-blank">
+            <p className="pw-blank-title">{mode === "owner" ? "Your wall is empty" : "Nothing on this wall yet"}</p>
+            <p>{mode === "owner" ? "Add a card so people have something to tap." : "Check back soon."}</p>
+            {mode === "owner" && <button type="button" onClick={() => setTools({ open: true, tab: "card" })}>Add your first card</button>}
           </div>
-        </div>
+        ) : (
+          <div className={`pw-wall ${cards.length === 1 ? "pw-one" : ""}`}>
+            {rows.map((row, ri) => (
+              <div key={ri} className="pw-row" style={{ gap: GAP }}>
+                {row.map((card) => {
+                  const prompt = card.kind === "prompt";
+                  const canSend = mode === "visitor" && prompt && accepting && isActive && !sentOnce;
+                  const inner = prompt ? <PromptCard card={card} mode={mode} seed={0.3} /> : <WallCard post={card.post as WallPost} p={{ variant: 0, seed: 0.2 }} />;
+                  const label = prompt ? (mode === "owner" ? `${card.title}: ${card.total ?? 0} messages${card.unread ? `, ${card.unread} new` : ""}` : `Send a message: ${card.title}`) : `Open post: ${wallText(card.post as WallPost)}`;
+                  return (
+                    <div key={card.id} className="pw-cell" style={{ width: cw, height: cw * 1.5 }}>
+                      <div className="wp-pos pw-unit" style={{ transform: `scale(${cw / 100})` }}>
+                        <div className={`wp-tilt ${canSend ? "pw-glow" : ""}`}>
+                          {prompt && mode === "owner" && !editing ? (
+                            <Link href={`/private/${card.id}`} className="wp-hit" aria-label={label} draggable={false}>{inner}</Link>
+                          ) : prompt ? (
+                            <button type="button" className="wp-hit" aria-label={label} disabled={mode === "visitor" ? !canSend : editing} onClick={() => canSend && setComposing(card)}>{inner}</button>
+                          ) : (
+                            <Link href={`/post/${card.post_id}`} className="wp-hit" aria-label={label} draggable={false}>{inner}</Link>
+                          )}
+                          {Array.from({ length: Math.min(stuck[card.id] ?? 0, 3) }, (_, i) => (
+                            <i key={i} aria-hidden className="pw-note" style={{ "--n": i } as CSSProperties} />
+                          ))}
+                          {mode === "owner" && editing && (
+                            <button type="button" className="pw-remove" aria-label={`Remove ${prompt ? card.title : "post"} from your wall`} onClick={() => remove(card.id)}>✕</button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       <div className="wp-light" aria-hidden />
 

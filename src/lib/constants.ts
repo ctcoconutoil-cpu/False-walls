@@ -81,17 +81,25 @@ export const REPORT_REASONS = [
   { value: "other", label: "Something else" },
 ] as const;
 
-/** Brick colours a member can choose for their private wall. */
+/** Backgrounds a member can choose for their private wall: brick colours, art and lifestyle pictures, or their own upload. */
 export const BRICKS = [
-  { key: "classic", name: "Classic red", swatch: "#9a2f22" },
-  { key: "charcoal", name: "Charcoal", swatch: "#48454a" },
-  { key: "navy", name: "Midnight blue", swatch: "#26437a" },
-  { key: "plum", name: "Plum", swatch: "#6a2a7c" },
-  { key: "forest", name: "Forest", swatch: "#265a3c" },
-  { key: "sand", name: "Sand", swatch: "#d3b998" },
+  { key: "classic", name: "Classic red", swatch: "#9a2f22", group: "brick" },
+  { key: "charcoal", name: "Charcoal", swatch: "#48454a", group: "brick" },
+  { key: "navy", name: "Midnight blue", swatch: "#26437a", group: "brick" },
+  { key: "plum", name: "Plum", swatch: "#6a2a7c", group: "brick" },
+  { key: "forest", name: "Forest", swatch: "#265a3c", group: "brick" },
+  { key: "sand", name: "Sand", swatch: "#d3b998", group: "brick" },
+  { key: "art1", name: "Paint strokes", swatch: "#2a1344", group: "art" },
+  { key: "art2", name: "Street mural", swatch: "#3a363c", group: "art" },
+  { key: "life1", name: "Cosy corner", swatch: "#c89a7e", group: "life" },
+  { key: "life2", name: "City dusk", swatch: "#5c2a6e", group: "life" },
 ] as const;
-export type BrickKey = (typeof BRICKS)[number]["key"];
-export const isBrick = (v: string): v is BrickKey => BRICKS.some((b) => b.key === v);
+export type PresetKey = (typeof BRICKS)[number]["key"];
+export type BrickKey = PresetKey | "custom";
+export const isBrick = (v: string): v is PresetKey => BRICKS.some((b) => b.key === v);
+/** True when the look is a picture (art, lifestyle or uploaded) rather than a brick colour. */
+export const isPicture = (v: string) => v === "custom" || BRICKS.some((b) => b.key === v && b.group !== "brick");
+export const BG_UPLOAD = { width: 1080, height: 1920, maxMb: 5 } as const;
 /** Keeps at most three words as someone types, so card text can never run long. */
 export function clampWords(v: string): string {
   const parts = v.replace(/\s+/g, " ").split(" ");

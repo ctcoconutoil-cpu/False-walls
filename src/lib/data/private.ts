@@ -10,7 +10,7 @@ export type PCard = { id: string; kind: "prompt" | "post"; title: string | null;
 /** A card as the wall draws it: the card, the public post it points at (if any), and the owner's numbers. */
 export type ViewCard = PCard & { post: WallPost | null; total?: number; unread?: number };
 export type WallOwner = { username: string; display_name: string | null; avatar_style: string; avatar_color: string; avatar_url: string | null };
-export type PublicPrivateWall = { slug: string; brick: BrickKey; accepting: boolean; owner: WallOwner; cards: ViewCard[] };
+export type PublicPrivateWall = { slug: string; brick: BrickKey; bg: string | null; accepting: boolean; owner: WallOwner; cards: ViewCard[] };
 
 const asWallPost = (p: Awaited<ReturnType<typeof getPostsByIds>>[number]): WallPost => ({ ...p, likes: 0, comments: 0 });
 async function attachPosts(cards: PCard[]): Promise<ViewCard[]> {
@@ -31,15 +31,15 @@ export const getPublicPrivateWall = cache(async (slug: string): Promise<PublicPr
   const supabase = await createClient();
   const { data } = await supabase.rpc("get_private_wall", { p_slug: slug });
   if (!data) return null;
-  const w = data as { slug: string; brick: BrickKey; accepting: boolean; owner: WallOwner; cards: PCard[] };
-  return { slug: w.slug, brick: w.brick, accepting: w.accepting, owner: w.owner, cards: await attachPosts(w.cards) };
+  const w = data as { slug: string; brick: BrickKey; bg?: string | null; accepting: boolean; owner: WallOwner; cards: PCard[] };
+  return { slug: w.slug, brick: w.brick, bg: bgUrl(supabase, w.bg), accepting: w.accepting, owner: w.owner, cards: await attachPosts(w.cards) };
 });
 
-export type OwnerWall = { slug: string; brick: BrickKey; isActive: boolean; cards: ViewCard[] };
+export type OwnerWall = { slug: string; brick: BrickKey; bg: string | null; isActive: boolean; cards: ViewCard[] };
 /** The signed-in member's own wall with a count on every prompt card. Null until they create it. */
 export async function getOwnerWall(userId: string): Promise<OwnerWall | null> {
   const supabase = await createClient();
-  const { data: w } = await supabase.from("private_walls").select("slug, brick, is_active").eq("owner_id", userId).maybeSingle();
+  const { data: w } = await supabase.from("private_walls").select("slug, brick, bg_path, is_active").eq("owner_id", userId).maybeSingle();
   if (!w) return null;
   const [{ data: cards }, { data: counts }] = await Promise.all([
     supabase.from("wall_cards").select("id, kind, title, icon, color, post_id").eq("owner_id", userId).order("created_at", { ascending: false }),
@@ -48,7 +48,7 @@ export async function getOwnerWall(userId: string): Promise<OwnerWall | null> {
   const n = new Map(((counts ?? []) as { card_id: string; total: number; unread: number }[]).map((r) => [r.card_id, r]));
   const withPosts = await attachPosts((cards ?? []) as PCard[]);
   return {
-    slug: w.slug as string, brick: w.brick as BrickKey, isActive: w.is_active as boolean,
+    slug: w.slug as string, brick: w.brick as BrickKey, bg: w.brick === "custom" ? bgUrl(supabase, w.bg_path as string | null) : null, isActive: w.is_active as boolean,
     cards: withPosts.map((c) => ({ ...c, total: Number(n.get(c.id)?.total ?? 0), unread: Number(n.get(c.id)?.unread ?? 0) })),
   };
 }
@@ -77,4 +77,9 @@ export async function getTemplatePosts(userId: string): Promise<WallPost[]> {
     .or(`is_sample.eq.true,author_id.eq.${userId}`).order("created_at", { ascending: false }).limit(30);
   const ids = (data ?? []).map((r) => r.id as string);
   return (await getPostsByIds(ids)).map(asWallPost);
+}
+
+/** Public address of an uploaded wall background. */
+function bgUrl(supabase: Awaited<ReturnType<typeof createClient>>, path: string | null | undefined): string | null {
+  return path ? supabase.storage.from("wall-backgrounds").getPublicUrl(path).data.publicUrl : null;
 }
