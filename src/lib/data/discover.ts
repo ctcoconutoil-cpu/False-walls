@@ -1,13 +1,15 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { ExperienceCategory } from "@/lib/constants";
+import type { Gist } from "@/lib/gist";
+import type { Person } from "@/lib/people";
 
-export type Person = { id: string; username: string; display_name: string | null; avatar_style: string; avatar_color: string; avatar_url: string | null };
+export type { Person } from "@/lib/people";
+export type { Gist, GistComment, GistReaction } from "@/lib/gist";
 export type Experience = {
   id: string; title: string; description: string; category: ExperienceCategory; url: string; starts_at: string | null; created_at: string;
   image: string | null; author_id: string; author: Person | null;
 };
-export type Gist = { id: string; body: string; created_at: string; mine: boolean; likes: number; liked: boolean; author: Omit<Person, "id"> };
 
 /** Experiences for Discover: what's coming up first (soonest first), then everything else, newest first. Past events drop off a day later. */
 export async function getExperiences(category: string | null): Promise<Experience[]> {
@@ -47,4 +49,10 @@ export async function getSuggestions(limit = 12): Promise<Person[]> {
   const supabase = await createClient();
   const { data } = await supabase.rpc("suggest_people", { p_limit: limit });
   return (data ?? []) as Person[];
+}
+
+export async function getGist(id: string): Promise<Gist | null> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("get_gist", { p_id: id });
+  return (data ?? null) as Gist | null;
 }

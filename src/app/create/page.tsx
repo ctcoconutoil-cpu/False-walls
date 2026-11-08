@@ -37,7 +37,7 @@ export default async function CreateMenu({ searchParams }: { searchParams: Promi
         <li>
           <Link href="/discover?tab=gist" className="btn-press flex items-center gap-4 rounded-2xl bg-[#1879D2] p-4 text-white shadow-[0_5px_0_#0d3f73]">
             <span aria-hidden className="display grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-black/15 text-3xl">“</span>
-            <span><span className="display block text-xl">Gist</span><span className="block text-sm font-medium opacity-85">A quick update for the people who follow you and the people you follow. Shows in Discover.</span></span>
+            <span><span className="display block text-xl">Walls Gist</span><span className="block text-sm font-medium opacity-85">A quick post people can react to, comment on and share. Shows in Discover.</span></span>
           </Link>
         </li>
         <li>

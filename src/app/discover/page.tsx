@@ -14,7 +14,7 @@ export const metadata = { title: "Discover" };
 export const dynamic = "force-dynamic";
 
 const TYPE_FILTERS = [["", "All"], ["false_wall", "False Walls"], ["picture", "Pictures"]] as const;
-const TABS = [["walls", "Walls"], ["experiences", "Experiences"], ["gist", "Gist"]] as const;
+const TABS = [["walls", "Walls"], ["experiences", "Experiences"], ["gist", "Walls Gist"]] as const;
 
 type SP = { tab?: string; filter?: string; type?: string; page?: string; cat?: string; feed?: string };
 
@@ -91,7 +91,7 @@ async function Experiences({ sp }: { sp: SP }) {
 
 async function GistTab({ sp }: { sp: SP }) {
   const { user } = await getViewer();
-  if (!user) return <Empty title="Log in to see gist" action={<Link href="/login?next=/discover%3Ftab%3Dgist" className="font-bold text-mustard underline">Log in</Link>}>Gist is what the people you follow are saying.</Empty>;
+  if (!user) return <Empty title="Log in to see Walls Gist" action={<Link href="/login?next=/discover%3Ftab%3Dgist" className="font-bold text-mustard underline">Log in</Link>}>Walls Gist is what the people you follow are saying.</Empty>;
   const follows = await followsAnyone(user.id);
   const feed = sp.feed === "foryou" ? "foryou" : "following";
   // "For you" stays empty until you follow someone. Anyone can post; their own gist shows under Following.
@@ -99,15 +99,15 @@ async function GistTab({ sp }: { sp: SP }) {
   const tabHref = (f: string) => `/discover?tab=gist&feed=${f}`;
   return (
     <>
-      <div role="tablist" aria-label="Gist feed" className="grid grid-cols-2 border-b border-night-3">
+      <div role="tablist" aria-label="Walls Gist feed" className="grid grid-cols-2 border-b border-night-3">
         {([["following", "Following"], ["foryou", "For you"]] as const).map(([v, l]) => (
           <Link key={v} role="tab" aria-selected={feed === v} href={tabHref(v)} className={cx("min-h-11 border-b-2 py-2.5 text-center text-lg font-bold", feed === v ? "border-chalk text-chalk" : "border-transparent text-chalk-dim")}>{l}</Link>
         ))}
       </div>
       <GistComposer />
       {gists.length > 0 ? <GistList gists={gists} /> : (
-        <Empty title={follows ? "Nothing to see here yet" : "Follow people to see their gist"}>
-          {!follows ? "You'll see what they share here. Start with a few below." : feed === "following" ? "The people you follow haven't shared any gist. Check back soon." : "We're gathering fresh gist for you. Check back soon."}
+        <Empty title={follows ? "Nothing to see here yet" : "Follow people to see their Walls Gist"}>
+          {!follows ? "You'll see what they share here. Start with a few below." : feed === "following" ? "The people you follow haven't posted on Walls Gist yet. Check back soon." : "We're gathering fresh posts for you. Check back soon."}
         </Empty>
       )}
       <People people={people} />

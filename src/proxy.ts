@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // Keeps the Supabase session fresh and bounces signed-out visitors away from member-only pages.
 // This is only an optimistic check: every page and action re-checks on the server.
-const MEMBER_ONLY = ["/create", "/inbox", "/settings", "/saved", "/private", "/admin", "/onboarding"];
+const MEMBER_ONLY = ["/create", "/inbox", "/settings", "/saved", "/private", "/gist", "/admin", "/onboarding"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });

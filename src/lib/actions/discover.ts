@@ -5,6 +5,7 @@ import { getAuthUser } from "@/lib/supabase/claims";
 import { friendlyError } from "@/lib/errors";
 import { processImage, moderateImage } from "@/lib/images";
 import { GIST_MAX, isExperienceCategory } from "@/lib/constants";
+import type { GistComment } from "@/lib/gist";
 import type { ActionResult } from "@/lib/types";
 import { isUuid } from "@/lib/utils";
 
@@ -66,12 +67,36 @@ export async function postGist(body: string): Promise<ActionResult> {
   return { ok: true };
 }
 
-export async function toggleGistLike(id: string): Promise<ActionResult<{ liked: boolean }>> {
+export async function reactToGist(id: string, kind: string): Promise<ActionResult<{ my: string | null }>> {
   if (!isUuid(id)) return { ok: false, error: friendlyError("invalid_input") };
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("toggle_gist_like", { p_gist: id });
+  const { data, error } = await supabase.rpc("react_gist", { p_gist: id, p_kind: kind });
   if (error) return { ok: false, error: friendlyError(error) };
-  return { ok: true, liked: data === true };
+  return { ok: true, my: (data as string | null) ?? null };
+}
+
+export async function loadGistComments(id: string): Promise<GistComment[]> {
+  if (!isUuid(id)) return [];
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("gist_comment_list", { p_gist: id });
+  return (data ?? []) as GistComment[];
+}
+
+export async function addGistComment(id: string, body: string): Promise<ActionResult> {
+  const text = body.trim();
+  if (!isUuid(id) || !text || text.length > 280) return { ok: false, error: friendlyError("invalid_length") };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("add_gist_comment", { p_gist: id, p_body: text });
+  if (error) return { ok: false, error: friendlyError(error) };
+  return { ok: true };
+}
+
+export async function deleteGistComment(id: string): Promise<ActionResult> {
+  if (!isUuid(id)) return { ok: false, error: friendlyError("invalid_input") };
+  const supabase = await createClient();
+  const { error } = await supabase.from("gist_comments").delete().eq("id", id);
+  if (error) return { ok: false, error: friendlyError(error) };
+  return { ok: true };
 }
 
 export async function deleteGist(id: string): Promise<ActionResult> {
