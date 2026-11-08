@@ -10,7 +10,6 @@ import { loadWallPage, newerOnWall } from "@/lib/actions/wall";
 import type { WallPost } from "@/lib/data/wall";
 import { BAYH, DW, baysFor, layoutBay, type LayoutPost } from "@/lib/wall/layout";
 
-const PARALLAX = [0.06, 0, -0.045]; // far posts drift a little against the scroll, near ones a little with it
 const MAX_W = 560; // the wall is never wider than this; on a desktop the brick simply carries on either side
 type Focus = { key: string; fx: number; fy: number; fs: number };
 
@@ -64,7 +63,6 @@ export function GalleryWall({ initial, next: initialNext, unread }: { initial: W
 
   const sync = useCallback(() => {
     const el = scroller.current, st = stage.current; if (!el || !st) return;
-    st.style.setProperty("--sy", ((el.scrollTop + el.clientHeight / 2) / s).toFixed(1));
     setStarted(el.scrollTop > 40);
     setView((v) => {
       const t = Math.floor(el.scrollTop / s / 100) * 100, b = Math.ceil((el.scrollTop + el.clientHeight) / s / 100) * 100;
@@ -164,7 +162,7 @@ export function GalleryWall({ initial, next: initialNext, unread }: { initial: W
               const isFocus = focus?.key === p.key;
               const style = {
                 left: p.x, top: p.y, width: p.w, height: p.h, "--z": 1 + p.depth, "--rot": p.rot.toFixed(2), "--ry": p.ry.toFixed(2),
-                "--cy": (p.y + p.h / 2).toFixed(1), "--pf": PARALLAX[p.depth],
+               
                 ...(isFocus ? { "--fx": `${focus!.fx}px`, "--fy": `${focus!.fy}px`, "--fs": focus!.fs } : {}),
               } as CSSProperties;
               return (
