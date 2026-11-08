@@ -35,8 +35,7 @@ begin
     ('prompt_response','Book Club','rose','book',null,null,null),
     ('hidden_thought','Midnight Thoughts','violet','ghost',null,null,'The quiet is when everything feels louder.'),
     ('picture','Weekend Mood','slate','camera','ocean',null,null),
-    ('ask_me','Ask Me Why','mustard','ask',null,null,null),
-    ('prompt_response','Late Night','slate','moon',null,null,null)
+    ('ask_me','Ask Me Why','mustard','ask',null,null,null)
   ) as v(t, title, color, icon, pic, kind, hidden)
   loop
     n := n + 1; pid := gen_random_uuid();

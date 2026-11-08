@@ -39,14 +39,14 @@ export function GalleryWall({ initial, next: initialNext, unread }: { initial: W
   const s = Math.min(box.w, MAX_W) / DW; // design units to screen pixels
 
   const lp = useMemo<LayoutPost[]>(() => posts.map((p) => ({ id: p.id, type: p.type, hasImage: !!p.media[0]?.url })), [posts]);
-  const loop = next === null;
+  const loop = false; // the wall ends where the posts end
   const firstBay = Math.max(0, Math.floor((view.t - 300) / BAYH)), lastBay = Math.floor((view.b + 300) / BAYH);
   const slots = useMemo(() => {
     const out = [];
     for (let b = firstBay; b <= lastBay; b++) out.push(...layoutBay(b, lp, loop));
     return out;
   }, [firstBay, lastBay, lp, loop]);
-  const total = (loop ? lastBay + 2 : Math.max(1, baysFor(posts.length))) * BAYH + 60;
+  const total = Math.max(1, baysFor(posts.length)) * BAYH + 150;
 
   useEffect(() => {
     const el = scroller.current; if (!el) return;
@@ -181,6 +181,7 @@ export function GalleryWall({ initial, next: initialNext, unread }: { initial: W
                 </div>
               );
             })}
+            {next === null && posts.length > 0 && <p className="wp-end"><span>That is the whole wall.</span> No more posts.</p>}
             <div className="wp-dim" onClick={cancelFocus} aria-hidden />
           </div>
         </div>
