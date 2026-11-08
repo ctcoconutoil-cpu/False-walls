@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { PRIVATE_ONLY_IN, PRIVATE_ONLY_TYPES } from "@/lib/constants";
 import type { Post, ReactionKind } from "@/lib/types";
 
 export const POST_SELECT =
@@ -44,10 +45,10 @@ export async function getDiscoverFeed(filter: DiscoverFilter, type: string | nul
     if (!ids.length) return { posts: [] as Post[], hasMore: false };
     const { data } = await supabase.from("posts").select(POST_SELECT).in("id", ids);
     const byId = new Map((await hydratePosts(supabase, (data ?? []) as unknown as Row[])).map((p) => [p.id, p]));
-    const ordered = (ids.map((id) => byId.get(id)).filter(Boolean) as Post[]).filter((p) => p.visibility === "public");
+    const ordered = (ids.map((id) => byId.get(id)).filter(Boolean) as Post[]).filter((p) => p.visibility === "public" && !(PRIVATE_ONLY_TYPES as readonly string[]).includes(p.type));
     return { posts: ordered.slice(0, DISCOVER_PAGE), hasMore: ids.length > DISCOVER_PAGE };
   }
-  let q = supabase.from("posts").select(POST_SELECT).eq("status", "active").eq("visibility", "public");
+  let q = supabase.from("posts").select(POST_SELECT).eq("status", "active").eq("visibility", "public").not("type", "in", PRIVATE_ONLY_IN);
   if (type) q = q.eq("type", type);
   const { data } = await q.order("created_at", { ascending: false }).range(from, from + DISCOVER_PAGE);
   const posts = await hydratePosts(supabase, (data ?? []) as unknown as Row[]);

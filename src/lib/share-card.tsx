@@ -9,6 +9,7 @@ export type CardData = {
   count?: number;           // how many numbers a Pick a number wall has
   color?: string;
   by?: string | null;       // who it belongs to
+  tag?: string;             // the pill above the title; defaults by kind
 };
 export type CardFormat = "og" | "story";
 
@@ -22,7 +23,7 @@ export function shareCard(d: CardData, format: CardFormat) {
   const c = WALL_COLORS[(d.color as WallColor) in WALL_COLORS ? (d.color as WallColor) : "coral"];
   const title = clip(clean(d.title), story ? 140 : 110);
   const sub = d.subtitle ? clip(clean(d.subtitle), story ? 220 : 130) : null;
-  const tag = d.kind === "question" ? "ANONYMOUS QUESTION" : d.count ? "PICK A NUMBER" : "PRIVATE WALL";
+  const tag = d.tag ?? (d.kind === "question" ? "ANONYMOUS QUESTION" : d.count ? "PICK A NUMBER" : "PRIVATE WALL");
   const titleSize = story ? (title.length > 70 ? 76 : 96) : title.length > 60 ? 46 : 60;
   const badge = story ? 360 : 240;
   const chips = d.count ? Array.from({ length: Math.min(d.count, 10) }, (_, i) => i + 1) : [];

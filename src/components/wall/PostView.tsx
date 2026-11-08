@@ -8,7 +8,8 @@ import { ShareButton } from "@/components/share/ShareSheet";
 import { WallItem } from "@/components/maze/WallItem";
 import { RevealPanel } from "@/components/wall/RevealPanel";
 import { ChainStrip } from "@/components/wall/ChainStrip";
-import { AnswerActions, DiscoveryPing, OwnerTools, PostToolbar, ReactionBar, ReplyActions, ReplyBox } from "@/components/wall/Interactions";
+import { BackLink } from "@/components/wall/BackLink";
+import { AnswerActions, AskBox, DiscoveryPing, OwnerTools, PostToolbar, ReactionBar, ReplyActions, ReplyBox } from "@/components/wall/Interactions";
 import { CurtainOpen } from "@/components/maze/Curtain";
 import { POST_TYPES } from "@/lib/constants";
 import { isUuid, timeAgo } from "@/lib/utils";
@@ -56,6 +57,9 @@ export async function PostView({ id, modal = false }: { id: string; modal?: bool
     pendingQuestions = count ?? 0;
   }
 
+  const askReason = post.is_sample ? "This is sample content, so it can't receive questions." : post.author_id === null ? "Questions are off for this wall." : undefined;
+  const canAsk = post.type === "ask_me" && !post.is_sample && !!post.author_id && !owner && post.status === "active";
+  const showAsk = post.type === "ask_me";
   const replies = thread.replies as unknown as Reply[];
   const topLevel = replies.filter((r) => !r.parent_reply_id && !r.answer_id);
   const childrenOf = (rid: string) => replies.filter((r) => r.parent_reply_id === rid);
@@ -71,7 +75,7 @@ export async function PostView({ id, modal = false }: { id: string; modal?: bool
       {!owner && me && <DiscoveryPing kind="wall_explored" id={post.id} />}
       <header className="wall wall-brick relative overflow-hidden px-4 pb-6 pt-4" style={{ ["--wall" as string]: "#B4503A", ["--mortar" as string]: "#7C3425" }}>
         <div className="relative z-10 mx-auto max-w-2xl">
-          {!modal && <Link href="/wall" className="inline-flex min-h-11 items-center rounded-xl bg-black/45 px-3 text-sm font-bold">‹ Back to the Wall</Link>}
+          {!modal && <BackLink fallback="/discover" className="inline-flex min-h-11 items-center rounded-xl bg-black/45 px-3 text-sm font-bold">‹ Back</BackLink>}
           <p className="display mt-4 text-4xl uppercase leading-none drop-shadow-[0_3px_0_rgba(0,0,0,.45)] sm:text-5xl">Behind the wall</p>
         </div>
       </header>
@@ -125,6 +129,8 @@ export async function PostView({ id, modal = false }: { id: string; modal?: bool
           )}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <PostToolbar postId={post.id} saved={thread.saved} loggedIn={loggedIn} isPublic={post.visibility === "public" && !post.is_sample} owner={owner} />
+            {canAsk && <AskBox postId={post.id} loggedIn={loggedIn} allowAnonymous={post.allow_anonymous_questions} canAsk />}
+            {showAsk && !canAsk && !owner && <AskBox postId={post.id} loggedIn={loggedIn} allowAnonymous={false} canAsk={false} reason={askReason} />}
           </div>
           {owner && (
             <div className="space-y-3 rounded-2xl bg-night-2 p-3">
@@ -157,7 +163,7 @@ export async function PostView({ id, modal = false }: { id: string; modal?: bool
                       {loggedIn && post.allow_chains && <Link href={`/create?chain_parent=${post.id}&chain_answer=${a.id}`} className="min-h-9 text-sm font-bold text-mustard underline">Build a related wall from this answer</Link>}
                     </div>
                     {repliesOfAnswer(a.id).map((x) => <ReplyBubble key={x.id} reply={x} postId={post.id} meId={me?.id ?? null} loggedIn={loggedIn} reactions={thread.reactions.replies[x.id]} />)}
-                    {post.allow_replies && <details className="text-sm"><summary className="min-h-9 cursor-pointer font-bold text-chalk-dim">Reply to this answer</summary><div className="mt-2"><ReplyBox postId={post.id} answerId={a.id} loggedIn={loggedIn} /></div></details>}
+                    {post.allow_replies && <details className="text-sm"><summary className="min-h-9 cursor-pointer font-bold text-chalk-dim">Reply</summary><div className="mt-2"><ReplyBox postId={post.id} answerId={a.id} loggedIn={loggedIn} /></div></details>}
                   </div>
                 </article>
               );
@@ -183,7 +189,7 @@ export async function PostView({ id, modal = false }: { id: string; modal?: bool
               <li key={x.id} className="space-y-2">
                 <ReplyBubble reply={x} postId={post.id} meId={me?.id ?? null} loggedIn={loggedIn} reactions={thread.reactions.replies[x.id]} />
                 {childrenOf(x.id).map((c) => <div key={c.id} className="ml-6"><ReplyBubble reply={c} postId={post.id} meId={me?.id ?? null} loggedIn={loggedIn} reactions={thread.reactions.replies[c.id]} /></div>)}
-                {post.allow_replies && loggedIn && <details className="ml-6 text-sm"><summary className="min-h-9 cursor-pointer text-chalk-dim">Answer this</summary><div className="mt-2"><ReplyBox postId={post.id} parentId={x.id} loggedIn placeholder="Reply to this voice" /></div></details>}
+                {post.allow_replies && loggedIn && <details className="ml-6 text-sm"><summary className="min-h-9 cursor-pointer text-chalk-dim">Reply</summary><div className="mt-2"><ReplyBox postId={post.id} parentId={x.id} loggedIn placeholder="Leave reply" /></div></details>}
               </li>
             ))}
           </ol>

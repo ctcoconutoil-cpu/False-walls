@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { FeedCard } from "@/components/discover/FeedCard";
+import { WallFeed } from "@/components/discover/WallFeed";
 import { ExperienceCard } from "@/components/discover/ExperienceCard";
 import { GistComposer, GistList } from "@/components/discover/GistFeed";
 import { People } from "@/components/discover/People";
 import { Empty } from "@/components/ui";
 import { EXPERIENCE_CATEGORIES, POST_TYPES } from "@/lib/constants";
 import { getExperiences, getGistFeed, getSuggestions, followsAnyone } from "@/lib/data/discover";
-import { DISCOVER_PAGE, getDiscoverFeed, type DiscoverFilter } from "@/lib/data/posts";
+import { getDiscoverFeed, type DiscoverFilter } from "@/lib/data/posts";
 import { getViewer } from "@/lib/data/session";
 import { cx } from "@/lib/utils";
 
@@ -40,9 +40,8 @@ export default async function Discover({ searchParams }: { searchParams: Promise
 async function Walls({ sp }: { sp: SP }) {
   const filter: DiscoverFilter = sp.filter === "trending" ? "trending" : "new";
   const type = sp.type && sp.type in POST_TYPES && TYPE_FILTERS.some(([v]) => v === sp.type) ? sp.type : null;
-  const page = Math.min(Math.max(parseInt(sp.page ?? "0", 10) || 0, 0), 50);
-  const { posts, hasMore } = await getDiscoverFeed(filter, type, page);
-  const href = (f: string, t: string | null, p = 0) => `/discover?tab=walls&filter=${f}${t ? `&type=${t}` : ""}${p ? `&page=${p}` : ""}`;
+  const { posts, hasMore } = await getDiscoverFeed(filter, type, 0);
+  const href = (f: string, t: string | null) => `/discover?tab=walls&filter=${f}${t ? `&type=${t}` : ""}`;
   return (
     <>
       <div role="tablist" aria-label="Order" className="flex gap-2">
@@ -60,15 +59,8 @@ async function Walls({ sp }: { sp: SP }) {
           {filter === "trending" ? "Walls rise here when several different people react and reply. Check New, or start a conversation." : "Be the first to put something here."}
         </Empty>
       ) : (
-        <ul className="space-y-3">{posts.map((p) => <li key={p.id}><FeedCard post={p} /></li>)}</ul>
+        <WallFeed key={`${filter}-${type}`} initial={posts} hasMore={hasMore} filter={filter} type={type} />
       )}
-      {(page > 0 || hasMore) && (
-        <div className="flex justify-between gap-2">
-          {page > 0 ? <Link href={href(filter, type, page - 1)} className="min-h-11 rounded-xl bg-night-3 px-4 py-2.5 font-bold">‹ Previous</Link> : <span />}
-          {hasMore && <Link href={href(filter, type, page + 1)} className="min-h-11 rounded-xl bg-night-3 px-4 py-2.5 font-bold">More ›</Link>}
-        </div>
-      )}
-      <p className="text-center text-xs text-chalk-dim">Showing {DISCOVER_PAGE} per page. Everything here is also on the <Link href="/wall" className="underline">Wall</Link>.</p>
     </>
   );
 }
@@ -79,9 +71,9 @@ async function Experiences({ sp }: { sp: SP }) {
   const href = (c: string) => `/discover?tab=experiences${c ? `&cat=${c}` : ""}`;
   return (
     <>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-chalk-dim">Things to do, watch and go to.</p>
-        <Link href="/create/experience" className="btn-press shrink-0 rounded-xl bg-[#F9A719] px-4 py-2.5 text-sm font-extrabold text-[#2c1e02]">+ Add one</Link>
+      <div className="flex items-center justify-between gap-3 rounded-[22px] bg-[#1f1632] px-4 py-3">
+        <h2 className="display text-2xl leading-tight">Discover experiences</h2>
+        <Link href="/create/experience" className="btn-press shrink-0 rounded-full bg-[#F9A719] px-4 py-2 text-sm font-extrabold text-[#2c1e02]">+ Add</Link>
       </div>
       <nav aria-label="Category" className="scrollbar-none -mx-4 flex gap-1.5 overflow-x-auto px-4">
         {([["", "All"], ...Object.entries(EXPERIENCE_CATEGORIES)] as [string, string][]).map(([v, l]) => (
@@ -91,7 +83,7 @@ async function Experiences({ sp }: { sp: SP }) {
       {items.length === 0 ? (
         <Empty title="No experiences yet" action={<Link href="/create/experience" className="font-bold text-mustard underline">Add the first one</Link>}>Add something people can do or go to, with a picture and a link.</Empty>
       ) : (
-        <ul className="space-y-4">{items.map((e) => <li key={e.id}><ExperienceCard e={e} mine={e.author_id === user?.id} /></li>)}</ul>
+        <ul className="grid grid-cols-2 items-stretch gap-3 rounded-[28px] bg-[#1f1632] p-3">{items.map((e, i) => <li key={e.id}><ExperienceCard e={e} mine={e.author_id === user?.id} i={i} /></li>)}</ul>
       )}
     </>
   );
@@ -102,8 +94,8 @@ async function GistTab({ sp }: { sp: SP }) {
   if (!user) return <Empty title="Log in to see gist" action={<Link href="/login?next=/discover%3Ftab%3Dgist" className="font-bold text-mustard underline">Log in</Link>}>Gist is what the people you follow are saying.</Empty>;
   const follows = await followsAnyone(user.id);
   const feed = sp.feed === "foryou" ? "foryou" : "following";
-  // Nothing shows until you follow someone, so a new account sees people to follow instead of an empty feed.
-  const [gists, people] = await Promise.all([follows ? getGistFeed(feed) : Promise.resolve([]), getSuggestions()]);
+  // "For you" stays empty until you follow someone. Anyone can post; their own gist shows under Following.
+  const [gists, people] = await Promise.all([getGistFeed(feed), getSuggestions()]);
   const tabHref = (f: string) => `/discover?tab=gist&feed=${f}`;
   return (
     <>
@@ -112,20 +104,13 @@ async function GistTab({ sp }: { sp: SP }) {
           <Link key={v} role="tab" aria-selected={feed === v} href={tabHref(v)} className={cx("min-h-11 border-b-2 py-2.5 text-center text-lg font-bold", feed === v ? "border-chalk text-chalk" : "border-transparent text-chalk-dim")}>{l}</Link>
         ))}
       </div>
-      {!follows ? (
-        <>
-          <Empty title="Follow people to see their gist">You'll see what they share here. Start with a few below.</Empty>
-          <People people={people} />
-        </>
-      ) : (
-        <>
-          {feed === "following" && <GistComposer />}
-          {gists.length === 0 ? (
-            <Empty title="Nothing to see here yet">{feed === "following" ? "The people you follow haven't shared any gist. Check back soon." : "We're gathering fresh gist for you. Check back soon."}</Empty>
-          ) : <GistList gists={gists} />}
-          <People people={people} />
-        </>
+      <GistComposer />
+      {gists.length > 0 ? <GistList gists={gists} /> : (
+        <Empty title={follows ? "Nothing to see here yet" : "Follow people to see their gist"}>
+          {!follows ? "You'll see what they share here. Start with a few below." : feed === "following" ? "The people you follow haven't shared any gist. Check back soon." : "We're gathering fresh gist for you. Check back soon."}
+        </Empty>
       )}
+      <People people={people} />
     </>
   );
 }

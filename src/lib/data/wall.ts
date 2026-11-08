@@ -1,3 +1,4 @@
+import { PRIVATE_ONLY_IN } from "@/lib/constants";
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { POST_SELECT, hydratePosts } from "@/lib/data/posts";
@@ -18,7 +19,7 @@ export const fitsWall = (p: Post) => { const n = wordCount(p.title); return n >=
  */
 export async function getWallPage(offset: number): Promise<{ posts: WallPost[]; next: number | null }> {
   const supabase = await createClient();
-  const { data } = await supabase.from("posts").select(POST_SELECT).eq("status", "active").eq("visibility", "public")
+  const { data } = await supabase.from("posts").select(POST_SELECT).eq("status", "active").eq("visibility", "public").not("type", "in", PRIVATE_ONLY_IN)
     .order("created_at", { ascending: false }).order("id").range(offset, offset + RAW - 1);
   const raw = (data ?? []) as never[];
   const posts = (await hydratePosts(supabase, raw)).filter(fitsWall);
@@ -40,6 +41,6 @@ export async function getWallPage(offset: number): Promise<{ posts: WallPost[]; 
 /** How many public posts are newer than the newest one the viewer has on screen. */
 export async function countNewerPosts(newestIso: string): Promise<number> {
   const supabase = await createClient();
-  const { data } = await supabase.from("posts").select("title").eq("status", "active").eq("visibility", "public").gt("created_at", newestIso).limit(40);
+  const { data } = await supabase.from("posts").select("title").eq("status", "active").eq("visibility", "public").not("type", "in", PRIVATE_ONLY_IN).gt("created_at", newestIso).limit(40);
   return (data ?? []).filter((r) => { const n = wordCount(r.title as string | null); return n >= 1 && n <= MAX_WALL_WORDS; }).length;
 }

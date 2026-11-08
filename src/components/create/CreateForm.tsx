@@ -13,15 +13,18 @@ import type { ClueStyle, FalseWallKind, PostType, WallColor } from "@/lib/types"
 import { cx } from "@/lib/utils";
 
 const SUGGEST: Record<PostType, string[]> = {
-  ask_me: ["Ask Me Anything", "Roast Me", "Spill It"], picture: ["Good Vibes", "Golden Hour", "Weekend Mood"], hidden_thought: ["Hidden Thoughts", "Secret Crush", "Unsent Message"],
-  prompt_response: ["Hot Take", "Travel", "Coffee Talk"], false_wall: ["What Should I Do?", "Pick One", "Truth Time"],
+  ask_me: ["Ask Me Anything", "Roast Me", "Spill It", "Ask Me Why", "Be Honest", "Dare Me", "Judge Me", "Ask Away", "Truth Time", "No Filter"],
+  picture: ["Good Vibes", "Golden Hour", "Weekend Mood", "Caption This", "Main Character", "Throwback", "Fresh Fit", "Hidden Gem", "City Lights", "Pure Joy", "Last Night", "Soft Life"],
+  hidden_thought: ["Hidden Thoughts", "Secret Crush", "Unsent Message", "Confession Time", "Never Said", "Late Night", "Guilty Pleasure", "Small Secret", "Deep Down", "Dear You"],
+  prompt_response: ["Hot Take", "Travel", "Coffee Talk", "Best Advice", "Worst Habit", "Dream Job", "Unpopular Opinion", "Favourite Memory", "Red Flag", "Green Flag"],
+  false_wall: ["What Should I Do?", "Pick One", "Truth Time", "Guess Why", "Spot It", "Real Or Fake", "Which One", "Would You?", "Help Me Choose", "Plot Twist"],
 };
 /** Words beyond the third are refused as you type, so the wall text can never run long. */
 function clampWords(v: string): string { const parts = v.replace(/\s+/g, " ").split(" "); const filled = parts.filter(Boolean); return filled.length > MAX_WALL_WORDS ? filled.slice(0, MAX_WALL_WORDS).join(" ") : parts.join(" ").replace(/^ /, ""); }
 
-type Props = { type: PostType; label: string; prompts: { id: string; text: string }[]; isTeen: boolean; anonymousAllowed: boolean; chainParent: string | null; chainAnswer: string | null; chainTitle: string | null; initialPrompt: string | null };
+type Props = { forPrivate?: boolean; type: PostType; label: string; prompts: { id: string; text: string }[]; isTeen: boolean; anonymousAllowed: boolean; chainParent: string | null; chainAnswer: string | null; chainTitle: string | null; initialPrompt: string | null };
 
-export function CreateForm({ type, label, prompts, isTeen, anonymousAllowed, chainParent, chainAnswer, chainTitle, initialPrompt }: Props) {
+export function CreateForm({ forPrivate = false, type, label, prompts, isTeen, anonymousAllowed, chainParent, chainAnswer, chainTitle, initialPrompt }: Props) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +54,7 @@ export function CreateForm({ type, label, prompts, isTeen, anonymousAllowed, cha
     start(async () => {
       const r = await createPost(fd);
       if (!r.ok) { setError(r.error); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
-      router.push(`/post/${r.id}`);
+      router.push(forPrivate ? "/private" : `/post/${r.id}`);
     });
   }
 

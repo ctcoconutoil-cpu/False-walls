@@ -1,4 +1,5 @@
 const MESSAGES: Record<string, string> = {
+  pins_full: "You can pin up to 3 posts. Unpin one first.",
   teen_restricted: "Experiences can only be posted by adult accounts.",
   invalid_url: "Add a full link that starts with https://",
   date_past: "Pick a date and time that hasn't passed yet.",

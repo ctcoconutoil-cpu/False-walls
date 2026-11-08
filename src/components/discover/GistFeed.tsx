@@ -16,7 +16,7 @@ export function GistComposer() {
   return (
     <form className="space-y-2 rounded-2xl bg-night-2 p-3" onSubmit={(e) => { e.preventDefault(); setErr(null); start(async () => { const r = await postGist(text); if (r.ok) { setText(""); router.refresh(); } else setErr(r.error); }); }}>
       <label className="sr-only" htmlFor="gist-text">Share some gist</label>
-      <textarea id="gist-text" className={`${inputCls} min-h-20 resize-none`} maxLength={GIST_MAX} value={text} onChange={(e) => setText(e.target.value)} placeholder="Share some gist with the people you follow" />
+      <textarea id="gist-text" className={`${inputCls} min-h-20 resize-none`} maxLength={GIST_MAX} value={text} onChange={(e) => setText(e.target.value)} placeholder="Share some gist" />
       {err && <Notice tone="error">{err}</Notice>}
       <div className="flex items-center justify-between">
         <span className="text-xs text-chalk-dim">{text.length}/{GIST_MAX}</span>

@@ -6,6 +6,8 @@ import { useReducedMotion } from "framer-motion";
 import { SignCard, WallCard, wallText } from "@/components/wall/WallCard";
 import { WallBackdrop } from "@/components/wall/WallBackdrop";
 import { WallHeader } from "@/components/wall/WallHeader";
+import { ExperienceStrip } from "@/components/wall/ExperienceStrip";
+import type { Experience } from "@/lib/data/discover";
 import { loadWallPage, newerOnWall } from "@/lib/actions/wall";
 import type { WallPost } from "@/lib/data/wall";
 import { BAYH, DW, baysFor, layoutBay, type LayoutPost } from "@/lib/wall/layout";
@@ -18,7 +20,7 @@ type Focus = { key: string; fx: number; fy: number; fs: number };
  * physical objects; tapping one brings it forward and opens it. The wall stays mounted underneath the post (see the
  * @modal route), so closing it leaves you exactly where you were.
  */
-export function GalleryWall({ initial, next: initialNext, unread }: { initial: WallPost[]; next: number | null; unread: number }) {
+export function GalleryWall({ initial, next: initialNext, unread, experiences = [] }: { initial: WallPost[]; next: number | null; unread: number; experiences?: Experience[] }) {
   const router = useRouter();
   const path = usePathname();
   const reduce = useReducedMotion();
@@ -150,6 +152,7 @@ export function GalleryWall({ initial, next: initialNext, unread }: { initial: W
   return (
     <div className="wp-root">
       <WallHeader unread={unread} onHome={toTop} />
+      <ExperienceStrip items={experiences} />
       <div ref={scroller} className={`wp-scroller ${focus ? "has-focus" : ""}`} onScroll={onScroll}
         onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
         tabIndex={0} role="region" aria-label="The Wall. Scroll down to explore.">

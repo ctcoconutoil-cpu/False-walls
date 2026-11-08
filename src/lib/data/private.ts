@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getPostsByIds } from "@/lib/data/posts";
-import type { BrickKey } from "@/lib/constants";
+import { PRIVATE_ONLY_TYPES, type BrickKey } from "@/lib/constants";
 import type { WallPost } from "@/lib/data/wall";
 import type { WallColor } from "@/lib/types";
 
@@ -68,4 +68,13 @@ export async function getInbox(cardId: string): Promise<{ card: PCard; slug: str
     card: card as PCard, slug: w.slug as string, brick: w.brick as BrickKey,
     messages: ((rows ?? []) as { id: string; body: string; created_at: string; read_at: string | null }[]).map((r) => ({ id: r.id, body: r.body, created_at: r.created_at, isNew: !r.read_at })),
   };
+}
+
+/** Ready-made Ask Me, Hidden Thought and Random Prompt posts an owner can hang on a private wall: the app's samples plus their own. */
+export async function getTemplatePosts(userId: string): Promise<WallPost[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("posts").select("id").in("type", [...PRIVATE_ONLY_TYPES]).eq("status", "active").eq("visibility", "public")
+    .or(`is_sample.eq.true,author_id.eq.${userId}`).order("created_at", { ascending: false }).limit(30);
+  const ids = (data ?? []).map((r) => r.id as string);
+  return (await getPostsByIds(ids)).map(asWallPost);
 }

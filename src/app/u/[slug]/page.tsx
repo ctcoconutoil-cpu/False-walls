@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { PrivateWallView } from "@/components/private/PrivateWallView";
 import { getPublicPrivateWall } from "@/lib/data/private";
@@ -18,5 +19,6 @@ export default async function VisitorWall({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
   const w = await getPublicPrivateWall(slug);
   if (!w) notFound();
-  return <div data-nopad=""><PrivateWallView mode="visitor" slug={w.slug} brick={w.brick} cards={w.cards} owner={w.owner} accepting={w.accepting} /></div>;
+  const alreadySent = !!(await cookies()).get(`fw_sent_${w.slug.toLowerCase()}`);
+  return <div data-nopad=""><PrivateWallView alreadySent={alreadySent} mode="visitor" slug={w.slug} brick={w.brick} cards={w.cards} owner={w.owner} accepting={w.accepting} /></div>;
 }

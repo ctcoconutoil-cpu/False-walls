@@ -21,13 +21,14 @@ type Mode = "owner" | "visitor";
  * A private wall: the same brick wall as the Main Wall, with the owner's prompt cards (and any public posts they
  * pinned) hanging on it. Visitors tap a prompt to send an anonymous message; the owner taps one to read what arrived.
  */
-export function PrivateWallView({ mode, slug, brick: initialBrick, cards, owner, accepting = true, candidates = [], isActive = true }: {
-  mode: Mode; slug: string; brick: BrickKey; cards: ViewCard[]; owner: WallOwner; accepting?: boolean; candidates?: WallPost[]; isActive?: boolean;
+export function PrivateWallView({ mode, slug, brick: initialBrick, cards, owner, accepting = true, candidates = [], isActive = true, alreadySent = false }: {
+  alreadySent?: boolean; mode: Mode; slug: string; brick: BrickKey; cards: ViewCard[]; owner: WallOwner; accepting?: boolean; candidates?: WallPost[]; isActive?: boolean;
 }) {
   const router = useRouter();
   const [brick, setBrick] = useState(initialBrick);
   const [box, setBox] = useState({ w: 390, h: 640 });
   const [composing, setComposing] = useState<ViewCard | null>(null);
+  const [sentOnce, setSentOnce] = useState(alreadySent);
   const [stuck, setStuck] = useState<Record<string, number>>({});
   const [tools, setTools] = useState<{ open: boolean; tab: "brick" | "card" | "wall" | "link" }>({ open: false, tab: "brick" });
   const [editing, setEditing] = useState(false);
@@ -85,7 +86,7 @@ export function PrivateWallView({ mode, slug, brick: initialBrick, cards, owner,
       {mode === "visitor" ? (
         <div className="pw-strip">
           <Avatar user={owner} size={30} />
-          <p><b>{name}</b> {isActive && accepting ? "is taking anonymous messages. Tap a card." : "isn't taking messages right now."}</p>
+          <p><b>{name}</b> {sentOnce ? "got your message. Thanks for sending it." : isActive && accepting ? "is taking anonymous messages. Tap a card." : "isn't taking messages right now."}</p>
         </div>
       ) : (
         <div className="pw-strip pw-tools">
@@ -114,7 +115,7 @@ export function PrivateWallView({ mode, slug, brick: initialBrick, cards, owner,
                 );
               }
               const prompt = card.kind === "prompt";
-              const canSend = mode === "visitor" && prompt && accepting && isActive;
+              const canSend = mode === "visitor" && prompt && accepting && isActive && !sentOnce;
               const inner = prompt ? <PromptCard card={card} mode={mode} seed={p.seed} /> : <WallCard post={card.post as WallPost} p={p} />;
               const label = prompt ? (mode === "owner" ? `${card.title}: ${card.total ?? 0} messages${card.unread ? `, ${card.unread} new` : ""}` : `Send a message: ${card.title}`) : `Open post: ${wallText(card.post as WallPost)}`;
               return (
@@ -142,7 +143,7 @@ export function PrivateWallView({ mode, slug, brick: initialBrick, cards, owner,
       </div>
       <div className="wp-light" aria-hidden />
 
-      {composing && <FlipComposer card={composing} onClose={() => setComposing(null)} onSent={(id) => setStuck((m) => ({ ...m, [id]: (m[id] ?? 0) + 1 }))} />}
+      {composing && <FlipComposer card={composing} slug={slug} onClose={() => setComposing(null)} onSent={(id) => { setSentOnce(true); setStuck((m) => ({ ...m, [id]: (m[id] ?? 0) + 1 })); }} />}
       {mode === "owner" && (
         <OwnerTools open={tools.open} onClose={() => setTools((t) => ({ ...t, open: false }))} tab={tools.tab} setTab={(tab) => setTools((t) => ({ ...t, tab }))}
           brick={brick} onBrick={setBrick} cards={cards} candidates={candidates} isActive={isActive} />

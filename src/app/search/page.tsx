@@ -1,3 +1,4 @@
+import { PRIVATE_ONLY_IN } from "@/lib/constants";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { POST_SELECT, hydratePosts } from "@/lib/data/posts";
@@ -28,7 +29,7 @@ export default async function Search({ searchParams }: { searchParams: Promise<{
   if (ready) {
     if (kind === "all" || kind === "people") people = ((await supabase.rpc("search_profiles", { p_q: q, p_limit: 20 })).data ?? []) as typeof people;
     if (["all", "questions", "walls", "pictures", "chains"].includes(kind)) {
-      let qb = supabase.from("posts").select(POST_SELECT).eq("status", "active").or(`title.ilike.${pat},body.ilike.${pat},clue.ilike.${pat}`).order("created_at", { ascending: false }).limit(30);
+      let qb = supabase.from("posts").select(POST_SELECT).eq("status", "active").not("type", "in", PRIVATE_ONLY_IN).or(`title.ilike.${pat},body.ilike.${pat},clue.ilike.${pat}`).order("created_at", { ascending: false }).limit(30);
       if (kind === "questions") qb = qb.eq("type", "ask_me");
       if (kind === "pictures") qb = qb.eq("type", "picture");
       if (kind === "walls") qb = qb.in("type", ["false_wall", "hidden_thought", "prompt_response"] satisfies PostType[]);
@@ -48,7 +49,7 @@ export default async function Search({ searchParams }: { searchParams: Promise<{
       const { data: ranked } = await supabase.rpc("trending_posts", { p_limit: 40, p_offset: 0, p_area: null, p_type: null });
       const ids = ((ranked ?? []) as { post_id: string }[]).map((r) => r.post_id);
       if (ids.length) {
-        const { data } = await supabase.from("posts").select(POST_SELECT).in("id", ids);
+        const { data } = await supabase.from("posts").select(POST_SELECT).in("id", ids).not("type", "in", PRIVATE_ONLY_IN);
         const all = await hydratePosts(supabase, (data ?? []) as never);
         posts = all.filter((p) => `${p.title ?? ""} ${p.body ?? ""} ${p.clue ?? ""}`.toLowerCase().includes(q.toLowerCase()));
       }

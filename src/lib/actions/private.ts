@@ -1,6 +1,6 @@
 "use server";
 import { createHash } from "node:crypto";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { friendlyError } from "@/lib/errors";
@@ -88,14 +88,20 @@ export async function markCardRead(cardId: string): Promise<void> {
  * A visitor leaves an anonymous message on a prompt card. No account and no tracking: only a salted hash of the
  * network address is used, and only to slow down spam.
  */
-export async function sendToCard(cardId: string, body: string): Promise<ActionResult> {
-  if (!isUuid(cardId)) return fail("not_found");
+export async function sendToCard(cardId: string, body: string, slug: string): Promise<ActionResult> {
+  if (!isUuid(cardId) || !/^[a-z0-9_]{3,30}$/i.test(slug)) return fail("not_found");
+  // One message per visitor per wall. A cookie in their own browser is used, not their network address, so people
+  // who share a connection are never blocked because of someone else.
+  const jar = await cookies();
+  const mark = `fw_sent_${slug.toLowerCase()}`;
+  if (jar.get(mark)) return fail("already_sent");
   const h = await headers();
   const ip = (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || h.get("x-real-ip") || "unknown";
   const key = createHash("sha256").update(`${process.env.GUEST_SALT ?? "false-walls"}:${ip}`).digest("hex");
   const supabase = await createClient();
   const { error } = await supabase.rpc("submit_to_card", { p_card: cardId, p_body: body, p_key: key });
   if (error) return fail(error);
+  jar.set(mark, "1", { maxAge: 60 * 60 * 24 * 365, httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
   return OK;
 }
 

@@ -14,7 +14,7 @@ const MAX = 500;
  * The card lifts off the wall, turns over, and its back is a note to write on. Sending sticks the note to the wall.
  * No account is needed and nothing identifies the sender.
  */
-export function FlipComposer({ card, onClose, onSent }: { card: ViewCard; onClose: () => void; onSent: (cardId: string) => void }) {
+export function FlipComposer({ card, slug, onClose, onSent }: { card: ViewCard; slug: string; onClose: () => void; onSent: (cardId: string) => void }) {
   const reduce = useReducedMotion();
   const [stage, setStage] = useState<0 | 1 | 2>(reduce ? 2 : 0);
   const [k, setK] = useState(3);
@@ -49,11 +49,10 @@ export function FlipComposer({ card, onClose, onSent }: { card: ViewCard; onClos
     e.preventDefault(); setErr(null);
     const body = text.trim(); if (!body) return;
     start(async () => {
-      const r = await sendToCard(card.id, body);
+      const r = await sendToCard(card.id, body, slug);
       if (r.ok) { setSent(body); onSent(card.id); } else setErr(r.error);
     });
   };
-  const again = () => { setSent(null); setText(""); setErr(null); setTimeout(() => area.current?.focus(), 50); };
 
   return (
     <div className="pw-overlay" role="dialog" aria-modal="true" aria-label={`Send a message: ${card.title}`} onClick={() => { if (!pending) onClose(); }}>
@@ -81,9 +80,9 @@ export function FlipComposer({ card, onClose, onSent }: { card: ViewCard; onClos
               <div className="pw-form pw-done">
                 <p className="pw-paper pw-stuck-note">{sent}</p>
                 <p className="pw-done-title">Stuck to the wall!</p>
+                <p className="pw-meta"><span>Thanks. You can send one message to each wall.</span></p>
                 <div className="pw-done-actions">
-                  <button type="button" className="pw-send" onClick={again}>Send another</button>
-                  <button type="button" className="pw-ghost" onClick={onClose}>Done</button>
+                  <button type="button" className="pw-send" onClick={onClose}>Done</button>
                 </div>
                 <Link href="/signup" className="pw-own">Want your own wall? Make one</Link>
               </div>

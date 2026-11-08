@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { IconPicker } from "@/components/create/IconPicker";
@@ -60,12 +61,18 @@ export function OwnerTools({ open, onClose, tab, setTab, brick, onBrick, cards, 
 
       {tab === "card" && (
         <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); if (!full) run(() => addPromptCard(title, icon, color), () => { setTitle(""); setIcon(""); onClose(); }); }}>
-          <p className="text-sm text-chalk-dim">A card people can tap to send you a message. Keep it to one to three words.</p>
+          <div className="space-y-2">
+            <p className="text-sm font-bold">Full templates</p>
+            {([["ask-me", "Ask Me", "People ask you questions. You choose what to answer."], ["hidden-thought", "Hidden Thought", "Share a thought with part of it concealed."], ["random-prompt", "Random Prompt", "Answer a conversation prompt."]] as const).map(([r, l, d]) => (
+              <Link key={r} href={`/create/${r}?for=private`} className="block rounded-xl bg-night p-3"><span className="block font-bold">{l}</span><span className="block text-xs text-chalk-dim">{d}</span></Link>
+            ))}
+          </div>
+          <p className="border-t border-night-3 pt-3 text-sm text-chalk-dim">Or add a quick card people can tap to send you a message. Keep it to one to three words.</p>
           <label className="block text-sm font-semibold">Card words ({wordCount(title)}/{MAX_WALL_WORDS})
             <input className={cx(inputCls, "mt-1.5")} value={title} maxLength={36} onChange={(e) => setTitle(clampWords(e.target.value))} placeholder="Roast Me" autoComplete="off" required />
           </label>
           <div className="flex flex-wrap gap-2">
-            {["Roast Me", "Hot Take", "Spill It", "Ask Me Why"].map((t) => (
+            {["Roast Me", "Hot Take", "Spill It", "Ask Me Why", "Be Honest", "Dare Me", "Rate Me", "Judge Me", "Compliment Me", "Tell Me Off", "Guess Who", "Crush Alert", "Red Flag", "Hype Me", "Unpopular Opinion", "Secret Wish", "Advice Please", "Say Anything"].map((t) => (
               <button key={t} type="button" onClick={() => setTitle(t)} className="rounded-full border-2 border-night-3 px-3 py-1.5 text-xs font-bold text-chalk">{t}</button>
             ))}
           </div>
@@ -87,8 +94,8 @@ export function OwnerTools({ open, onClose, tab, setTab, brick, onBrick, cards, 
 
       {tab === "wall" && (
         <div>
-          <p className="mb-3 text-sm text-chalk-dim">Pin posts from the Main Wall onto yours. Visitors can open them.</p>
-          {candidates.length === 0 ? <p className="text-sm text-chalk-dim">There are no public posts to pin yet.</p> : (
+          <p className="mb-3 text-sm text-chalk-dim">Hang a ready-made Ask Me, Hidden Thought or Random Prompt, or a post from the Main Wall. Visitors can open them.</p>
+          {candidates.length === 0 ? <p className="text-sm text-chalk-dim">There is nothing to add yet.</p> : (
             <ul className="grid grid-cols-3 gap-x-3 gap-y-4">
               {candidates.map((p) => {
                 const on = pinned.has(p.id);
