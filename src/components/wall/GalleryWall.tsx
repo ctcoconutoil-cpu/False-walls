@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import { useReducedMotion } from "framer-motion";
 import { SignCard, WallCard, wallText } from "@/components/wall/WallCard";
 import { WallBackdrop } from "@/components/wall/WallBackdrop";
-import { WALL_THEMES } from "@/lib/wall/themes";
 import { WallHeader } from "@/components/wall/WallHeader";
 import { ExperienceStrip } from "@/components/wall/ExperienceStrip";
 import type { Experience } from "@/lib/data/discover";
@@ -21,7 +20,7 @@ type Focus = { key: string; fx: number; fy: number; fs: number };
  * physical objects; tapping one brings it forward and opens it. The wall stays mounted underneath the post (see the
  * @modal route), so closing it leaves you exactly where you were.
  */
-export function GalleryWall({ initial, next: initialNext, unread, experiences = [], theme = 0 }: { theme?: number; initial: WallPost[]; next: number | null; unread: number; experiences?: Experience[] }) {
+export function GalleryWall({ initial, next: initialNext, unread, experiences = [] }: { initial: WallPost[]; next: number | null; unread: number; experiences?: Experience[] }) {
   const router = useRouter();
   const path = usePathname();
   const reduce = useReducedMotion();
@@ -151,7 +150,7 @@ export function GalleryWall({ initial, next: initialNext, unread, experiences = 
   const bays = Array.from({ length: lastBay - firstBay + 1 }, (_, i) => firstBay + i).filter((b) => b * BAYH < total - 150);
 
   return (
-    <div className="wp-root" data-brick={WALL_THEMES[theme]?.brick ?? undefined}>
+    <div className="wp-root">
       <WallHeader unread={unread} onHome={toTop} />
       <ExperienceStrip items={experiences} />
       <div ref={scroller} className={`wp-scroller ${focus ? "has-focus" : ""}`} onScroll={onScroll}
@@ -159,7 +158,7 @@ export function GalleryWall({ initial, next: initialNext, unread, experiences = 
         tabIndex={0} role="region" aria-label="The Wall. Scroll down to explore.">
         <div className="wp-track" style={{ width: DW * s, height: total * s }}>
           <div ref={stage} className="wp-stage" style={stageStyle}>
-            {bays.map((b) => <WallBackdrop key={b} bay={b} theme={theme} />)}
+            {bays.map((b) => <WallBackdrop key={b} bay={b} />)}
             {shown.map((p) => {
               const post = p.special ? null : posts[p.postIndex];
               if (!p.special && !post) return null;
