@@ -75,14 +75,14 @@ export function CreateForm({ wall = null, pick = false, type, label, prompts, is
   return (
     <form onSubmit={submit} className="space-y-6">
       <div>
-        <Link href="/create" className="text-sm text-chalk-dim underline">‹ All wall types</Link>
+        <Link href={wall ? `/private?w=${wall.slug}&tools=card` : "/create"} className="text-sm text-chalk-dim underline">{wall ? "‹ Customize your wall" : "‹ All wall types"}</Link>
         <h1 className="mt-1 text-3xl">{type === "false_wall" ? "Build a False Wall" : pick ? "Pick a number" : label}</h1>
         <p className="mt-1 text-chalk-dim">{pick ? "A list of numbered questions. People tap a number and answer. No sign-up needed." : POST_TYPES[type].blurb}</p>
       </div>
       {chainParent && <Notice>Related wall: this will link to “{chainTitle ?? "the original wall"}”.<input type="hidden" name="chain_parent" value={chainParent} />{chainAnswer && <input type="hidden" name="chain_answer" value={chainAnswer} />}</Notice>}
       {error && <Notice tone="error">{error}</Notice>}
 
-      {forPrivate ? (
+      {forPrivate || type === "picture" ? (
         <>
           {(type === "ask_me" || type === "picture") && (
             <Field label={pick ? "What is it about?" : type === "picture" ? "Caption" : "What should people ask you about?"} counter={`${title.length}/80`}>
@@ -210,7 +210,7 @@ export function CreateForm({ wall = null, pick = false, type, label, prompts, is
         </>
       )}
 
-      <fieldset><legend className="mb-2 text-sm font-semibold">Wall colour</legend>
+      {type !== "picture" && <fieldset><legend className="mb-2 text-sm font-semibold">Wall colour</legend>
         <div className="flex flex-wrap gap-2">
           {(WALL_COLOR_CHOICES as readonly WallColor[]).map((c) => (
             <label key={c} className={cx("grid h-11 w-11 cursor-pointer place-items-center rounded-full border-4", color === c ? "border-chalk" : "border-night-3")} style={{ background: WALL_COLORS[c].base }}>
@@ -218,14 +218,14 @@ export function CreateForm({ wall = null, pick = false, type, label, prompts, is
             </label>
           ))}
         </div>
-      </fieldset>
+      </fieldset>}
 
-      <section aria-labelledby="preview" className="space-y-2">
+      {(type !== "picture" || forPrivate) && <section aria-labelledby="preview" className="space-y-2">
         <h2 id="preview" className="text-lg">Preview</h2>
         {forPrivate
           ? <div className="mx-auto h-[190px] w-[150px]"><WallItem post={preview} compact /></div>
           : <div className="relative mx-auto h-[162px] w-[108px]"><WallCard post={preview} p={{ variant: 0, seed: 0.3 }} /></div>}
-      </section>
+      </section>}
 
       <section aria-labelledby="settings" className="space-y-4 rounded-2xl bg-night-2 p-4">
         <h2 id="settings" className="text-lg">Settings</h2>

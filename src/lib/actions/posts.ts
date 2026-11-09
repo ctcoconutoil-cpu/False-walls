@@ -32,7 +32,7 @@ export async function createPost(fd: FormData): Promise<ActionResult<{ id: strin
   const forWall = typeof wallId === "string" && isUuid(wallId);
   const wallWords = wordCount(title);
   const icon = String(fd.get("wall_icon") ?? "");
-  if (!forWall) {
+  if (!forWall && type !== "picture") {
     if (wallWords < 1 || wallWords > MAX_WALL_WORDS) return { ok: false, error: `Use one to ${MAX_WALL_WORDS} words for what shows on the wall.` };
     if (!(WALL_ICON_KEYS as readonly string[]).includes(icon)) return { ok: false, error: "Pick an icon for your post." };
   }
@@ -88,7 +88,7 @@ export async function createPost(fd: FormData): Promise<ActionResult<{ id: strin
     if (uploaded.length) await supabase.storage.from("post-media").remove(uploaded);
     return { ok: false, error: friendlyError(error) };
   }
-  if (!forWall) await supabase.rpc("set_post_icon", { p_id: pid, p_icon: icon });
+  if (!forWall && icon) await supabase.rpc("set_post_icon", { p_id: pid, p_icon: icon });
   const frame = Number(fd.get("frame"));
   if (type === "picture" && !forWall && Number.isInteger(frame) && frame >= 0 && frame <= 2) await supabase.rpc("set_post_frame", { p_id: pid, p_frame: frame });
   // Ask Me, Hidden Thought and Random Prompt posts hang on the author's private wall instead of the public Wall.

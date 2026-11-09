@@ -28,12 +28,12 @@ function useLine(on: boolean) {
  * A private wall: a brick wall with the owner's notes pinned to it, three to a row, like papers on a fridge.
  * Nothing is centred: a single note sits top left and the empty places show there is room for more.
  */
-export function PrivateWallView({ wallId, tabs = [], canAddWall = false, mode, slug, brick: initialBrick, cards, owner, isActive = true, bg = null }: {
-  wallId?: string; tabs?: { id: string; slug: string; n: number }[]; canAddWall?: boolean; bg?: string | null; mode: Mode; slug: string; brick: BrickKey; cards: ViewCard[]; owner: WallOwner; isActive?: boolean;
+export function PrivateWallView({ openTools, wallId, tabs = [], canAddWall = false, mode, slug, brick: initialBrick, cards, owner, isActive = true, bg = null }: {
+  openTools?: "card"; wallId?: string; tabs?: { id: string; slug: string; n: number }[]; canAddWall?: boolean; bg?: string | null; mode: Mode; slug: string; brick: BrickKey; cards: ViewCard[]; owner: WallOwner; isActive?: boolean;
 }) {
   const router = useRouter();
   const [brick, setBrick] = useState(initialBrick);
-  const [tools, setTools] = useState<{ open: boolean; tab: "brick" | "card" | "link" }>({ open: false, tab: "brick" });
+  const [tools, setTools] = useState<{ open: boolean; tab: "brick" | "card" | "link" }>({ open: !!openTools, tab: openTools ?? "brick" });
   const [editing, setEditing] = useState(false);
   const [copied, setCopied] = useState(false);
   useEffect(() => setBrick(initialBrick), [initialBrick]);
