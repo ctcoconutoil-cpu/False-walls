@@ -3,7 +3,7 @@ export const metadata = { title: "Community guidelines" };
 export default function Guidelines() {
   return (
     <Prose title="Community guidelines" updated="November 2026">
-      <p>False Walls is for curiosity and honest conversation. These rules keep the Wall safe to explore.</p>
+      <p>OpenWalls is for curiosity and honest conversation. These rules keep the Wall safe to explore.</p>
       <h2>Not allowed</h2>
       <ul>
         <li>Harassment, threats, hate or targeting a person or group.</li>
@@ -20,7 +20,7 @@ export default function Guidelines() {
       <h2>Under 18</h2>
       <p>You must be 17 or older. Accounts for under-18s start private, are not listed in search, and cannot receive anonymous questions.</p>
       <h2>What moderators can do</h2>
-      <p>Remove content, suspend accounts, and keep a log of each action. Sample content marked as demo is placed by the False Walls team to show how the Wall works.</p>
+      <p>Remove content, suspend accounts, and keep a log of each action. Sample content marked as demo is placed by the OpenWalls team to show how the Wall works.</p>
     </Prose>
   );
 }

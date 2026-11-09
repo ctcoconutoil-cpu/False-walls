@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* FALSE WALLS design tokens.
+/* OPENWALLS design tokens.
    Ground is a deep indigo night; every wall brings its own colour. */
 :root {
   --night: #14112a;

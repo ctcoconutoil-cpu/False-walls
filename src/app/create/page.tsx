@@ -15,7 +15,11 @@ export default async function CreateMenu({ searchParams }: { searchParams: Promi
     <main className="mx-auto max-w-lg px-4 py-8">
       <h1 className="text-3xl uppercase sm:text-4xl">What do you want to put on the wall?</h1>
       {chain && <p className="mt-2 rounded-xl bg-night-2 p-3 text-sm text-chalk-dim">You're building a <strong className="text-chalk">related wall</strong>. It will be linked to the conversation you came from.</p>}
-      <ul className="mt-6 grid gap-3">
+      <Link href="/room" className="btn-press mt-6 flex items-center gap-4 rounded-2xl bg-[#F9A719] p-4 text-[#2c1e02] shadow-[0_5px_0_#a87a14]">
+        <span aria-hidden className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-black/15 text-3xl">🏠</span>
+        <span><span className="display block text-xl">Build your room</span><span className="block text-sm font-medium opacity-85">Decorate your 3D room, fill its walls and share it.</span></span>
+      </Link>
+      <ul className="mt-3 grid gap-3">
         {ORDER.map(({ type, color }) => {
           const c = WALL_COLORS[color];
           return (

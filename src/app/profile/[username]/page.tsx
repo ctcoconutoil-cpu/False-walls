@@ -68,6 +68,10 @@ export default async function Profile({ params }: { params: Promise<{ username: 
           {p.allow_follows && <p className="mt-1 text-sm text-chalk-dim"><strong className="text-chalk">{p.followers_count}</strong> followers · <strong className="text-chalk">{p.following_count}</strong> following</p>}
         </div>
       </header>
+      <Link href={self ? "/room" : `/@${p.username}`} className="btn-press flex items-center gap-4 rounded-2xl bg-[#F9A719] p-4 text-[#2c1e02] shadow-[0_5px_0_#a87a14]">
+        <span aria-hidden className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-black/15 text-3xl">🏠</span>
+        <span><span className="display block text-xl">{self ? "Your room" : `Visit @${p.username}'s room`}</span><span className="block text-sm font-medium opacity-85">{self ? "Decorate it, then share your link." : "Step inside and look around."}</span></span>
+      </Link>
       {p.bio && <p className="whitespace-pre-wrap text-lg">{p.bio}</p>}
       {p.is_private && !self && <p className="rounded-xl bg-night-2 p-3 text-sm text-chalk-dim">This profile is private. Bio and interests are hidden.</p>}
       {p.interests.length > 0 && <ul className="flex flex-wrap gap-2" aria-label="Interests">{p.interests.map((i) => <li key={i} className="rounded-full bg-night-3 px-3 py-1 text-sm">{i}</li>)}</ul>}

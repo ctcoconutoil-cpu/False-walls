@@ -51,7 +51,7 @@ export function shareCard(d: CardData, format: CardFormat) {
 
   const footer = (
     <div style={{ display: "flex", alignItems: "center", gap: 14, color: "#b9b3d6", fontSize: story ? 40 : 24, fontWeight: 700 }}>
-      <div style={{ display: "flex", color: "#f6f3ea", fontWeight: 900, letterSpacing: 2 }}>FALSE WALLS</div>
+      <div style={{ display: "flex", color: "#f6f3ea", fontWeight: 900, letterSpacing: 2 }}>OPENWALLS</div>
       <div style={{ display: "flex" }}>{d.by ? `· ${clip(clean(d.by), 28)}` : "· Look closer. There's more behind the wall."}</div>
     </div>
   );

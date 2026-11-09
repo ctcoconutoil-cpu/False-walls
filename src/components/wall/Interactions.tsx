@@ -154,7 +154,7 @@ export function PostToolbar({ postId, saved, loggedIn, isPublic, owner }: { post
   async function share() {
     const url = `${window.location.origin}/post/${postId}`;
     try {
-      if (navigator.share) await navigator.share({ title: "A wall on FALSE WALLS", url });
+      if (navigator.share) await navigator.share({ title: "A wall on OPENWALLS", url });
       else { await navigator.clipboard.writeText(url); flash("Link copied."); }
     } catch { /* cancelled */ }
   }

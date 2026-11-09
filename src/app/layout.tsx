@@ -11,8 +11,8 @@ import { unreadCount } from "@/lib/data/unread";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
-  title: { default: "FALSE WALLS", template: "%s · FALSE WALLS" },
-  description: "Explore walls, uncover conversations and discover what people have to say.",
+  title: { default: "OPENWALLS", template: "%s · OPENWALLS" },
+  description: "Discover what's on everyone's walls.",
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#1a0a24" };
 

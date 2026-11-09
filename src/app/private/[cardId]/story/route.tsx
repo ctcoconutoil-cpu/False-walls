@@ -62,7 +62,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ cardId: 
     (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 1080, height: 1920, position: "relative", fontFamily: "Brush", backgroundColor: "#2a110c", backgroundImage: `url(${brick})`, backgroundSize: pic ? "1080px 1920px" : "768px 336px" }}>
         <div style={{ display: "flex", position: "absolute", top: 0, left: 0, width: 1080, height: 1920, backgroundImage: "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.05) 28%, rgba(0,0,0,0.05) 66%, rgba(0,0,0,0.7) 100%)" }} />
-        <div style={{ display: "flex", marginTop: 90, fontSize: 70, color: "#FFFFFF", letterSpacing: 6, textShadow: "0 4px 0 rgba(0,0,0,0.5)" }}>FALSE WALLS</div>
+        <div style={{ display: "flex", marginTop: 90, fontSize: 70, color: "#FFFFFF", letterSpacing: 6, textShadow: "0 4px 0 rgba(0,0,0,0.5)" }}>OPENWALLS</div>
 
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", marginTop: 70, width: 540, height: 660, borderRadius: 14, backgroundImage: `linear-gradient(160deg, ${c.base}, ${c.dark})`, boxShadow: "0 36px 60px rgba(0,0,0,0.6), inset 0 0 0 10px rgba(255,255,255,0.14), 6px 8px 0 rgba(0,0,0,0.4)", transform: "rotate(-3deg)" }}>
           <WallIcon name={icon} size={210} color={ACCENT[color]} />

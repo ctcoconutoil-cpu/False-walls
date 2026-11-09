@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
   const image = `/q/${token}/card`;
   return {
     title, description, robots: { index: false, follow: false },
-    openGraph: { title, description, type: "website", siteName: "FALSE WALLS", images: [{ url: image, width: 1200, height: 630, alt: description }] },
+    openGraph: { title, description, type: "website", siteName: "OPENWALLS", images: [{ url: image, width: 1200, height: 630, alt: description }] },
     twitter: { card: "summary_large_image", title, description, images: [image] },
   };
 }
@@ -33,7 +33,7 @@ export default async function SharedQuestionPage({ params }: P) {
       {q.answer && <div className="rounded-3xl bg-night-2 p-5"><p className="text-xs font-bold uppercase tracking-widest text-mustard">{name} answered</p><p className="mt-2 whitespace-pre-wrap text-lg">{q.answer}</p></div>}
       <Link href={ask} className="btn-press block rounded-2xl bg-coral p-4 text-center text-lg font-black text-[#2a0d08]">Send {name} your own question</Link>
       <div className="flex justify-center"><ShareButton path={`/q/${token}`} imagePath={`/q/${token}/card`} title="Share this question" text={`Anonymous question for ${name}`} /></div>
-      <p className="text-center text-xs text-chalk-dim"><Link href="/" className="underline">What is FALSE WALLS?</Link></p>
+      <p className="text-center text-xs text-chalk-dim"><Link href="/" className="underline">What is OPENWALLS?</Link></p>
     </main>
   );
 }

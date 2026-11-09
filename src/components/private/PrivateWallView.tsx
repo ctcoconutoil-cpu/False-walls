@@ -63,9 +63,9 @@ export function PrivateWallView({ openTools, wallId, tabs = [], canAddWall = fal
             <svg aria-hidden viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="m14.5 5-7 7 7 7" /></svg>
           </Link>
         ) : null}
-        <Link href={mode === "owner" ? "/wall" : "/"} aria-label="False Walls" className="wp-logo">
+        <Link href={mode === "owner" ? "/wall" : "/"} aria-label="OpenWalls" className="wp-logo">
           <svg aria-hidden viewBox="0 0 40 18" className="wp-logo-eye"><path d="M2 12C8 3 32 3 38 12C32 20 8 20 2 12z" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinejoin="round" /><circle cx="20" cy="11" r="4.4" fill="#fff" /></svg>
-          <span className="wp-logo-text">False<br />Walls</span>
+          <span className="wp-logo-text">Open<br />Walls</span>
         </Link>
         <span className="flex-1" />
         {mode === "visitor" ? (

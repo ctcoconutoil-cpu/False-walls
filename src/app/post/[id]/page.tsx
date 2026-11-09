@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const image = `/post/${id}/card`;
   return {
     title, description,
-    openGraph: { title, description, type: "article", siteName: "FALSE WALLS", images: [{ url: image, width: 1200, height: 630, alt: title }] },
+    openGraph: { title, description, type: "article", siteName: "OPENWALLS", images: [{ url: image, width: 1200, height: 630, alt: title }] },
     twitter: { card: "summary_large_image", title, description, images: [image] },
   };
 }

@@ -50,7 +50,7 @@ const MESSAGES: Record<string, string> = {
   not_friends: "You can only invite friends: people you follow who follow you back.",
   team_full: "A team has room for 6 players.",
   fire_locked: "Complete three collections to unlock the Fire reaction.",
-  under_age: "FALSE WALLS is for people aged 17 and over.",
+  under_age: "OPENWALLS is for people aged 17 and over.",
   invalid_birth_date: "Enter a valid date of birth.",
   already_onboarded: "Your profile is already set up.",
   forbidden: "You don't have permission to do that.",

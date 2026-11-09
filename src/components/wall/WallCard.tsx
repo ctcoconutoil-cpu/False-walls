@@ -40,7 +40,7 @@ export function Flourish({ kind, className }: { kind: number; className?: string
 
 export function Who({ post }: { post: WallPost }) {
   const anon = post.type === "hidden_thought";
-  const name = anon ? "Anonymous" : post.author ? post.author.display_name || post.author.username : "False Walls";
+  const name = anon ? "Anonymous" : post.author ? post.author.display_name || post.author.username : "OpenWalls";
   return (
     <span className="wp-who">
       {anon || !post.author ? <span className="wp-ava" aria-hidden><WallIcon name={anon ? "ghost" : "star"} size={11} /></span> : <Avatar user={post.author} size={15} />}

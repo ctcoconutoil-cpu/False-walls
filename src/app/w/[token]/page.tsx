@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
   const image = `/w/${token}/card`;
   return {
     title, description, robots: { index: false, follow: false },
-    openGraph: { title, description, type: "website", siteName: "FALSE WALLS", images: [{ url: image, width: 1200, height: 630, alt: title }] },
+    openGraph: { title, description, type: "website", siteName: "OPENWALLS", images: [{ url: image, width: 1200, height: 630, alt: title }] },
     twitter: { card: "summary_large_image", title, description, images: [image] },
   };
 }
@@ -60,7 +60,7 @@ export default async function SharedWallPage({ params }: P) {
           ))}
         </section>
       )}
-      <p className="text-center text-xs text-chalk-dim">Be kind. Messages that break the <Link href="/guidelines" className="underline">community guidelines</Link> can be reported and removed. <Link href="/" className="underline">What is FALSE WALLS?</Link></p>
+      <p className="text-center text-xs text-chalk-dim">Be kind. Messages that break the <Link href="/guidelines" className="underline">community guidelines</Link> can be reported and removed. <Link href="/" className="underline">What is OPENWALLS?</Link></p>
     </main>
   );
 }

@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
-/** The Wall's header: home, the FALSE WALLS mark, search, activity and a small menu. It stays put while the wall scrolls beneath it. */
+/** The Wall's header: home, the OPENWALLS mark, search, activity and a small menu. It stays put while the wall scrolls beneath it. */
 export function WallHeader({ unread, onHome }: { unread: number; onHome: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -19,9 +19,9 @@ export function WallHeader({ unread, onHome }: { unread: number; onHome: () => v
       <button type="button" onClick={onHome} aria-label="Back to the top of the Wall" className={btn}>
         <svg aria-hidden viewBox="0 0 24 24" width="27" height="27" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round"><path d="M3.5 11.2 12 3.8l8.5 7.4M5.8 9.8V20h4.4v-5.5h3.6V20h4.4V9.8" /></svg>
       </button>
-      <Link href="/wall" aria-label="False Walls" className="wp-logo">
+      <Link href="/wall" aria-label="OpenWalls" className="wp-logo">
         <svg aria-hidden viewBox="0 0 40 18" className="wp-logo-eye"><path d="M2 12C8 3 32 3 38 12C32 20 8 20 2 12z" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinejoin="round" /><circle cx="20" cy="11" r="4.4" fill="#fff" /></svg>
-        <span className="wp-logo-text">False<br />Walls</span>
+        <span className="wp-logo-text">Open<br />Walls</span>
         <svg aria-hidden viewBox="0 0 20 20" className="wp-logo-marks" fill="none" stroke="#F9A719" strokeWidth="2.6" strokeLinecap="round"><path d="M3 15 9 8M10 18l5-8M12 5l6-3" /></svg>
       </Link>
       <span className="flex-1" />

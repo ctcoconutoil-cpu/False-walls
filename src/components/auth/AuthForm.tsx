@@ -36,10 +36,10 @@ export function AuthForm({ mode, next, notice, error }: { mode: "login" | "signu
   const [state, action, pending] = useActionState<FormState, FormData>(mode === "login" ? signIn : signUp, null);
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-6 px-5 py-10">
-      <Link href="/" aria-label="FALSE WALLS home"><Wordmark size="md" /></Link>
+      <Link href="/" aria-label="OPENWALLS home"><Wordmark size="md" /></Link>
       <div>
         <h1 className="text-3xl">{mode === "login" ? "Welcome back" : "Create your account"}</h1>
-        <p className="mt-1 text-chalk-dim">{mode === "login" ? "Log in to open walls and see your inbox." : "You'll choose a username and avatar next. FALSE WALLS is for people aged 17 and over."}</p>
+        <p className="mt-1 text-chalk-dim">{mode === "login" ? "Log in to open walls and see your inbox." : "You'll choose a username and avatar next. OPENWALLS is for people aged 17 and over."}</p>
       </div>
       {notice && <Notice tone="ok">{notice}</Notice>}
       {error && <Notice tone="error">{error}</Notice>}

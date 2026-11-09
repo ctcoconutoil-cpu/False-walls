@@ -29,6 +29,10 @@ const nextConfig: NextConfig = {
       { source: "/maze/:path*", destination: "/wall/:path*", permanent: true },
     ];
   },
+  // Every room has a short address: /@username
+  async rewrites() {
+    return [{ source: "/@:username", destination: "/r/:username" }];
+  },
   async headers() {
     return [
       { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }] },

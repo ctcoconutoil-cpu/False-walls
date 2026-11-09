@@ -7,8 +7,8 @@ import { cx, avatarSrc } from "@/lib/utils";
 export function Wordmark({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
   const s = size === "lg" ? "text-5xl sm:text-7xl" : size === "md" ? "text-3xl" : "text-xl";
   return (
-    <span className={cx("display inline-flex flex-col leading-[0.9] uppercase", s)} aria-label="False Walls">
-      <span className="text-chalk drop-shadow-[0_3px_0_rgba(0,0,0,.45)]">False</span>
+    <span className={cx("display inline-flex flex-col leading-[0.9] uppercase", s)} aria-label="OpenWalls">
+      <span className="text-chalk drop-shadow-[0_3px_0_rgba(0,0,0,.45)]">Open</span>
       <span className="text-coral drop-shadow-[0_3px_0_rgba(0,0,0,.45)]">Walls</span>
     </span>
   );
