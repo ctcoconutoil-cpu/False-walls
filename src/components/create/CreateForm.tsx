@@ -40,6 +40,7 @@ export function CreateForm({ wall = null, pick = false, type, label, prompts, is
   const [reveal, setReveal] = useState<"anyone" | "followers">("anyone");
   const [images, setImages] = useState(0);
   const [picUrl, setPicUrl] = useState<string | null>(null);
+  const [frame, setFrame] = useState(0);
   const forPrivate = !!wall;
   const [questions, setQuestions] = useState(["", ""]);
   const needsImages = type === "picture" || (type === "false_wall" && kind === "photo");
@@ -135,7 +136,7 @@ export function CreateForm({ wall = null, pick = false, type, label, prompts, is
       {type === "picture" && (
         <>
           <ImagePicker name="images" label="Pictures" max={LIMITS.images} maxBytes={LIMITS.imageBytes} hint="Up to 4 JPEG, PNG or WebP images. They're shrunk automatically and location data is removed." onFiles={setImages} onPreviews={(u) => setPicUrl(u[0] ?? null)} />
-          {picUrl && <FramePreview src={picUrl} color={color} onColor={setColor} />}
+          {picUrl && !forPrivate && <FramePreview src={picUrl} caption={title} frame={frame} onFrame={setFrame} />}
           <Field label="Describe it for people who can't see it (optional)" hint="Alt text helps screen reader users."><input name="alt" maxLength={200} className={inputCls} /></Field>
           <Field label="More detail (optional)"><textarea name="body" rows={2} maxLength={LIMITS.body} value={body} onChange={(e) => setBody(e.target.value)} className={inputCls} /></Field>
         </>

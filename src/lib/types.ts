@@ -28,6 +28,7 @@ export type Post = {
   clue_style: ClueStyle | null;
   wall_color: WallColor;
   wall_icon?: string | null;
+  frame?: number | null;
   template?: "pick_number" | null;
   options?: string[] | null;
   share_token?: string | null;

@@ -1,34 +1,29 @@
 "use client";
-import { useState, type CSSProperties } from "react";
-import { WALL_COLORS, WALL_COLOR_CHOICES } from "@/lib/constants";
-import type { WallColor } from "@/lib/types";
+import { useState } from "react";
+import { WallCard } from "@/components/wall/WallCard";
+import type { WallPost } from "@/lib/data/wall";
 
-/** Shows the picture pinned on a wall in its frame. Rolling the dice tries another wall colour and tilt. */
-export function FramePreview({ src, color, onColor }: { src: string; color: WallColor; onColor: (c: WallColor) => void }) {
-  const [tilt, setTilt] = useState(-2);
+const NAMES = ["Cream frame", "Black frame with a white mat", "Gold frame"];
+
+/** Shows the picture in the frame it will have on the public Wall. Rolling the dice tries another frame. */
+export function FramePreview({ src, caption, frame, onFrame }: { src: string; caption: string; frame: number; onFrame: (f: number) => void }) {
   const [spin, setSpin] = useState(0);
-  const c = WALL_COLORS[color] ?? WALL_COLORS.slate;
   const roll = () => {
-    const next = WALL_COLOR_CHOICES[Math.floor(Math.random() * WALL_COLOR_CHOICES.length)];
-    onColor(next);
-    setTilt(Math.round((Math.random() * 8 - 4) * 10) / 10);
+    onFrame((frame + 1 + Math.floor(Math.random() * 2)) % 3); // always a different frame
     setSpin((n) => n + 1);
   };
+  const post = { id: "preview", type: "picture", title: caption || null, frame, wall_color: "slate", likes: 0, comments: 0, created_at: new Date().toISOString(), author: { username: "you", display_name: "You", avatar_style: "blob", avatar_color: "#F2573F", avatar_url: null }, media: [{ url: src, alt_text: "Your picture", storage_path: "", width: null, height: null }] } as unknown as WallPost;
   return (
     <div>
-      <p className="mb-1 text-sm font-semibold">How it will look</p>
-      <div className="bk-tile grid place-items-center rounded-2xl p-6" style={{ "--wall": c.dark, "--mortar": c.base } as CSSProperties}>
-        <div className="relative z-10 w-40" style={{ transform: `rotate(${tilt}deg)`, transition: "transform .4s cubic-bezier(.3,1.5,.5,1)" }}>
-          <i aria-hidden className="pw-pin" />
-          <div className="paper rounded-[3px] bg-[#fbf9f2] p-1.5 pb-5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={src} alt="Your picture in its frame" className="aspect-[4/5] w-full rounded-[2px] object-cover" />
-          </div>
-        </div>
+      <p className="mb-1 text-sm font-semibold">How it will look on the Wall</p>
+      <div className="mx-auto grid place-items-center rounded-2xl bg-night-2 p-5">
+        <div className="relative h-[240px] w-[170px]"><WallCard post={post} p={{ variant: frame, seed: 0.3 }} /></div>
+        <p className="mt-2 text-xs text-chalk-dim" aria-live="polite">{NAMES[frame]}</p>
       </div>
       <button type="button" onClick={roll} className="btn-press mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-night-3 font-extrabold">
-        <span aria-hidden key={spin} className="inline-block text-xl" style={{ animation: spin ? "fw-dice .5s ease" : undefined }}>🎲</span> Roll the dice for a new look
+        <span aria-hidden key={spin} className="inline-block text-xl" style={{ animation: spin ? "fw-dice .5s ease" : undefined }}>🎲</span> Roll the dice for a new frame
       </button>
+      <input type="hidden" name="frame" value={frame} />
       <style>{"@keyframes fw-dice{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}"}</style>
     </div>
   );

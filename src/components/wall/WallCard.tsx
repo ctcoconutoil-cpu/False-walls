@@ -65,7 +65,7 @@ export function WallCard({ post, p }: { post: WallPost; p: Pick<Slot, "variant" 
   const style = { animationDelay: `${-p.seed * 6}s` } as CSSProperties;
   if (img) {
     return (
-      <span className={`wp-body wp-photo wp-f${p.variant}`} style={style}>
+      <span className={`wp-body wp-photo wp-f${post.frame ?? p.variant}`} style={style}>
         <span className="wp-pic">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={img} alt={post.media[0].alt_text ?? (words || "Picture on the wall")} loading="lazy" decoding="async" draggable={false} />

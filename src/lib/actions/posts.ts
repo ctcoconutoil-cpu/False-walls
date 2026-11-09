@@ -89,6 +89,8 @@ export async function createPost(fd: FormData): Promise<ActionResult<{ id: strin
     return { ok: false, error: friendlyError(error) };
   }
   if (!forWall) await supabase.rpc("set_post_icon", { p_id: pid, p_icon: icon });
+  const frame = Number(fd.get("frame"));
+  if (type === "picture" && !forWall && Number.isInteger(frame) && frame >= 0 && frame <= 2) await supabase.rpc("set_post_frame", { p_id: pid, p_frame: frame });
   // Ask Me, Hidden Thought and Random Prompt posts hang on the author's private wall instead of the public Wall.
   if (forWall) {
     const pin = await supabase.rpc("pin_to_private_wall", { p_post: pid, p_wall: wallId as string });
