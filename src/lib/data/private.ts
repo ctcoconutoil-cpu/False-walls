@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getPostsByIds } from "@/lib/data/posts";
-import type { BrickKey } from "@/lib/constants";
+import { PICK_MARK, type BrickKey } from "@/lib/constants";
 import type { WallPost } from "@/lib/data/wall";
 import type { WallColor } from "@/lib/types";
 
@@ -44,29 +44,38 @@ export async function getOwnerWalls(userId: string, slug?: string): Promise<{ ta
   if (!rows?.length) return null;
   const w = rows.find((r) => r.slug === slug) ?? rows[0];
   const { data: cards } = await supabase.from("wall_cards").select("id, kind, title, icon, color, post_id").eq("wall_id", w.id).eq("kind", "post").order("created_at", { ascending: false });
+  const { data: counts } = await supabase.rpc("private_wall_counts");
+  const byCard = new Map(((counts ?? []) as { card_id: string; total: number; unread: number }[]).map((c) => [c.card_id, c]));
+  const withCounts = (await attachPosts((cards ?? []) as PCard[])).map((c) => ({ ...c, total: Number(byCard.get(c.id)?.total ?? 0), unread: Number(byCard.get(c.id)?.unread ?? 0) }));
   return {
     tabs: rows.map((r) => ({ id: r.id as string, slug: r.slug as string, n: r.n as number })),
     wall: {
       id: w.id as string, slug: w.slug as string, n: w.n as number, brick: w.brick as BrickKey, bg: w.brick === "custom" ? bgUrl(supabase, w.bg_path as string | null) : null,
-      isActive: w.is_active as boolean, cards: await attachPosts((cards ?? []) as PCard[]),
+      isActive: w.is_active as boolean, cards: withCounts,
     },
   };
 }
 
-export type Message = { id: string; body: string; created_at: string; isNew: boolean };
-/** One prompt card and every message sent to it, newest first. Only its owner can read this (row-level security). */
-export async function getInbox(cardId: string): Promise<{ card: PCard; slug: string; brick: BrickKey; messages: Message[] } | null> {
+export type Message = { id: string; body: string; created_at: string; isNew: boolean; reply: string | null };
+export type InboxNote = { card: PCard; kind: "ask_me" | "hidden_thought" | "picture" | "prompt_response" | "false_wall" | "prompt"; heading: string; sub: string | null; slug: string; brick: BrickKey };
+/** One wall note and every message sent to it, newest first. Only its owner can read this (row-level security). */
+export async function getInbox(cardId: string): Promise<{ note: InboxNote; messages: Message[] } | null> {
   const supabase = await createClient();
-  const { data: card } = await supabase.from("wall_cards").select("id, kind, title, icon, color, post_id, owner_id").eq("id", cardId).eq("kind", "prompt").maybeSingle();
+  const { data: card } = await supabase.from("wall_cards").select("id, kind, title, icon, color, post_id, owner_id, wall_id").eq("id", cardId).maybeSingle();
   if (!card) return null;
-  const [{ data: w }, { data: rows }] = await Promise.all([
-    supabase.from("private_walls").select("slug, brick").eq("owner_id", card.owner_id).order("n").limit(1).maybeSingle(),
-    supabase.from("submissions").select("id, body, created_at, read_at").eq("card_id", cardId).order("created_at", { ascending: false }).limit(300),
+  const [{ data: w }, { data: rows }, { data: post }] = await Promise.all([
+    supabase.from("private_walls").select("slug, brick").eq("id", card.wall_id).maybeSingle(),
+    supabase.from("submissions").select("id, body, created_at, read_at, reply").eq("card_id", cardId).order("created_at", { ascending: false }).limit(300),
+    card.post_id ? supabase.from("posts").select("type, title, clue, body").eq("id", card.post_id).maybeSingle() : Promise.resolve({ data: null }),
   ]);
   if (!w) return null;
+  const type = (post?.type ?? "prompt") as InboxNote["kind"];
+  const pick = typeof post?.body === "string" && post.body.startsWith(PICK_MARK);
+  const heading = (pick ? post?.title || "Pick a number" : type === "hidden_thought" ? post?.clue : post?.title ?? post?.clue) ?? (card.title as string | null) ?? "Your wall";
+  const sub = type === "ask_me" && !pick ? (post?.body as string | null) ?? null : null;
   return {
-    card: card as PCard, slug: w.slug as string, brick: w.brick as BrickKey,
-    messages: ((rows ?? []) as { id: string; body: string; created_at: string; read_at: string | null }[]).map((r) => ({ id: r.id, body: r.body, created_at: r.created_at, isNew: !r.read_at })),
+    note: { card: card as PCard, kind: type, heading, sub, slug: w.slug as string, brick: w.brick as BrickKey },
+    messages: ((rows ?? []) as { id: string; body: string; created_at: string; read_at: string | null; reply: string | null }[]).map((r) => ({ id: r.id, body: r.body, created_at: r.created_at, isNew: !r.read_at, reply: r.reply })),
   };
 }
 

@@ -1,3 +1,4 @@
+import { BadgeShelf } from "@/components/profile/BadgeShelf";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getViewer } from "@/lib/data/session";
@@ -107,20 +108,12 @@ export default async function Profile({ params }: { params: Promise<{ username: 
       {(p.badges.length > 0 || self) && (
         <section aria-labelledby="badges" className="space-y-3">
           <h2 id="badges" className="text-2xl">Badges</h2>
-          {self && (allBadges.data ?? []).length ? (
-            <ul className="grid gap-2 sm:grid-cols-2">
-              {(allBadges.data as { slug: string; name: string; description: string; threshold: number; rule: string }[]).map((b) => {
+          <BadgeShelf self={self} badges={self && (allBadges.data ?? []).length
+            ? (allBadges.data as { slug: string; name: string; description: string; threshold: number; rule: string }[]).map((b) => {
                 const got = earned.has(b.slug); const prog = progressFor(b.rule);
-                return (
-                  <li key={b.slug} className={`flex items-center gap-3 rounded-2xl p-3 ${got ? "bg-night-3" : "bg-night-2 opacity-70"}`}>
-                    <span aria-hidden className={`display grid h-12 w-12 shrink-0 place-items-center rounded-xl text-2xl ${got ? "bg-mustard text-[#2c1e02]" : "bg-night text-chalk-dim"}`}>{got ? "★" : "☆"}</span>
-                    <span><span className="display block uppercase">{b.name}</span><span className="block text-xs text-chalk-dim">{b.description}{!got && prog !== null ? ` (${Math.min(prog, b.threshold)}/${b.threshold})` : ""}</span></span>
-                  </li>);
-              })}
-            </ul>
-          ) : (
-            <ul className="flex flex-wrap gap-2">{p.badges.map((b) => <li key={b.slug} title={b.description} className="display rounded-full bg-mustard px-3 py-1.5 text-sm uppercase text-[#2c1e02]">★ {b.name}</li>)}</ul>
-          )}
+                return { slug: b.slug, name: b.name, description: b.description, got, progress: !got && prog !== null ? `${Math.min(prog, b.threshold)}/${b.threshold}` : null };
+              })
+            : p.badges.map((b) => ({ slug: b.slug, name: b.name, description: b.description, got: true }))} />
         </section>
       )}
 

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { BackLink } from "@/components/wall/BackLink";
 import { notFound } from "next/navigation";
 import { GistCard } from "@/components/discover/GistFeed";
 import { getGist } from "@/lib/data/discover";
@@ -17,7 +17,7 @@ export default async function GistPage({ params }: { params: Promise<{ id: strin
   if (!g) notFound();
   return (
     <main className="mx-auto max-w-2xl space-y-4 px-4 pb-[calc(var(--dock)+1.5rem)] pt-4">
-      <Link href="/discover?tab=gist" className="inline-flex min-h-11 items-center text-sm font-bold underline">‹ Walls Gist</Link>
+      <BackLink fallback="/discover?tab=gist" className="inline-flex min-h-11 items-center text-sm font-bold underline">‹ Back</BackLink>
       <ul><GistCard g={g} startOpen /></ul>
     </main>
   );

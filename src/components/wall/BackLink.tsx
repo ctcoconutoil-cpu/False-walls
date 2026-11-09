@@ -8,8 +8,7 @@ export function BackLink({ fallback, className, children }: { fallback: string; 
   const router = useRouter();
   return (
     <Link href={fallback} className={className} onClick={(e) => {
-      const fromHere = document.referrer && new URL(document.referrer).origin === location.origin;
-      if (fromHere && window.history.length > 1) { e.preventDefault(); router.back(); }
+      if (window.history.length > 1) { e.preventDefault(); router.back(); }
     }}>{children}</Link>
   );
 }

@@ -13,5 +13,5 @@ export default async function CardInbox({ params }: { params: Promise<{ cardId: 
   await requireMember(`/private/${cardId}`);
   const inbox = await getInbox(cardId);
   if (!inbox) notFound();
-  return <div data-nopad=""><CardStack card={inbox.card} slug={inbox.slug} messages={inbox.messages} /></div>;
+  return <div data-nopad=""><CardStack note={inbox.note} messages={inbox.messages} /></div>;
 }

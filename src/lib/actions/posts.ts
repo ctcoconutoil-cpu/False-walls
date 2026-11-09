@@ -32,6 +32,7 @@ export async function createPost(fd: FormData): Promise<ActionResult<{ id: strin
   const forWall = typeof wallId === "string" && isUuid(wallId);
   const wallWords = wordCount(title);
   const icon = String(fd.get("wall_icon") ?? "");
+  if (!forWall && type === "picture" && (wallWords < 1 || wallWords > MAX_WALL_WORDS)) return { ok: false, error: `Use one to ${MAX_WALL_WORDS} words for your picture.` };
   if (!forWall && type !== "picture") {
     if (wallWords < 1 || wallWords > MAX_WALL_WORDS) return { ok: false, error: `Use one to ${MAX_WALL_WORDS} words for what shows on the wall.` };
     if (!(WALL_ICON_KEYS as readonly string[]).includes(icon)) return { ok: false, error: "Pick an icon for your post." };

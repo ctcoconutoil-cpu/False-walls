@@ -30,11 +30,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ cardId: 
   const user = await getAuthUser(supabase);
   if (!user) return new Response("Log in first", { status: 401 });
   const [{ data: sub }, { data: card }] = await Promise.all([
-    supabase.from("submissions").select("body").eq("id", m).eq("card_id", cardId).maybeSingle(),
-    supabase.from("wall_cards").select("title, icon, color, owner_id").eq("id", cardId).eq("kind", "prompt").maybeSingle(),
+    supabase.from("submissions").select("body, reply").eq("id", m).eq("card_id", cardId).maybeSingle(),
+    supabase.from("wall_cards").select("title, icon, color, owner_id, wall_id, post:posts(type, title, clue, body, wall_color)").eq("id", cardId).maybeSingle(),
   ]);
   if (!sub || !card) return new Response("Not found", { status: 404 });
-  const { data: wall } = await supabase.from("private_walls").select("slug, brick").eq("owner_id", card.owner_id).maybeSingle();
+  const { data: wall } = await supabase.from("private_walls").select("slug, brick").eq("id", card.wall_id).maybeSingle();
   if (!wall) return new Response("Not found", { status: 404 });
 
   const origin = new URL(req.url).origin;
@@ -43,12 +43,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ cardId: 
   const [fontBuf, brickBuf] = await Promise.all([pub("fonts/caveat-brush.woff"), pic ? pub(`wall/bg/${wall.brick}.jpg`) : pub(`wall/bricks/${BRICK_PNG.has(wall.brick as string) ? wall.brick : "classic"}.png`)]);
   const font = fontBuf.buffer.slice(fontBuf.byteOffset, fontBuf.byteOffset + fontBuf.byteLength) as ArrayBuffer;
   const brick = `data:image/${pic ? "jpeg" : "png"};base64,${brickBuf.toString("base64")}`;
-  const color = (card.color as WallColor) in WALL_COLORS ? (card.color as WallColor) : "coral";
+  const post = (Array.isArray(card.post) ? card.post[0] : card.post) as { type: string; title: string | null; clue: string | null; body: string | null; wall_color: string } | null;
+  const KIND_ICON: Record<string, string> = { ask_me: "mega", hidden_thought: "eye", picture: "camera", prompt_response: "star", false_wall: "ask" };
+  const pick = !!post?.body?.startsWith("#pick\n");
+  const heading = post ? (pick ? post.title || "Pick a number" : post.type === "hidden_thought" || post.type === "false_wall" ? post.clue : post.title ?? post.clue ?? post.body) : card.title;
+  const picked = (post?.wall_color ?? card.color) as WallColor;
+  const color = picked in WALL_COLORS ? picked : "coral";
+  const reply = sub.reply ? clip(clean(sub.reply as string), 160) : null;
   const c = WALL_COLORS[color], pill = PILL[color];
-  const icon = isWallIcon(card.icon as string) ? (card.icon as string) : "star";
+  const iconName = post ? KIND_ICON[post.type] : (card.icon as string);
+  const icon = isWallIcon(iconName) ? iconName : "star";
   const body = clip(clean(sub.body as string), 260);
   const bodySize = body.length <= 50 ? 112 : body.length <= 110 ? 88 : body.length <= 180 ? 70 : 58;
-  const title = clip(clean(card.title as string), 30);
+  const title = clip(clean((heading as string) || "My wall"), 30);
   const host = origin.replace(/^https?:\/\//, "");
 
   return new ImageResponse(
@@ -63,10 +70,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ cardId: 
           <svg width="330" height="46" viewBox="0 0 84 26" style={{ marginTop: 26 }}><path d="M4 16C24 6 56 6 76 16" fill="none" stroke={c.ink} strokeWidth="4" strokeLinecap="round" /></svg>
         </div>
 
-        <div style={{ display: "flex", position: "relative", marginTop: -30, width: 900, padding: "84px 64px 96px", backgroundColor: "#F6EFE2", boxShadow: "0 30px 50px rgba(0,0,0,0.55)", transform: "rotate(2deg)", flexDirection: "column", alignItems: "center" }}>
+        <div style={{ display: "flex", position: "relative", marginTop: -30, width: 900, padding: reply ? "84px 64px 130px" : "84px 64px 96px", backgroundColor: "#F6EFE2", boxShadow: "0 30px 50px rgba(0,0,0,0.55)", transform: "rotate(2deg)", flexDirection: "column", alignItems: "center" }}>
           <div style={{ display: "flex", position: "absolute", top: -26, left: 150, width: 190, height: 56, backgroundColor: "rgba(240,230,190,0.9)", transform: "rotate(-5deg)" }} />
           <div style={{ display: "flex", position: "absolute", top: -26, right: 150, width: 190, height: 56, backgroundColor: "rgba(240,230,190,0.9)", transform: "rotate(4deg)" }} />
           <div style={{ display: "flex", textAlign: "center", fontSize: bodySize, lineHeight: 1.08, color: "#2A1A05", justifyContent: "center" }}>{body}</div>
+          {reply && <div style={{ display: "flex", marginTop: 46, padding: "26px 34px", width: 760, borderLeft: "12px solid #E51F2B", backgroundColor: "rgba(0,0,0,0.07)", fontSize: 54, lineHeight: 1.1, color: "#2A1A05" }}>{`Me: ${reply}`}</div>}
           <div style={{ display: "flex", position: "absolute", bottom: 26, fontSize: 38, color: "#7a6850", letterSpacing: 4 }}>ANONYMOUS MESSAGE</div>
         </div>
 

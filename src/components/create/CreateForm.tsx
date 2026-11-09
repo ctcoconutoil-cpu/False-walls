@@ -1,11 +1,11 @@
 "use client";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Button, Field, Notice, inputCls } from "@/components/ui";
 import { FramePreview } from "@/components/create/FramePreview";
 import { ImagePicker } from "@/components/ui/ImagePicker";
 import { IconPicker } from "@/components/create/IconPicker";
+import { BackLink } from "@/components/wall/BackLink";
 import { WallCard } from "@/components/wall/WallCard";
 import { WallItem } from "@/components/maze/WallItem";
 import type { WallPost } from "@/lib/data/wall";
@@ -75,7 +75,7 @@ export function CreateForm({ wall = null, pick = false, type, label, prompts, is
   return (
     <form onSubmit={submit} className="space-y-6">
       <div>
-        <Link href={wall ? `/private?w=${wall.slug}&tools=card` : "/create"} className="text-sm text-chalk-dim underline">{wall ? "‹ Customize your wall" : "‹ All wall types"}</Link>
+        <BackLink fallback={wall ? `/private?w=${wall.slug}&tools=card` : "/create"} className="text-sm text-chalk-dim underline">{wall ? "‹ Back" : "‹ Back"}</BackLink>
         <h1 className="mt-1 text-3xl">{type === "false_wall" ? "Build a False Wall" : pick ? "Pick a number" : label}</h1>
         <p className="mt-1 text-chalk-dim">{pick ? "A list of numbered questions. People tap a number and answer. No sign-up needed." : POST_TYPES[type].blurb}</p>
       </div>
@@ -84,9 +84,14 @@ export function CreateForm({ wall = null, pick = false, type, label, prompts, is
 
       {forPrivate || type === "picture" ? (
         <>
-          {(type === "ask_me" || type === "picture") && (
+          {(type === "ask_me" || type === "picture") && !(type === "picture" && !forPrivate) && (
             <Field label={pick ? "What is it about?" : type === "picture" ? "Caption" : "What should people ask you about?"} counter={`${title.length}/80`}>
               <input name="title" required minLength={3} maxLength={80} value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} placeholder={pick ? "Pick a number, any number" : type === "picture" ? "Golden hour" : "Ask me anything"} autoComplete="off" />
+            </Field>
+          )}
+          {type === "picture" && !forPrivate && (
+            <Field label="Your words (1 to 3)" counter={`${wordCount(title)}/${MAX_WALL_WORDS} words`} hint="Short and bold. It shows under your picture on the wall.">
+              <input name="title" required maxLength={36} value={title} onChange={(e) => setTitle(clampWords(e.target.value))} className={inputCls} placeholder="Golden Hour" autoComplete="off" />
             </Field>
           )}
         </>
@@ -251,7 +256,7 @@ export function CreateForm({ wall = null, pick = false, type, label, prompts, is
         <Check name="allow_chains" label="Allow related walls" defaultChecked note="Others can build a connected wall from this one." />
       </section>
 
-      <Button type="submit" size="lg" disabled={pending || wordCount(title) < 1 || !icon || (needsImages && images === 0) || (type === "false_wall" && kind === "poll" && !pollReady)} className="w-full">{pending ? "Publishing…" : "Publish"}</Button>
+      <Button type="submit" size="lg" disabled={pending || (!forPrivate && wordCount(title) < 1) || (!forPrivate && type !== "picture" && !icon) || (needsImages && images === 0) || (type === "false_wall" && kind === "poll" && !pollReady)} className="w-full">{pending ? "Publishing…" : "Publish"}</Button>
       {needsImages && images === 0 && <p className="text-center text-xs text-chalk-dim">Add at least one picture to publish.</p>}
     </form>
   );

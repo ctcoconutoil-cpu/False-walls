@@ -4,7 +4,7 @@ import { FeedCard } from "@/components/discover/FeedCard";
 import { loadDiscoverPage } from "@/lib/actions/wall";
 import type { Post } from "@/lib/types";
 
-type Saved = { posts: Post[]; page: number; hasMore: boolean; y: number };
+type Saved = { posts: Post[]; page: number; hasMore: boolean; y: number; t?: number };
 
 /**
  * Discover's wall list as one long scroll. More posts load as you near the bottom. The loaded list and your scroll
@@ -26,7 +26,8 @@ export function WallFeed({ initial, hasMore: initialMore, filter, type }: { init
       const raw = sessionStorage.getItem(key);
       if (!raw) return;
       const s = JSON.parse(raw) as Saved;
-      if (!s.posts?.length) return;
+      // Picture links are signed for an hour, so an old saved list would show blank pictures.
+      if (!s.posts?.length || Date.now() - (s.t ?? 0) > 20 * 60 * 1000) return;
       setPosts(s.posts); setPage(s.page); setMore(s.hasMore);
       const last = sessionStorage.getItem(`${key}:last`);
       // Put the post you last opened back in the middle of the screen; fall back to the saved position.
@@ -38,7 +39,7 @@ export function WallFeed({ initial, hasMore: initialMore, filter, type }: { init
   }, [key]);
 
   const save = useCallback((y?: number) => {
-    try { sessionStorage.setItem(key, JSON.stringify({ posts, page, hasMore: more, y: y ?? window.scrollY } satisfies Saved)); } catch { /* ignore */ }
+    try { sessionStorage.setItem(key, JSON.stringify({ posts, page, hasMore: more, y: y ?? window.scrollY, t: Date.now() } satisfies Saved)); } catch { /* ignore */ }
   }, [key, posts, page, more]);
   useEffect(() => {
     let t: ReturnType<typeof setTimeout> | undefined;

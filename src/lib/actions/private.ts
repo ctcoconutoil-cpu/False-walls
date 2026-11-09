@@ -61,6 +61,16 @@ export async function deleteMessage(id: string): Promise<ActionResult> {
   return OK;
 }
 
+/** The owner's optional reply to an Ask Me message. It is printed on the Share Story image. An empty reply removes it. */
+export async function replyToMessage(id: string, text: string): Promise<ActionResult> {
+  if (!isUuid(id)) return fail("not_found");
+  const reply = text.trim().slice(0, 500);
+  const supabase = await createClient();
+  const { error } = await supabase.from("submissions").update(reply ? { reply, replied_at: new Date().toISOString() } : { reply: null, replied_at: null }).eq("id", id);
+  if (error) return fail(error);
+  return OK;
+}
+
 /** Opening a card's inbox marks everything in it as seen, which clears the "new" count on the wall. */
 export async function markCardRead(cardId: string): Promise<void> {
   if (!isUuid(cardId)) return;
@@ -75,10 +85,10 @@ export async function markCardRead(cardId: string): Promise<void> {
  */
 export async function sendToCard(cardId: string, body: string, slug: string): Promise<ActionResult> {
   if (!isUuid(cardId) || !/^[a-z0-9_]{3,30}$/i.test(slug)) return fail("not_found");
-  // One message per visitor per wall. A cookie in their own browser is used, not their network address, so people
+  // One message per visitor per note. A cookie in their own browser is used, not their network address, so people
   // who share a connection are never blocked because of someone else.
   const jar = await cookies();
-  const mark = `fw_sent_${slug.toLowerCase()}`;
+  const mark = `fw_sent_${cardId.slice(0, 8)}`;
   if (jar.get(mark)) return fail("already_sent");
   const h = await headers();
   const ip = (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || h.get("x-real-ip") || "unknown";

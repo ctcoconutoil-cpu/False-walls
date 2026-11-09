@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type CSSProperties } from "react";
+import { FlipComposer } from "@/components/private/FlipComposer";
 import { OwnerTools } from "@/components/private/OwnerTools";
 import { WallItem } from "@/components/maze/WallItem";
 import { Avatar } from "@/components/ui";
@@ -36,6 +37,7 @@ export function PrivateWallView({ openTools, wallId, tabs = [], canAddWall = fal
   const [tools, setTools] = useState<{ open: boolean; tab: "brick" | "card" | "link" }>({ open: !!openTools, tab: openTools ?? "brick" });
   const [editing, setEditing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [flip, setFlip] = useState<ViewCard | null>(null);
   useEffect(() => setBrick(initialBrick), [initialBrick]);
   const line = useLine(mode === "visitor" && isActive);
 
@@ -97,9 +99,18 @@ export function PrivateWallView({ openTools, wallId, tabs = [], canAddWall = fal
           {notes.map((card, i) => (
             <div key={card.id} className="pw-note-cell" style={{ "--r": `${((i * 37) % 5 - 2) * 0.9}deg` } as CSSProperties}>
               <i aria-hidden className="pw-pin" />
-              <Link href={`/post/${card.post_id}`} draggable={false} aria-label={`Open: ${card.post?.title ?? card.post?.clue ?? card.post?.body ?? "wall"}`}>
-                {card.post && <WallItem post={card.post} compact />}
-              </Link>
+              {(() => {
+                const label = card.post?.title ?? card.post?.clue ?? card.post?.body ?? "wall";
+                const face = card.post && <WallItem post={card.post} compact />;
+                if (mode === "visitor") return <button type="button" className="pw-open" draggable={false} aria-label={`Send a message to: ${label}`} onClick={() => setFlip(card)}>{face}</button>;
+                const n = card.unread || card.total || 0;
+                return (
+                  <>
+                    <Link href={`/private/${card.id}`} draggable={false} aria-label={`Messages for: ${label}${n ? ` (${card.unread ? `${card.unread} new` : `${card.total} total`})` : ""}`}>{face}</Link>
+                    {n > 0 && <span className="pw-badge" data-seen={card.unread ? undefined : ""} aria-hidden>{n > 99 ? "99+" : n}</span>}
+                  </>
+                );
+              })()}
               {mode === "owner" && editing && (
                 <button type="button" className="pw-remove" aria-label="Remove from your wall" onClick={() => remove(card.id)}>✕</button>
               )}
@@ -111,6 +122,7 @@ export function PrivateWallView({ openTools, wallId, tabs = [], canAddWall = fal
         </div>
       </div>
       <div className="wp-light" aria-hidden />
+      {flip?.post && <FlipComposer cardId={flip.id} post={flip.post} slug={slug} onClose={() => setFlip(null)} onSent={() => undefined} />}
 
       {mode === "owner" && wallId && (
         <OwnerTools wallId={wallId} open={tools.open} onClose={() => setTools((t) => ({ ...t, open: false }))} tab={tools.tab} setTab={(tab) => setTools((t) => ({ ...t, tab }))}

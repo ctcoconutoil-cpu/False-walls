@@ -3,8 +3,8 @@ import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useState } from "react";
 import { WallIcon, isWallIcon } from "@/components/wall/icons";
-import { deleteMessage, markCardRead } from "@/lib/actions/private";
-import type { Message, PCard } from "@/lib/data/private";
+import { deleteMessage, markCardRead, replyToMessage } from "@/lib/actions/private";
+import type { InboxNote, Message } from "@/lib/data/private";
 import { WALL_COLORS } from "@/lib/constants";
 import type { WallColor } from "@/lib/types";
 import { timeAgo } from "@/lib/utils";
@@ -17,17 +17,24 @@ const ACCENT: Record<WallColor, { bg: string; ink: string }> = {
 const size = (t: string) => (t.length <= 50 ? 44 : t.length <= 120 ? 34 : t.length <= 240 ? 27 : 22);
 
 /** The owner's inbox for one prompt: messages as paper notes in a stack you swipe through. */
-export function CardStack({ card, slug, messages: initial }: { card: PCard; slug: string; messages: Message[] }) {
+const KIND_ICON = { ask_me: "mega", hidden_thought: "eye", picture: "camera", prompt_response: "star", false_wall: "ask", prompt: "star" } as const;
+
+export function CardStack({ note, messages: initial }: { note: InboxNote; messages: Message[] }) {
+  const card = { ...note.card, title: note.heading }, slug = note.slug;
+  const canReply = note.kind === "ask_me";
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
   const reduce = useReducedMotion();
   const [messages, setMessages] = useState(initial);
   const [i, setI] = useState(0);
   const [dir, setDir] = useState<1 | -1>(1);
   const [busy, setBusy] = useState<"share" | "delete" | null>(null);
   const [confirm, setConfirm] = useState(false);
-  const [note, setNote] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
   const c = WALL_COLORS[card.color] ?? WALL_COLORS.coral, a = ACCENT[card.color] ?? ACCENT.coral;
-  const icon = isWallIcon(card.icon) ? card.icon : "star";
+  const icon = isWallIcon(KIND_ICON[note.kind]) ? KIND_ICON[note.kind] : "star";
   const m = messages[i];
+  useEffect(() => { setDraft(m?.reply ?? ""); }, [m?.id, m?.reply]);
   const newCount = initial.filter((x) => x.isNew).length;
 
   useEffect(() => { if (initial.some((x) => x.isNew)) void markCardRead(card.id); }, [card.id, initial]);
@@ -38,16 +45,23 @@ export function CardStack({ card, slug, messages: initial }: { card: PCard; slug
   }, [go]);
 
   const share = async () => {
-    if (!m) return; setBusy("share"); setNote(null);
+    if (!m) return; setBusy("share"); setMsg(null);
     try {
       const res = await fetch(`/private/${card.id}/story?m=${m.id}`);
       if (!res.ok) throw new Error("image");
       const blob = await res.blob();
       const file = new File([blob], "false-walls-story.png", { type: "image/png" });
       if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], text: `Send me anonymous messages: ${location.origin}/u/${slug}` });
-      else { const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = "false-walls-story.png"; link.click(); setTimeout(() => URL.revokeObjectURL(url), 4000); setNote("Story image saved. Post it to your story."); }
-    } catch (e) { if ((e as Error).name !== "AbortError") setNote("Couldn't make the image. Try again."); }
+      else { const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = "false-walls-story.png"; link.click(); setTimeout(() => URL.revokeObjectURL(url), 4000); setMsg("Story image saved. Post it to your story."); }
+    } catch (e) { if ((e as Error).name !== "AbortError") setMsg("Couldn't make the image. Try again."); }
     setBusy(null);
+  };
+  const saveReply = async () => {
+    if (!m) return; setSaving(true); setMsg(null);
+    const r = await replyToMessage(m.id, draft);
+    if (r.ok) { const v = draft.trim() || null; setMessages((l) => l.map((x) => (x.id === m.id ? { ...x, reply: v } : x))); setMsg(v ? "Reply saved. It will show on your Share Story." : "Reply removed."); }
+    else setMsg(r.error);
+    setSaving(false);
   };
   const del = async () => {
     if (!m) return;
@@ -80,7 +94,7 @@ export function CardStack({ card, slug, messages: initial }: { card: PCard; slug
             <WallIcon name={icon} size={64} className="mx-auto opacity-60" />
             <p className="mt-4 text-xl font-black">Nothing here yet</p>
             <p className="mt-1 text-chalk-dim">Share your link. Messages land here as paper notes you can swipe through.</p>
-            <button type="button" className={`${btn} mt-5`} style={{ background: a.bg, color: a.ink }} onClick={() => navigator.clipboard?.writeText(`${location.origin}/u/${slug}`).then(() => setNote("Link copied"))}>Copy my link</button>
+            <button type="button" className={`${btn} mt-5`} style={{ background: a.bg, color: a.ink }} onClick={() => navigator.clipboard?.writeText(`${location.origin}/u/${slug}`).then(() => setMsg("Link copied"))}>Copy my link</button>
           </div>
         ) : (
           <>
@@ -95,6 +109,7 @@ export function CardStack({ card, slug, messages: initial }: { card: PCard; slug
                   initial={reduce ? "show" : "enter"} animate="show" exit="exit" transition={{ type: "spring", stiffness: 280, damping: 26 }}>
                   <i aria-hidden className="pw-tape" style={{ left: "18%" }} /><i aria-hidden className="pw-tape" style={{ right: "18%" }} />
                   <p className="pw-msg-text" style={{ fontSize: size(m.body) }}>{m.body}</p>
+                  {m.reply && <p className="pw-msg-reply" aria-label="Your reply"><b>You:</b> {m.reply}</p>}
                   <p className="pw-msg-meta"><span>Anonymous · {timeAgo(m.created_at)}</span>{m.isNew && <b style={{ background: a.bg, color: a.ink }}>NEW</b>}</p>
                 </motion.article>
               </AnimatePresence>
@@ -104,13 +119,22 @@ export function CardStack({ card, slug, messages: initial }: { card: PCard; slug
               <span className="min-w-16 text-center text-sm font-bold text-chalk-dim">{i + 1} of {messages.length}</span>
               <button type="button" onClick={() => go(1)} disabled={i >= messages.length - 1} aria-label="Next message" className="grid h-11 w-11 place-items-center rounded-full border-2 border-white/25 text-white disabled:opacity-30">›</button>
             </div>
+            {canReply && (
+              <div className="mt-4 w-full max-w-[340px]">
+                <label htmlFor="pw-reply" className="mb-1 block text-xs font-bold text-chalk-dim">Your reply (optional). It shows under the message on your Share Story.</label>
+                <div className="flex gap-2">
+                  <input id="pw-reply" value={draft} maxLength={500} onChange={(e) => setDraft(e.target.value)} placeholder="Write a reply…" className="min-w-0 flex-1 rounded-xl bg-night-3 px-3 py-2.5 text-base text-chalk" />
+                  <button type="button" onClick={saveReply} disabled={saving || draft.trim() === (m.reply ?? "")} className="rounded-xl px-4 text-sm font-black disabled:opacity-40" style={{ background: a.bg, color: a.ink }}>{saving ? "…" : "Save"}</button>
+                </div>
+              </div>
+            )}
             <div className="mt-5 flex w-full max-w-[340px] gap-3 pb-8">
-              <button type="button" onClick={share} disabled={busy !== null} className={`${btn} flex-1`} style={{ background: a.bg, color: a.ink, boxShadow: "0 5px 0 rgba(0,0,0,.35)" }}>{busy === "share" ? "Making image…" : "Share Story"}</button>
+              <button type="button" onClick={share} disabled={busy !== null} className={`${btn} flex-1`} style={{ background: a.bg, color: a.ink, boxShadow: "0 5px 0 rgba(0,0,0,.35)" }}>{busy === "share" ? "Making image…" : "📤 Share Story"}</button>
               <button type="button" onClick={del} disabled={busy !== null} className={`${btn} border-2`} style={{ borderColor: confirm ? "#E51F2B" : "rgba(255,255,255,.25)", color: confirm ? "#ff6b73" : "#fff" }}>{confirm ? "Tap to confirm" : "Delete"}</button>
             </div>
           </>
         )}
-        {note && <p role="status" className="pb-6 text-center text-sm font-bold text-chalk-dim">{note}</p>}
+        {msg && <p role="status" className="pb-6 text-center text-sm font-bold text-chalk-dim">{msg}</p>}
       </main>
     </div>
   );
