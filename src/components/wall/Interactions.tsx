@@ -188,6 +188,7 @@ export function PostToolbar({ postId, saved, loggedIn, isPublic, owner }: { post
 export function OwnerTools({ post, hiddenText, media }: { post: { id: string; type: string; title: string | null; body: string | null; clue: string | null }; hiddenText: string | null; media: { storage_path: string }[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  useEffect(() => { if (new URLSearchParams(window.location.search).get("edit") === "1") setOpen(true); }, []);
   const [del, setDel] = useState(false);
   const [f, setF] = useState({ title: post.title ?? "", body: post.body ?? "", clue: post.clue ?? "", hidden: hiddenText ?? "" });
   const [err, setErr] = useState<string | null>(null);

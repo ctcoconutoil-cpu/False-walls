@@ -3,12 +3,13 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Field, Notice, inputCls } from "@/components/ui";
 import { createExperience } from "@/lib/actions/discover";
-import { EXPERIENCE_CATEGORIES } from "@/lib/constants";
+import { EXPERIENCE_CATEGORIES, LIMITS } from "@/lib/constants";
+import { ImagePicker } from "@/components/ui/ImagePicker";
 
 export function ExperienceForm() {
   const router = useRouter();
   const form = useRef<HTMLFormElement>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [imgs, setImgs] = useState(0);
   const [scheduled, setScheduled] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -16,6 +17,7 @@ export function ExperienceForm() {
   return (
     <form ref={form} className="space-y-5" onSubmit={(e) => {
       e.preventDefault(); setErr(null);
+      if (!imgs) { setErr("Add a picture for your experience."); return; }
       const fd = new FormData(e.currentTarget);
       // Turn the local date and time into one absolute moment so every viewer sees it in their own zone.
       const when = String(fd.get("when") ?? "");
@@ -33,11 +35,7 @@ export function ExperienceForm() {
           {Object.entries(EXPERIENCE_CATEGORIES).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
         </select>
       </Field>
-      <Field label="Picture" hint="JPG, PNG or WebP.">
-        <input name="image" type="file" accept="image/jpeg,image/png,image/webp" required className={inputCls} onChange={(e) => { const f = e.target.files?.[0]; setPreview(f ? URL.createObjectURL(f) : null); }} />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        {preview && <img src={preview} alt="Preview" className="mt-2 aspect-[16/10] w-full rounded-xl object-cover" />}
-      </Field>
+      <ImagePicker name="image" label="Picture" maxDim={1600} maxBytes={LIMITS.imageBytes} hint="JPG, PNG or WebP. It is shrunk automatically." onFiles={setImgs} />
       <Field label="Link" hint="Where people go to join, watch or buy. Must start with https://"><input name="url" type="url" required className={inputCls} placeholder="https://" inputMode="url" autoComplete="off" /></Field>
       <label className="flex min-h-11 items-center gap-3 font-semibold"><input type="checkbox" className="h-5 w-5 accent-[#F9A719]" checked={scheduled} onChange={(e) => setScheduled(e.target.checked)} /> This happens at a set date and time</label>
       {scheduled && <Field label="Date and time" hint="Shown to everyone in their own time zone."><input name="when" type="datetime-local" required className={inputCls} /></Field>}

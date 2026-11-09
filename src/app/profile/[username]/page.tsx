@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { POST_SELECT, hydratePosts } from "@/lib/data/posts";
 import { Avatar, Empty, LinkButton } from "@/components/ui";
 import { WallItem } from "@/components/maze/WallItem";
-import { PinControls } from "@/components/profile/PinControls";
+import { WallMenu } from "@/components/profile/WallMenu";
 import { PRIVATE_ONLY_IN } from "@/lib/constants";
 import { ProfileActions } from "@/components/profile/ProfileActions";
 import { signOut } from "@/lib/actions/auth";
@@ -83,12 +83,12 @@ export default async function Profile({ params }: { params: Promise<{ username: 
           <h2 id="pinned" className="flex items-center gap-2 text-2xl"><span aria-hidden>📌</span> Pinned</h2>
           <ul className="space-y-3">
             {pinned.map((post, i) => (
-              <li key={post.id} className="rounded-3xl border-2 border-mustard bg-night-2 p-3 shadow-[0_0_0_4px_rgba(249,167,25,.14),0_8px_0_rgba(0,0,0,.35)]">
+              <li key={post.id} className="relative rounded-3xl border-2 border-mustard bg-night-2 p-3 shadow-[0_0_0_4px_rgba(249,167,25,.14),0_8px_0_rgba(0,0,0,.35)]">
                 <Link href={`/post/${post.id}`} className="relative block h-56" aria-label={post.title ?? post.clue ?? post.body ?? "Open pinned wall"}>
                   <WallItem post={post} compact />
                   <span className="absolute left-2 top-2 rounded-full bg-mustard px-2.5 py-1 text-xs font-extrabold text-[#2c1e02]">📌 Pinned</span>
                 </Link>
-                {self && <div className="mt-3"><PinControls postId={post.id} pinned index={i} count={pinned.length} /></div>}
+                {self && <WallMenu postId={post.id} pinned index={i} count={pinned.length} />}
               </li>
             ))}
           </ul>
@@ -145,9 +145,9 @@ function Grid({ posts, self, pinCount }: { posts: Post[]; self: boolean; pinCoun
   return (
     <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {posts.map((post) => (
-        <li key={post.id} className="space-y-2">
+        <li key={post.id} className="relative">
           <Link href={`/post/${post.id}`} className="block h-40" aria-label={post.title ?? post.clue ?? post.body ?? "Open wall"}><WallItem post={post} compact /></Link>
-          {self && <PinControls postId={post.id} pinned={false} canPin={pinCount < 3} />}
+          {self && <WallMenu postId={post.id} canPin={pinCount < 3} />}
         </li>
       ))}
     </ul>
