@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { CREATE_ROUTES, POST_TYPES, PRIVATE_ONLY_TYPES } from "@/lib/constants";
 import { isUuid } from "@/lib/utils";
 
-export default async function CreatePage({ params, searchParams }: { params: Promise<{ type: string }>; searchParams: Promise<{ chain_parent?: string; chain_answer?: string; prompt?: string }> }) {
+export default async function CreatePage({ params, searchParams }: { params: Promise<{ type: string }>; searchParams: Promise<{ chain_parent?: string; chain_answer?: string; prompt?: string; for?: string }> }) {
   const { type: route } = await params;
   const type = CREATE_ROUTES[route];
   if (!type) notFound();
@@ -13,7 +13,7 @@ export default async function CreatePage({ params, searchParams }: { params: Pro
   const sp = await searchParams;
   const supabase = await createClient();
   // The three private-wall templates need a private wall to hang on.
-  const forPrivate = (PRIVATE_ONLY_TYPES as readonly string[]).includes(type);
+  const forPrivate = (PRIVATE_ONLY_TYPES as readonly string[]).includes(type) || (type === "picture" && sp.for === "private");
   if (forPrivate) {
     const { count } = await supabase.from("private_walls").select("owner_id", { count: "exact", head: true }).eq("owner_id", (await requireMember(`/create/${route}`)).user.id);
     if (!count) redirect("/private");

@@ -85,7 +85,7 @@ export async function createPost(fd: FormData): Promise<ActionResult<{ id: strin
   }
   await supabase.rpc("set_post_icon", { p_id: pid, p_icon: icon });
   // Ask Me, Hidden Thought and Random Prompt posts hang on the author's private wall instead of the public Wall.
-  if ((PRIVATE_ONLY_TYPES as readonly string[]).includes(type)) { await supabase.rpc("add_post_card", { p_post: pid }); revalidatePath("/private"); }
+  if ((PRIVATE_ONLY_TYPES as readonly string[]).includes(type) || fd.get("for_private") === "1") { await supabase.rpc("add_post_card", { p_post: pid }); revalidatePath("/private"); }
   revalidatePath("/wall", "layout");
   revalidatePath("/profile", "layout");
   return { ok: true, id: data as string };

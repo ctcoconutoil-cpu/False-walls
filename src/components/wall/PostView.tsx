@@ -10,6 +10,7 @@ import { RevealPanel } from "@/components/wall/RevealPanel";
 import { ChainStrip } from "@/components/wall/ChainStrip";
 import { BackLink } from "@/components/wall/BackLink";
 import { AnswerActions, AskBox, DiscoveryPing, OwnerTools, PostToolbar, ReactionBar, ReplyActions, ReplyBox } from "@/components/wall/Interactions";
+import { AfterOpen, RevealGate } from "@/components/wall/RevealGate";
 import { CurtainOpen } from "@/components/maze/Curtain";
 import { POST_TYPES } from "@/lib/constants";
 import { isUuid, timeAgo } from "@/lib/utils";
@@ -77,9 +78,11 @@ export async function PostView({ id, modal = false }: { id: string; modal?: bool
         <div className="relative z-10 mx-auto max-w-2xl">
           {!modal && <BackLink fallback="/discover" className="inline-flex min-h-11 items-center rounded-xl bg-black/45 px-3 text-sm font-bold">‹ Back</BackLink>}
           <p className="display mt-4 text-4xl uppercase leading-none drop-shadow-[0_3px_0_rgba(0,0,0,.45)] sm:text-5xl">Behind the wall</p>
+          <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1.5 text-sm font-extrabold"><span aria-hidden>💬</span>{replies.length} {replies.length === 1 ? "conversation" : "conversations"}</p>
         </div>
       </header>
 
+      <RevealGate initiallyOpen={!concealed || owner}>
       <main className="mx-auto max-w-2xl space-y-6 px-4 py-6">
         <section aria-labelledby="post-h" className="space-y-4">
           <div className="flex flex-wrap items-center gap-2 text-sm text-chalk-dim">
@@ -119,6 +122,7 @@ export async function PostView({ id, modal = false }: { id: string; modal?: bool
             </div>
           )}
 
+          <AfterOpen>
           <ReactionBar type="post" id={post.id} counts={thread.reactions.post.counts} mine={thread.reactions.post.mine} loggedIn={loggedIn} own={owner} />
           {owner && post.visibility === "link" && post.share_token && (
             <div className="space-y-3 rounded-2xl border-2 border-mustard bg-night-2 p-4">
@@ -139,8 +143,10 @@ export async function PostView({ id, modal = false }: { id: string; modal?: bool
               <OwnerTools post={{ id: post.id, type: post.type, title: post.title, body: post.body, clue: post.clue }} hiddenText={ownerData?.hidden_text ?? null} media={post.media} />
             </div>
           )}
+          </AfterOpen>
         </section>
 
+        <AfterOpen>
         {thread.answers.length > 0 && (
           <section aria-labelledby="answers" className="space-y-4">
             <h2 id="answers" className="text-2xl">Answers</h2>
@@ -194,7 +200,9 @@ export async function PostView({ id, modal = false }: { id: string; modal?: bool
             ))}
           </ol>
         </section>
+        </AfterOpen>
       </main>
+      </RevealGate>
     </div>
   );
 }

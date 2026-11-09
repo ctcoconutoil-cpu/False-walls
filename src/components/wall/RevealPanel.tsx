@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { useRevealGate } from "@/components/wall/RevealGate";
 import { motion, useReducedMotion } from "framer-motion";
 import { revealPost, votePoll, type Revealed } from "@/lib/actions/posts";
 import { Button, Notice } from "@/components/ui";
@@ -16,6 +17,8 @@ export function RevealPanel({ post, loggedIn, initiallyOpen = false, ownerData }
   const [error, setError] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
   const [pending, start] = useTransition();
+  const gate = useRevealGate();
+  useEffect(() => { if (data) gate?.setOpened(true); }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
   const c = WALL_COLORS[post.wall_color] ?? WALL_COLORS.coral;
   const isWall = post.type === "false_wall";
 

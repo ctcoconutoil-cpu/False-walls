@@ -54,12 +54,13 @@ export const CLUE_STYLES: Record<ClueStyle, { label: string; hint: string }> = {
   opening: { label: "Suspicious opening", hint: "A gap that should not be there." },
 };
 
+/** The same five reactions and colours as Walls Gist. The stored kinds stay as they were. */
 export const REACTIONS: { kind: ReactionKind; label: string; glyph: string; color: string }[] = [
-  { kind: "interesting", label: "Interesting", glyph: "💡", color: "#FFD84A" },
+  { kind: "like", label: "Love", glyph: "❤️", color: "#FF4D6D" },
   { kind: "funny", label: "Funny", glyph: "😂", color: "#FFC83D" },
-  { kind: "surprising", label: "Surprising", glyph: "😮", color: "#FF9F43" },
-  { kind: "thought_provoking", label: "Thought-provoking", glyph: "🤔", color: "#7BC4FF" },
-  { kind: "like", label: "Like", glyph: "❤️", color: "#FF4D6D" },
+  { kind: "surprising", label: "Wow", glyph: "😮", color: "#FF9F43" },
+  { kind: "thought_provoking", label: "Sad", glyph: "😢", color: "#7BC4FF" },
+  { kind: "interesting", label: "Fire", glyph: "🔥", color: "#F9A719" },
 ];
 
 export const LIMITS = {
@@ -81,24 +82,43 @@ export const REPORT_REASONS = [
   { value: "other", label: "Something else" },
 ] as const;
 
-/** Backgrounds a member can choose for their private wall: brick colours, art and lifestyle pictures, or their own upload. */
+/** Brick colours for a private wall, drawn in the Discover brick style: dark brick, lighter mortar. Each also comes with a glow. */
+export const BRICK_COLOURS = [
+  { key: "red", name: "Red", wall: "#A8121C", mortar: "#E51F2B" },
+  { key: "gold", name: "Golden", wall: "#C77F08", mortar: "#F9A719" },
+  { key: "blue", name: "Blue", wall: "#0F5599", mortar: "#1879D2" },
+  { key: "purple", name: "Purple", wall: "#241033", mortar: "#6a3a85" },
+  { key: "pink", name: "Dusty pink", wall: "#A98672", mortar: "#D5B5A5" },
+  { key: "black", name: "Charcoal", wall: "#121013", mortar: "#4a444c" },
+  { key: "green", name: "Green", wall: "#0f5a31", mortar: "#1f9d55" },
+  { key: "teal", name: "Teal", wall: "#0a5b60", mortar: "#16b2b8" },
+  { key: "orange", name: "Orange", wall: "#a8430a", mortar: "#f26a1b" },
+  { key: "magenta", name: "Magenta", wall: "#7a0f4d", mortar: "#d6258f" },
+] as const;
+/** The look for a colour key like "bk-blue" or "bk-blue-glow", or null for any other kind of background. */
+export function brickLook(key: string): { wall: string; mortar: string; glow: boolean } | null {
+  const m = /^bk-([a-z]+)(-glow)?$/.exec(key);
+  const c = m && BRICK_COLOURS.find((x) => x.key === m[1]);
+  return c ? { wall: c.wall, mortar: c.mortar, glow: !!m![2] } : null;
+}
+/** Older brick photos, art and lifestyle pictures, and the member's own upload. */
 export const BRICKS = [
-  { key: "classic", name: "Classic red", swatch: "#9a2f22", group: "brick" },
-  { key: "charcoal", name: "Charcoal", swatch: "#48454a", group: "brick" },
-  { key: "navy", name: "Midnight blue", swatch: "#26437a", group: "brick" },
-  { key: "plum", name: "Plum", swatch: "#6a2a7c", group: "brick" },
-  { key: "forest", name: "Forest", swatch: "#265a3c", group: "brick" },
-  { key: "sand", name: "Sand", swatch: "#d3b998", group: "brick" },
+  { key: "classic", name: "Classic red", swatch: "#9a2f22", group: "legacy" },
+  { key: "charcoal", name: "Charcoal", swatch: "#48454a", group: "legacy" },
+  { key: "navy", name: "Midnight blue", swatch: "#26437a", group: "legacy" },
+  { key: "plum", name: "Plum", swatch: "#6a2a7c", group: "legacy" },
+  { key: "forest", name: "Forest", swatch: "#265a3c", group: "legacy" },
+  { key: "sand", name: "Sand", swatch: "#d3b998", group: "legacy" },
   { key: "art1", name: "Paint strokes", swatch: "#2a1344", group: "art" },
   { key: "art2", name: "Street mural", swatch: "#3a363c", group: "art" },
   { key: "life1", name: "Cosy corner", swatch: "#c89a7e", group: "life" },
   { key: "life2", name: "City dusk", swatch: "#5c2a6e", group: "life" },
 ] as const;
 export type PresetKey = (typeof BRICKS)[number]["key"];
-export type BrickKey = PresetKey | "custom";
-export const isBrick = (v: string): v is PresetKey => BRICKS.some((b) => b.key === v);
-/** True when the look is a picture (art, lifestyle or uploaded) rather than a brick colour. */
-export const isPicture = (v: string) => v === "custom" || BRICKS.some((b) => b.key === v && b.group !== "brick");
+export type BrickKey = string;
+export const isBrick = (v: string): boolean => v === "custom" || BRICKS.some((b) => b.key === v) || !!brickLook(v);
+/** True when the look is a picture (art, lifestyle or uploaded) rather than bricks. */
+export const isPicture = (v: string) => v === "custom" || BRICKS.some((b) => b.key === v && b.group !== "legacy");
 export const BG_UPLOAD = { width: 1080, height: 1920, maxMb: 5 } as const;
 /** Keeps at most three words as someone types, so card text can never run long. */
 export function clampWords(v: string): string {

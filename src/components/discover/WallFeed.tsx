@@ -26,11 +26,16 @@ export function WallFeed({ initial, hasMore: initialMore, filter, type }: { init
       const raw = sessionStorage.getItem(key);
       if (!raw) return;
       const s = JSON.parse(raw) as Saved;
-      if (!s.posts?.length || s.posts[0]?.id !== initial[0]?.id) return;
+      if (!s.posts?.length) return;
       setPosts(s.posts); setPage(s.page); setMore(s.hasMore);
-      requestAnimationFrame(() => window.scrollTo(0, s.y));
+      const last = sessionStorage.getItem(`${key}:last`);
+      // Put the post you last opened back in the middle of the screen; fall back to the saved position.
+      setTimeout(() => {
+        const el = last ? document.querySelector(`[data-pid="${CSS.escape(last)}"]`) : null;
+        if (el) el.scrollIntoView({ block: "center" }); else window.scrollTo(0, s.y);
+      }, 60);
     } catch { /* storage unavailable */ }
-  }, [key, initial]);
+  }, [key]);
 
   const save = useCallback((y?: number) => {
     try { sessionStorage.setItem(key, JSON.stringify({ posts, page, hasMore: more, y: y ?? window.scrollY } satisfies Saved)); } catch { /* ignore */ }
@@ -60,7 +65,9 @@ export function WallFeed({ initial, hasMore: initialMore, filter, type }: { init
 
   return (
     <>
-      <ul className="space-y-3">{posts.map((p) => <li key={p.id}><FeedCard post={p} /></li>)}</ul>
+      <ul className="space-y-3">{posts.map((p) => (
+        <li key={p.id} data-pid={p.id} onClickCapture={() => { try { sessionStorage.setItem(`${key}:last`, p.id); } catch { /* ignore */ } save(); }}><FeedCard post={p} /></li>
+      ))}</ul>
       <div ref={end} aria-hidden className="h-1" />
       {busy && <p role="status" className="text-center text-sm text-chalk-dim">Loading more…</p>}
       {!more && posts.length > 0 && <p className="text-center text-sm text-chalk-dim">You&apos;ve reached the end. Everything here is also on the <a href="/wall" className="underline">Wall</a>.</p>}

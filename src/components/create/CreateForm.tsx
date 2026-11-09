@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Button, Field, Notice, inputCls } from "@/components/ui";
+import { FramePreview } from "@/components/create/FramePreview";
 import { ImagePicker } from "@/components/ui/ImagePicker";
 import { IconPicker } from "@/components/create/IconPicker";
 import { WallCard } from "@/components/wall/WallCard";
@@ -37,6 +38,7 @@ export function CreateForm({ forPrivate = false, type, label, prompts, isTeen, a
   const [visibility, setVisibility] = useState<"public" | "followers">(isTeen ? "followers" : "public");
   const [reveal, setReveal] = useState<"anyone" | "followers">("anyone");
   const [images, setImages] = useState(0);
+  const [picUrl, setPicUrl] = useState<string | null>(null);
   const needsImages = type === "picture" || (type === "false_wall" && kind === "photo");
   const concealed = type === "hidden_thought" || type === "false_wall";
 
@@ -50,6 +52,7 @@ export function CreateForm({ forPrivate = false, type, label, prompts, isTeen, a
     e.preventDefault();
     setError(null);
     const fd = new FormData(e.currentTarget);
+    if (forPrivate) fd.set("for_private", "1");
     fd.set("type", type);
     start(async () => {
       const r = await createPost(fd);
@@ -101,10 +104,10 @@ export function CreateForm({ forPrivate = false, type, label, prompts, isTeen, a
 
       {type === "picture" && (
         <>
-          <ImagePicker name="images" label="Pictures" max={LIMITS.images} maxBytes={LIMITS.imageBytes} hint="Up to 4 JPEG, PNG or WebP images. They're shrunk automatically and location data is removed." onFiles={setImages} />
+          <ImagePicker name="images" label="Pictures" max={LIMITS.images} maxBytes={LIMITS.imageBytes} hint="Up to 4 JPEG, PNG or WebP images. They're shrunk automatically and location data is removed." onFiles={setImages} onPreviews={(u) => setPicUrl(u[0] ?? null)} />
+          {picUrl && <FramePreview src={picUrl} color={color} onColor={setColor} />}
           <Field label="Describe it for people who can't see it (optional)" hint="Alt text helps screen reader users."><input name="alt" maxLength={200} className={inputCls} /></Field>
           <Field label="More detail (optional)"><textarea name="body" rows={2} maxLength={LIMITS.body} value={body} onChange={(e) => setBody(e.target.value)} className={inputCls} /></Field>
-          <Notice>Only post pictures you took or have permission to share. Don't post pictures of other people without their agreement.</Notice>
         </>
       )}
 

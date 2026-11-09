@@ -5,7 +5,15 @@ import type { PostType } from "@/lib/types";
 
 export const metadata = { title: "Create" };
 const ORDER: { type: PostType; color: keyof typeof WALL_COLORS }[] = [
-  { type: "picture", color: "sky" }, { type: "false_wall", color: "violet" },
+  { type: "false_wall", color: "violet" },
+];
+/** Wall types that are made for a private wall. Each hangs on the member's private wall as soon as it is posted. */
+const PRIVATE: { href: string; title: string; blurb: string; icon: string }[] = [
+  { href: "/create/ask-me?for=private", title: "Ask Me", blurb: "Invite questions, anonymous or not. You choose what gets answered.", icon: "?" },
+  { href: "/create/hidden-thought?for=private", title: "Hidden Thought", blurb: "Share a thought, but keep part of it concealed behind a clue.", icon: "…" },
+  { href: "/create/picture-wall?for=private", title: "Picture Wall", blurb: "Pin a photo with a question or caption attached.", icon: "▣" },
+  { href: "/create/random-prompt?for=private", title: "Random Prompt", blurb: "Answer a conversation prompt from the platform.", icon: "!" },
+  { href: "/create/private", title: "Pick a number / Ask me link", blurb: "A link wall for Instagram, WhatsApp, X, Snapchat or TikTok. People pick a number or ask a question.", icon: "#" },
 ];
 
 export default async function CreateMenu({ searchParams }: { searchParams: Promise<{ chain_parent?: string; chain_answer?: string }> }) {
@@ -40,12 +48,18 @@ export default async function CreateMenu({ searchParams }: { searchParams: Promi
             <span><span className="display block text-xl">Walls Gist</span><span className="block text-sm font-medium opacity-85">A quick post people can react to, comment on and share. Shows in Discover.</span></span>
           </Link>
         </li>
-        <li>
-          <Link href="/create/private" className="btn-press flex items-center gap-4 rounded-2xl border-2 border-dashed border-mustard bg-night-2 p-4">
-            <span aria-hidden className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-night-3 text-3xl">🔒</span>
-            <span><span className="display block text-xl">Private link wall</span><span className="block text-sm font-medium text-chalk-dim">Not listed anywhere. Share the link on Instagram, WhatsApp, X, Snapchat or TikTok and get questions. Includes “Pick a number”.</span></span>
-          </Link>
-        </li>
+      </ul>
+      <h2 className="mb-3 mt-8 flex items-center gap-2 text-2xl"><span aria-hidden>🔒</span> Private wall</h2>
+      <p className="mb-3 text-sm text-chalk-dim">These are for your private wall only. They hang on it, three to a row, and anyone with your link can open them. No sign-up needed.</p>
+      <ul className="grid gap-3">
+        {PRIVATE.map((t) => (
+          <li key={t.href}>
+            <Link href={t.href} className="btn-press flex items-center gap-4 rounded-2xl border-2 border-dashed border-mustard bg-night-2 p-4">
+              <span aria-hidden className="display grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-night-3 text-3xl">{t.icon}</span>
+              <span><span className="display block text-xl">{t.title}</span><span className="block text-sm font-medium text-chalk-dim">{t.blurb}</span></span>
+            </Link>
+          </li>
+        ))}
       </ul>
     </main>
   );

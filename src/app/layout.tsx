@@ -1,3 +1,4 @@
+import { OfflineSupport } from "@/components/ui/OfflineSupport";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "@fontsource/caveat-brush/400.css";
@@ -28,6 +29,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       <head><script dangerouslySetInnerHTML={{ __html: `try{if(localStorage.getItem("fw-motion")==="reduced")document.documentElement.dataset.motion="reduced"}catch(e){}` }} /></head>
       <body className="min-h-full">
+        <OfflineSupport />
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:rounded-lg focus:bg-mustard focus:px-3 focus:py-2 focus:text-[#2c1e02]">Skip to content</a>
         <div id="main" style={{ paddingBottom: "var(--dock, 76px)" }} className="min-h-dvh [&:has(>[data-nopad])]:pb-0">{children}</div>
         <Suspense fallback={<Dock username={username} unread={0} />}><DockWithUnread username={username} userId={user && profile ? user.id : null} /></Suspense>

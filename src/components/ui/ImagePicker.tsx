@@ -4,7 +4,7 @@ import { compressImage } from "@/lib/client-image";
 import { ALLOWED_IMAGE_TYPES } from "@/lib/constants";
 
 /** A file input that compresses images in the browser and shows previews. Files travel with the form. */
-export function ImagePicker({ name, label, max = 1, maxDim = 1600, maxBytes, hint, onFiles }: { name: string; label: string; max?: number; maxDim?: number; maxBytes: number; hint?: string; onFiles?: (n: number) => void }) {
+export function ImagePicker({ name, label, max = 1, maxDim = 1600, maxBytes, hint, onFiles, onPreviews }: { name: string; label: string; max?: number; maxDim?: number; maxBytes: number; hint?: string; onFiles?: (n: number) => void; onPreviews?: (urls: string[]) => void }) {
   const input = useRef<HTMLInputElement>(null);
   const [previews, setPreviews] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -13,7 +13,7 @@ export function ImagePicker({ name, label, max = 1, maxDim = 1600, maxBytes, hin
   async function onChange(e: React.ChangeEvent<HTMLInputElement>) {
     setError(null);
     const chosen = Array.from(e.target.files ?? []).slice(0, max);
-    if (!chosen.length) { setPreviews([]); onFiles?.(0); return; }
+    if (!chosen.length) { setPreviews([]); onFiles?.(0); onPreviews?.([]); return; }
     const bad = chosen.find((f) => !ALLOWED_IMAGE_TYPES.includes(f.type));
     if (bad) { setError("Use JPEG, PNG or WebP images."); e.target.value = ""; setPreviews([]); onFiles?.(0); return; }
     const out = await Promise.all(chosen.map((f) => compressImage(f, maxDim)));
@@ -21,7 +21,8 @@ export function ImagePicker({ name, label, max = 1, maxDim = 1600, maxBytes, hin
     const dt = new DataTransfer();
     out.forEach((f) => dt.items.add(f));
     if (input.current) input.current.files = dt.files;
-    setPreviews(out.map((f) => URL.createObjectURL(f)));
+    const urls = out.map((f) => URL.createObjectURL(f));
+    setPreviews(urls); onPreviews?.(urls);
     onFiles?.(out.length);
   }
 
