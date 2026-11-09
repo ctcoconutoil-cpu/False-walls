@@ -346,3 +346,6 @@ textarea.pw-paper:focus { box-shadow: 0 0 0 3px #F9A719, 6px 10px 16px rgba(0,0,
 .wp-root[data-pic]::before { content: ""; position: absolute; inset: 0; z-index: 0; background: #1a0925 var(--pic) center / cover no-repeat; }
 .wp-root[data-pic] .wp-scroller { z-index: 1; background: transparent; }
 .wp-root[data-pic] .wp-light { z-index: 2; }
+
+.pw-tools a.pw-tab-on { background: #F9A719; color: #2a1a05; }
+.pw-tools a { display: inline-flex; min-height: 44px; align-items: center; border-radius: 999px; padding: 0 16px; font-weight: 800; background: rgba(0,0,0,.45); color: #fff; font-size: 14px; }

@@ -12,7 +12,8 @@ import { BackLink } from "@/components/wall/BackLink";
 import { AnswerActions, AskBox, DiscoveryPing, OwnerTools, PostToolbar, ReactionBar, ReplyActions, ReplyBox } from "@/components/wall/Interactions";
 import { AfterOpen, RevealGate } from "@/components/wall/RevealGate";
 import { CurtainOpen } from "@/components/maze/Curtain";
-import { POST_TYPES } from "@/lib/constants";
+import { GuestEngage } from "@/components/wall/GuestEngage";
+import { POST_TYPES, parsePick } from "@/lib/constants";
 import { isUuid, timeAgo } from "@/lib/utils";
 import type { Revealed } from "@/lib/actions/posts";
 
@@ -60,7 +61,9 @@ export async function PostView({ id, modal = false }: { id: string; modal?: bool
 
   const askReason = post.is_sample ? "This is sample content, so it can't receive questions." : post.author_id === null ? "Questions are off for this wall." : undefined;
   const canAsk = post.type === "ask_me" && !post.is_sample && !!post.author_id && !owner && post.status === "active";
-  const showAsk = post.type === "ask_me";
+  const isWall = post.visibility === "wall";
+  const pickQs = post.type === "ask_me" ? parsePick(post.body) : null;
+  const showAsk = post.type === "ask_me" && !isWall;
   const replies = thread.replies as unknown as Reply[];
   const topLevel = replies.filter((r) => !r.parent_reply_id && !r.answer_id);
   const childrenOf = (rid: string) => replies.filter((r) => r.parent_reply_id === rid);
@@ -78,11 +81,11 @@ export async function PostView({ id, modal = false }: { id: string; modal?: bool
         <div className="relative z-10 mx-auto max-w-2xl">
           {!modal && <BackLink fallback="/discover" className="inline-flex min-h-11 items-center rounded-xl bg-black/45 px-3 text-sm font-bold">‹ Back</BackLink>}
           <p className="display mt-4 text-4xl uppercase leading-none drop-shadow-[0_3px_0_rgba(0,0,0,.45)] sm:text-5xl">Behind the wall</p>
-          <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1.5 text-sm font-extrabold"><span aria-hidden>💬</span>{replies.length} {replies.length === 1 ? "conversation" : "conversations"}</p>
+          {!isWall && <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1.5 text-sm font-extrabold"><span aria-hidden>💬</span>{replies.length} {replies.length === 1 ? "conversation" : "conversations"}</p>}
         </div>
       </header>
 
-      <RevealGate initiallyOpen={!concealed || owner}>
+      <RevealGate initiallyOpen={!concealed || owner || isWall}>
       <main className="mx-auto max-w-2xl space-y-6 px-4 py-6">
         <section aria-labelledby="post-h" className="space-y-4">
           <div className="flex flex-wrap items-center gap-2 text-sm text-chalk-dim">
@@ -92,6 +95,7 @@ export async function PostView({ id, modal = false }: { id: string; modal?: bool
             {post.is_sample && <SampleTag />}
             <span>· {POST_TYPES[post.type].label} · {timeAgo(post.created_at)}</span>
             {post.visibility === "link" && <span className="rounded-md bg-mustard px-1.5 py-0.5 text-[11px] font-bold uppercase text-[#2c1e02]">Private link wall</span>}
+            {isWall && <span className="rounded-md bg-night-3 px-1.5 py-0.5 text-[11px] font-bold uppercase">Private wall</span>}
             {post.visibility === "followers" && <span className="rounded-md bg-night-3 px-1.5 py-0.5 text-[11px] font-bold uppercase">Followers only</span>}
             {post.status !== "active" && <span className="rounded-md bg-danger/20 px-1.5 py-0.5 text-[11px] font-bold uppercase text-[#ffb4b4]">{post.status === "hidden" ? "Hidden pending review" : "Removed"}</span>}
           </div>
@@ -115,7 +119,7 @@ export async function PostView({ id, modal = false }: { id: string; modal?: bool
                   {post.body && <p className="whitespace-pre-wrap">{post.body}</p>}
                 </div>
               ) : post.type === "ask_me" ? (
-                <div className="space-y-2"><div className="mx-auto h-44 w-44"><WallItem post={post} compact /></div><p className="display text-2xl">{post.title}</p>{post.body && <p className="whitespace-pre-wrap text-chalk">{post.body}</p>}</div>
+                <div className="space-y-2"><div className="mx-auto h-44 w-44"><WallItem post={post} compact /></div><p className="display text-2xl">{post.title}</p>{post.body && !pickQs && <p className="whitespace-pre-wrap text-chalk">{post.body}</p>}</div>
               ) : (
                 <blockquote className="display rounded-2xl p-5 text-2xl" style={{ background: "#1d1a3a" }}>“{post.body}”</blockquote>
               )}
@@ -123,6 +127,8 @@ export async function PostView({ id, modal = false }: { id: string; modal?: bool
           )}
 
           <AfterOpen>
+          {isWall && <GuestEngage postId={post.id} owner={owner} questions={pickQs} />}
+          {!isWall && <>
           <ReactionBar type="post" id={post.id} counts={thread.reactions.post.counts} mine={thread.reactions.post.mine} loggedIn={loggedIn} own={owner} />
           {owner && post.visibility === "link" && post.share_token && (
             <div className="space-y-3 rounded-2xl border-2 border-mustard bg-night-2 p-4">
@@ -136,6 +142,7 @@ export async function PostView({ id, modal = false }: { id: string; modal?: bool
             {canAsk && <AskBox postId={post.id} loggedIn={loggedIn} allowAnonymous={post.allow_anonymous_questions} canAsk />}
             {showAsk && !canAsk && !owner && <AskBox postId={post.id} loggedIn={loggedIn} allowAnonymous={false} canAsk={false} reason={askReason} />}
           </div>
+          </>}
           {owner && (
             <div className="space-y-3 rounded-2xl bg-night-2 p-3">
               <p className="text-sm font-bold">Your wall</p>
@@ -146,7 +153,7 @@ export async function PostView({ id, modal = false }: { id: string; modal?: bool
           </AfterOpen>
         </section>
 
-        <AfterOpen>
+        {!isWall && <AfterOpen>
         {thread.answers.length > 0 && (
           <section aria-labelledby="answers" className="space-y-4">
             <h2 id="answers" className="text-2xl">Answers</h2>
@@ -200,7 +207,7 @@ export async function PostView({ id, modal = false }: { id: string; modal?: bool
             ))}
           </ol>
         </section>
-        </AfterOpen>
+        </AfterOpen>}
       </main>
       </RevealGate>
     </div>

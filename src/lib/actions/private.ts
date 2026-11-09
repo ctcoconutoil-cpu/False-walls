@@ -5,7 +5,7 @@ import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { friendlyError } from "@/lib/errors";
-import { BG_UPLOAD, WALL_ICON_KEYS, isBrick } from "@/lib/constants";
+import { BG_UPLOAD, isBrick } from "@/lib/constants";
 import { moderateImage, processImage } from "@/lib/images";
 import { isUuid } from "@/lib/utils";
 import type { ActionResult } from "@/lib/types";
@@ -21,40 +21,23 @@ export async function createPrivateWall(brick: string): Promise<ActionResult> {
   return OK;
 }
 
-export async function setBrick(brick: string): Promise<ActionResult> {
-  if (!isBrick(brick)) return fail("invalid_input");
+export async function setBrick(wallId: string, brick: string): Promise<ActionResult> {
+  if (!isBrick(brick) || !isUuid(wallId)) return fail("invalid_input");
   const supabase = await createClient();
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) return fail("not_authenticated");
-  const { error } = await supabase.from("private_walls").update({ brick, updated_at: new Date().toISOString() }).eq("owner_id", u.user.id);
+  const { error } = await supabase.from("private_walls").update({ brick, updated_at: new Date().toISOString() }).eq("id", wallId).eq("owner_id", u.user.id);
   if (error) return fail(error);
   revalidatePath("/private");
   return OK;
 }
 
-export async function setWallActive(active: boolean): Promise<ActionResult> {
+export async function setWallActive(wallId: string, active: boolean): Promise<ActionResult> {
+  if (!isUuid(wallId)) return fail("invalid_input");
   const supabase = await createClient();
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) return fail("not_authenticated");
-  const { error } = await supabase.from("private_walls").update({ is_active: active, updated_at: new Date().toISOString() }).eq("owner_id", u.user.id);
-  if (error) return fail(error);
-  revalidatePath("/private");
-  return OK;
-}
-
-export async function addPromptCard(title: string, icon: string, color: string): Promise<ActionResult> {
-  if (!(WALL_ICON_KEYS as readonly string[]).includes(icon)) return fail("invalid_input");
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("add_prompt_card", { p_title: title, p_icon: icon, p_color: color });
-  if (error) return fail(error);
-  revalidatePath("/private");
-  return OK;
-}
-
-export async function addPostCard(postId: string): Promise<ActionResult> {
-  if (!isUuid(postId)) return fail("not_found");
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("add_post_card", { p_post: postId });
+  const { error } = await supabase.from("private_walls").update({ is_active: active, updated_at: new Date().toISOString() }).eq("id", wallId).eq("owner_id", u.user.id);
   if (error) return fail(error);
   revalidatePath("/private");
   return OK;
@@ -115,7 +98,9 @@ export async function uploadWallBackground(fd: FormData): Promise<ActionResult> 
   const supabase = await createClient();
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) return fail("not_authenticated");
-  const { data: wall } = await supabase.from("private_walls").select("bg_path").eq("owner_id", u.user.id).maybeSingle();
+  const wallId = String(fd.get("wall") ?? "");
+  if (!isUuid(wallId)) return fail("no_wall");
+  const { data: wall } = await supabase.from("private_walls").select("bg_path").eq("id", wallId).eq("owner_id", u.user.id).maybeSingle();
   if (!wall) return fail("no_wall");
   let buf: Buffer;
   try {
@@ -127,7 +112,7 @@ export async function uploadWallBackground(fd: FormData): Promise<ActionResult> 
   const path = `${u.user.id}/${Date.now()}.webp`;
   const up = await supabase.storage.from("wall-backgrounds").upload(path, buf, { contentType: "image/webp" });
   if (up.error) return fail("invalid_image");
-  const { error } = await supabase.from("private_walls").update({ brick: "custom", bg_path: path, updated_at: new Date().toISOString() }).eq("owner_id", u.user.id);
+  const { error } = await supabase.from("private_walls").update({ brick: "custom", bg_path: path, updated_at: new Date().toISOString() }).eq("id", wallId).eq("owner_id", u.user.id);
   if (error) { await supabase.storage.from("wall-backgrounds").remove([path]); return fail(error); }
   if (wall.bg_path) await supabase.storage.from("wall-backgrounds").remove([wall.bg_path as string]);
   revalidatePath("/private");

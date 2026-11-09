@@ -24,6 +24,7 @@ const nextConfig: NextConfig = {
   // The maze is branded "Wall". Old /maze links keep working.
   async redirects() {
     return [
+      { source: "/create/private", destination: "/private", permanent: false },
       { source: "/maze", destination: "/wall", permanent: true },
       { source: "/maze/:path*", destination: "/wall/:path*", permanent: true },
     ];

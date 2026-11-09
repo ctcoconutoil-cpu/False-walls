@@ -31,7 +31,7 @@ export type Post = {
   template?: "pick_number" | null;
   options?: string[] | null;
   share_token?: string | null;
-  visibility: "public" | "followers" | "link";
+  visibility: "public" | "followers" | "link" | "wall";
   reveal_mode: "anyone" | "followers";
   allow_anonymous_questions: boolean;
   allow_replies: boolean;

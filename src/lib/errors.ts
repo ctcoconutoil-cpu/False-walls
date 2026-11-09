@@ -25,6 +25,7 @@ const MESSAGES: Record<string, string> = {
   invalid_media: "That upload couldn't be attached.",
   invalid_area: "That area doesn't take this kind of wall.",
   chains_disabled: "The creator turned off related walls for this post.",
+  wall_limit: "You can have up to two private walls for now.",
   chain_visibility: "A related wall can't be more public than the wall it connects to.",
   chain_parent_unavailable: "The original wall isn't available.",
   chain_answer_invalid: "That answer can't be linked.",

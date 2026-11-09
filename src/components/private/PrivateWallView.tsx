@@ -28,8 +28,8 @@ function useLine(on: boolean) {
  * A private wall: a brick wall with the owner's notes pinned to it, three to a row, like papers on a fridge.
  * Nothing is centred: a single note sits top left and the empty places show there is room for more.
  */
-export function PrivateWallView({ mode, slug, brick: initialBrick, cards, owner, isActive = true, bg = null }: {
-  bg?: string | null; mode: Mode; slug: string; brick: BrickKey; cards: ViewCard[]; owner: WallOwner; isActive?: boolean;
+export function PrivateWallView({ wallId, tabs = [], canAddWall = false, mode, slug, brick: initialBrick, cards, owner, isActive = true, bg = null }: {
+  wallId?: string; tabs?: { id: string; slug: string; n: number }[]; canAddWall?: boolean; bg?: string | null; mode: Mode; slug: string; brick: BrickKey; cards: ViewCard[]; owner: WallOwner; isActive?: boolean;
 }) {
   const router = useRouter();
   const [brick, setBrick] = useState(initialBrick);
@@ -73,6 +73,12 @@ export function PrivateWallView({ mode, slug, brick: initialBrick, cards, owner,
         )}
       </header>
 
+      {mode === "owner" && (tabs.length > 1 || canAddWall) && (
+        <nav aria-label="Your private walls" className="pw-strip pw-tools">
+          {tabs.map((t) => <Link key={t.id} href={`/private?w=${t.slug}`} aria-current={t.slug === slug ? "page" : undefined} className={t.slug === slug ? "pw-tab-on" : ""}>Wall {t.n}</Link>)}
+          {canAddWall && <Link href="/private?new=1">+ New wall</Link>}
+        </nav>
+      )}
       {mode === "visitor" ? (
         <div className="pw-strip">
           <Avatar user={owner} size={30} />
@@ -106,8 +112,8 @@ export function PrivateWallView({ mode, slug, brick: initialBrick, cards, owner,
       </div>
       <div className="wp-light" aria-hidden />
 
-      {mode === "owner" && (
-        <OwnerTools open={tools.open} onClose={() => setTools((t) => ({ ...t, open: false }))} tab={tools.tab} setTab={(tab) => setTools((t) => ({ ...t, tab }))}
+      {mode === "owner" && wallId && (
+        <OwnerTools wallId={wallId} open={tools.open} onClose={() => setTools((t) => ({ ...t, open: false }))} tab={tools.tab} setTab={(tab) => setTools((t) => ({ ...t, tab }))}
           brick={brick} onBrick={setBrick} cards={cards} isActive={isActive} />
       )}
     </div>

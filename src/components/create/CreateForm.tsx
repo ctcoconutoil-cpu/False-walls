@@ -7,9 +7,10 @@ import { FramePreview } from "@/components/create/FramePreview";
 import { ImagePicker } from "@/components/ui/ImagePicker";
 import { IconPicker } from "@/components/create/IconPicker";
 import { WallCard } from "@/components/wall/WallCard";
+import { WallItem } from "@/components/maze/WallItem";
 import type { WallPost } from "@/lib/data/wall";
 import { createPost } from "@/lib/actions/posts";
-import { CLUE_STYLES, FALSE_WALL_KINDS, LIMITS, MAX_WALL_WORDS, POST_TYPES, WALL_COLORS, WALL_COLOR_CHOICES, wordCount } from "@/lib/constants";
+import { CLUE_STYLES, FALSE_WALL_KINDS, LIMITS, MAX_WALL_WORDS, PICK_MARK, PICK_MAX, POST_TYPES, WALL_COLORS, WALL_COLOR_CHOICES, wordCount } from "@/lib/constants";
 import type { ClueStyle, FalseWallKind, PostType, WallColor } from "@/lib/types";
 import { cx } from "@/lib/utils";
 
@@ -23,9 +24,9 @@ const SUGGEST: Record<PostType, string[]> = {
 /** Words beyond the third are refused as you type, so the wall text can never run long. */
 function clampWords(v: string): string { const parts = v.replace(/\s+/g, " ").split(" "); const filled = parts.filter(Boolean); return filled.length > MAX_WALL_WORDS ? filled.slice(0, MAX_WALL_WORDS).join(" ") : parts.join(" ").replace(/^ /, ""); }
 
-type Props = { forPrivate?: boolean; type: PostType; label: string; prompts: { id: string; text: string }[]; isTeen: boolean; anonymousAllowed: boolean; chainParent: string | null; chainAnswer: string | null; chainTitle: string | null; initialPrompt: string | null };
+type Props = { wall?: { id: string; slug: string } | null; pick?: boolean; type: PostType; label: string; prompts: { id: string; text: string }[]; isTeen: boolean; anonymousAllowed: boolean; chainParent: string | null; chainAnswer: string | null; chainTitle: string | null; initialPrompt: string | null };
 
-export function CreateForm({ forPrivate = false, type, label, prompts, isTeen, anonymousAllowed, chainParent, chainAnswer, chainTitle, initialPrompt }: Props) {
+export function CreateForm({ wall = null, pick = false, type, label, prompts, isTeen, anonymousAllowed, chainParent, chainAnswer, chainTitle, initialPrompt }: Props) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -39,25 +40,32 @@ export function CreateForm({ forPrivate = false, type, label, prompts, isTeen, a
   const [reveal, setReveal] = useState<"anyone" | "followers">("anyone");
   const [images, setImages] = useState(0);
   const [picUrl, setPicUrl] = useState<string | null>(null);
+  const forPrivate = !!wall;
+  const [questions, setQuestions] = useState(["", ""]);
   const needsImages = type === "picture" || (type === "false_wall" && kind === "photo");
   const concealed = type === "hidden_thought" || type === "false_wall";
 
   const preview = useMemo(() => ({
-    id: "preview", author_id: null, type, title: title || "Your words", body: null, clue: clue || null, prompt_id: null, false_wall_kind: kind, clue_style: style, wall_color: color, wall_icon: icon || null,
+    id: "preview", author_id: null, type, title: forPrivate ? (title || (pick ? "Pick a number" : null)) : title || "Your words", body: pick ? PICK_MARK + (questions.filter((q) => q.trim()).join("\n") || "…\n…") : forPrivate ? body || null : null, clue: clue || null, prompt_id: null, false_wall_kind: kind, clue_style: style, wall_color: color, wall_icon: icon || null,
     visibility, reveal_mode: reveal, allow_anonymous_questions: true, allow_replies: true, allow_chains: true, area_slug: "main", is_sample: false, status: "active",
     created_at: new Date().toISOString(), author: null, media: [], likes: 0, comments: 0,
-  }) as unknown as WallPost, [type, title, clue, kind, style, color, icon, visibility, reveal]);
+  }) as unknown as WallPost, [type, title, body, clue, kind, style, color, icon, visibility, reveal, forPrivate, pick, questions]);
 
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     const fd = new FormData(e.currentTarget);
-    if (forPrivate) fd.set("for_private", "1");
+    if (wall) { fd.set("wall", wall.id); fd.set("visibility", isTeen ? "followers" : "public"); }
+    if (pick) {
+      const qs = questions.map((q) => q.trim()).filter(Boolean);
+      if (qs.length < 2) { setError("Add at least two questions."); return; }
+      fd.set("body", PICK_MARK + qs.join("\n"));
+    }
     fd.set("type", type);
     start(async () => {
       const r = await createPost(fd);
       if (!r.ok) { setError(r.error); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
-      router.push(forPrivate ? "/private" : `/post/${r.id}`);
+      router.push(wall ? `/private?w=${wall.slug}` : `/post/${r.id}`);
     });
   }
 
@@ -67,12 +75,21 @@ export function CreateForm({ forPrivate = false, type, label, prompts, isTeen, a
     <form onSubmit={submit} className="space-y-6">
       <div>
         <Link href="/create" className="text-sm text-chalk-dim underline">‹ All wall types</Link>
-        <h1 className="mt-1 text-3xl">{type === "false_wall" ? "Build a False Wall" : label}</h1>
-        <p className="mt-1 text-chalk-dim">{POST_TYPES[type].blurb}</p>
+        <h1 className="mt-1 text-3xl">{type === "false_wall" ? "Build a False Wall" : pick ? "Pick a number" : label}</h1>
+        <p className="mt-1 text-chalk-dim">{pick ? "A list of numbered questions. People tap a number and answer. No sign-up needed." : POST_TYPES[type].blurb}</p>
       </div>
       {chainParent && <Notice>Related wall: this will link to “{chainTitle ?? "the original wall"}”.<input type="hidden" name="chain_parent" value={chainParent} />{chainAnswer && <input type="hidden" name="chain_answer" value={chainAnswer} />}</Notice>}
       {error && <Notice tone="error">{error}</Notice>}
 
+      {forPrivate ? (
+        <>
+          {(type === "ask_me" || type === "picture") && (
+            <Field label={pick ? "What is it about?" : type === "picture" ? "Caption" : "What should people ask you about?"} counter={`${title.length}/80`}>
+              <input name="title" required minLength={3} maxLength={80} value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} placeholder={pick ? "Pick a number, any number" : type === "picture" ? "Golden hour" : "Ask me anything"} autoComplete="off" />
+            </Field>
+          )}
+        </>
+      ) : (
       <section aria-labelledby="onwall" className="space-y-4 rounded-2xl bg-night-2 p-4">
         <h2 id="onwall" className="text-lg">On the wall</h2>
         <Field label="Your words (1 to 3)" counter={`${wordCount(title)}/${MAX_WALL_WORDS} words`} hint="Short and bold. This is what everyone sees on the wall; the rest goes inside the post.">
@@ -81,8 +98,21 @@ export function CreateForm({ forPrivate = false, type, label, prompts, isTeen, a
         <Chips items={SUGGEST[type]} onPick={setTitle} />
         <IconPicker value={icon} onChange={setIcon} />
       </section>
+      )}
 
-      {type === "ask_me" && (
+      {pick && (
+        <fieldset className="space-y-2"><legend className="mb-1 text-sm font-semibold">Your numbered questions (2 to {PICK_MAX})</legend>
+          {questions.map((q, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-mustard font-black text-[#2c1e02]">{i + 1}</span>
+              <input aria-label={`Question ${i + 1}`} maxLength={140} value={q} onChange={(e) => setQuestions(questions.map((x, j) => (j === i ? e.target.value : x)))} className={inputCls} placeholder={`Question ${i + 1}`} />
+            </div>
+          ))}
+          {questions.length < PICK_MAX && <Button type="button" tone="ghost" size="sm" onClick={() => setQuestions([...questions, ""])}>Add a question</Button>}
+        </fieldset>
+      )}
+
+      {type === "ask_me" && !pick && (
         <>
           <Field label="More detail (optional)" counter={`${body.length}/${LIMITS.body}`}><textarea name="body" rows={3} maxLength={LIMITS.body} value={body} onChange={(e) => setBody(e.target.value)} className={inputCls} /></Field>
         </>
@@ -191,25 +221,29 @@ export function CreateForm({ forPrivate = false, type, label, prompts, isTeen, a
 
       <section aria-labelledby="preview" className="space-y-2">
         <h2 id="preview" className="text-lg">Preview</h2>
-        <div className="relative mx-auto h-[162px] w-[108px]"><WallCard post={preview} p={{ variant: 0, seed: 0.3 }} /></div>
+        {forPrivate
+          ? <div className="mx-auto h-[190px] w-[150px]"><WallItem post={preview} compact /></div>
+          : <div className="relative mx-auto h-[162px] w-[108px]"><WallCard post={preview} p={{ variant: 0, seed: 0.3 }} /></div>}
       </section>
 
       <section aria-labelledby="settings" className="space-y-4 rounded-2xl bg-night-2 p-4">
         <h2 id="settings" className="text-lg">Settings</h2>
         <input type="hidden" name="area_slug" value="main" />
-        <Field label="Who can see it?" hint={isTeen ? "Under-18 accounts default to followers only." : undefined}>
-          <select name="visibility" value={visibility} onChange={(e) => setVisibility(e.target.value as "public" | "followers")} className={inputCls}>
-            <option value="public">Everyone</option><option value="followers">Followers only</option>
-          </select>
-        </Field>
-        {concealed && (
+        {!forPrivate && (
+          <Field label="Who can see it?" hint={isTeen ? "Under-18 accounts default to followers only." : undefined}>
+            <select name="visibility" value={visibility} onChange={(e) => setVisibility(e.target.value as "public" | "followers")} className={inputCls}>
+              <option value="public">Everyone</option><option value="followers">Followers only</option>
+            </select>
+          </Field>
+        )}
+        {concealed && !forPrivate && (
           <Field label="Who can open it?" hint="Restricted walls show their clue to people who can see them, but only followers can open what's behind.">
             <select name="reveal_mode" value={reveal} onChange={(e) => setReveal(e.target.value as "anyone" | "followers")} className={inputCls}>
               <option value="anyone">Anyone who can see it</option><option value="followers">Followers only</option>
             </select>
           </Field>
         )}
-        {type === "ask_me" && (
+        {type === "ask_me" && !forPrivate && (
           <Check name="allow_anonymous" label="Allow anonymous questions" defaultChecked={anonymousAllowed} disabled={!anonymousAllowed} note={anonymousAllowed ? "You can block, reject or report anyone, and you never see who sent an anonymous question." : "Anonymous questions are switched off in your settings."} />
         )}
         <Check name="allow_replies" label="Allow replies" defaultChecked />

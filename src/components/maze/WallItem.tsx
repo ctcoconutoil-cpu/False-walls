@@ -1,3 +1,4 @@
+import { parsePick } from "@/lib/constants";
 import type { CSSProperties } from "react";
 import { WALL_COLORS, POST_TYPES } from "@/lib/constants";
 import type { Post } from "@/lib/types";
@@ -54,13 +55,15 @@ export function WallItem({ post, compact = false }: { post: Post; compact?: bool
     );
   }
 
-  // ask_me poster
+  // ask_me poster (a "Pick a number" wall is an Ask Me wall with numbered questions)
+  const pick = parsePick(post.body);
   return (
     <div className="paper relative flex h-full w-full flex-col justify-between rounded-md p-2.5" style={{ ...base, background: c.base, color: c.ink }}>
       <span className="display flex items-center gap-1 text-[10px] uppercase tracking-wider opacity-80">
-        <span aria-hidden className="grid h-4 w-4 place-items-center rounded-full bg-black/20 text-[10px]">{POST_TYPES.ask_me.icon}</span>Ask me
+        <span aria-hidden className="grid h-4 w-4 place-items-center rounded-full bg-black/20 text-[10px]">{pick ? "#" : POST_TYPES.ask_me.icon}</span>{pick ? "Pick a number" : "Ask me"}
       </span>
       <p className="display line-clamp-3 text-[15px] leading-[1.05]">{post.title}</p>
+      {pick && <span className="flex flex-wrap gap-1" aria-label={`${pick.length} questions`}>{pick.slice(0, 6).map((_, i) => <span key={i} aria-hidden className="grid h-5 w-5 place-items-center rounded-full bg-black/25 text-[10px] font-black">{i + 1}</span>)}</span>}
     </div>
   );
 }

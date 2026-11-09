@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/supabase/claims";
 import { friendlyError } from "@/lib/errors";
 import { processImage, moderateImage } from "@/lib/images";
-import { PRIVATE_ONLY_TYPES, LIMITS, FALSE_WALL_KINDS, CLUE_STYLES, WALL_COLORS, WALL_ICON_KEYS, MAX_WALL_WORDS, wordCount } from "@/lib/constants";
+import { LIMITS, FALSE_WALL_KINDS, CLUE_STYLES, WALL_COLORS, WALL_ICON_KEYS, MAX_WALL_WORDS, wordCount } from "@/lib/constants";
 import type { ActionResult, FalseWallKind, PostType, ReactionKind } from "@/lib/types";
 import { isUuid } from "@/lib/utils";
 
@@ -27,10 +27,15 @@ export async function createPost(fd: FormData): Promise<ActionResult<{ id: strin
     return { ok: false, error: friendlyError("invalid_length") };
 
   // Every post shows one to three words and a big icon on the wall.
+  // Posts for a private wall are drawn as notes, so they carry no wall words or icon.
+  const wallId = fd.get("wall");
+  const forWall = typeof wallId === "string" && isUuid(wallId);
   const wallWords = wordCount(title);
   const icon = String(fd.get("wall_icon") ?? "");
-  if (wallWords < 1 || wallWords > MAX_WALL_WORDS) return { ok: false, error: `Use one to ${MAX_WALL_WORDS} words for what shows on the wall.` };
-  if (!(WALL_ICON_KEYS as readonly string[]).includes(icon)) return { ok: false, error: "Pick an icon for your post." };
+  if (!forWall) {
+    if (wallWords < 1 || wallWords > MAX_WALL_WORDS) return { ok: false, error: `Use one to ${MAX_WALL_WORDS} words for what shows on the wall.` };
+    if (!(WALL_ICON_KEYS as readonly string[]).includes(icon)) return { ok: false, error: "Pick an icon for your post." };
+  }
 
   const kind = (fd.get("false_wall_kind") as FalseWallKind | null) || null;
   const style = (fd.get("clue_style") as string | null) || null;
@@ -83,9 +88,13 @@ export async function createPost(fd: FormData): Promise<ActionResult<{ id: strin
     if (uploaded.length) await supabase.storage.from("post-media").remove(uploaded);
     return { ok: false, error: friendlyError(error) };
   }
-  await supabase.rpc("set_post_icon", { p_id: pid, p_icon: icon });
+  if (!forWall) await supabase.rpc("set_post_icon", { p_id: pid, p_icon: icon });
   // Ask Me, Hidden Thought and Random Prompt posts hang on the author's private wall instead of the public Wall.
-  if ((PRIVATE_ONLY_TYPES as readonly string[]).includes(type) || fd.get("for_private") === "1") { await supabase.rpc("add_post_card", { p_post: pid }); revalidatePath("/private"); }
+  if (forWall) {
+    const pin = await supabase.rpc("pin_to_private_wall", { p_post: pid, p_wall: wallId as string });
+    if (pin.error) return { ok: false, error: friendlyError(pin.error) };
+    revalidatePath("/private");
+  }
   revalidatePath("/wall", "layout");
   revalidatePath("/profile", "layout");
   return { ok: true, id: data as string };

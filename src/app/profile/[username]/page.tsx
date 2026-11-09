@@ -32,8 +32,8 @@ export default async function Profile({ params }: { params: Promise<{ username: 
   const self = p.is_self;
 
   const [wallsRes, picsRes, answersRes, allBadges, pinsRes, counts] = await Promise.all([
-    p.show_walls ? supabase.from("posts").select(POST_SELECT).eq("author_id", p.id).eq("status", "active").neq("type", "picture").not("type", "in", PRIVATE_ONLY_IN).order("created_at", { ascending: false }).limit(24) : Promise.resolve({ data: [] }),
-    p.show_pictures ? supabase.from("posts").select(POST_SELECT).eq("author_id", p.id).eq("status", "active").eq("type", "picture").order("created_at", { ascending: false }).limit(24) : Promise.resolve({ data: [] }),
+    p.show_walls ? supabase.from("posts").select(POST_SELECT).eq("author_id", p.id).eq("status", "active").neq("visibility", "wall").neq("type", "picture").not("type", "in", PRIVATE_ONLY_IN).order("created_at", { ascending: false }).limit(24) : Promise.resolve({ data: [] }),
+    p.show_pictures ? supabase.from("posts").select(POST_SELECT).eq("author_id", p.id).eq("status", "active").neq("visibility", "wall").eq("type", "picture").order("created_at", { ascending: false }).limit(24) : Promise.resolve({ data: [] }),
     p.show_answers ? supabase.from("answers").select("id, question_text, body, created_at, post_id").eq("author_id", p.id).eq("is_public", true).eq("status", "active").order("created_at", { ascending: false }).limit(20) : Promise.resolve({ data: [] }),
     self ? supabase.from("badges").select("slug,name,description,threshold,rule").eq("active", true).order("sort_order") : Promise.resolve({ data: [] }),
     supabase.from("pinned_posts").select("post_id, position").eq("user_id", p.id).order("position"),
@@ -45,7 +45,7 @@ export default async function Profile({ params }: { params: Promise<{ username: 
     ]) : Promise.resolve(null),
   ]);
   const pinOrder = ((pinsRes.data ?? []) as { post_id: string }[]).map((r) => r.post_id);
-  const pinnedRaw = pinOrder.length ? (await supabase.from("posts").select(POST_SELECT).in("id", pinOrder).eq("status", "active")).data ?? [] : [];
+  const pinnedRaw = pinOrder.length ? (await supabase.from("posts").select(POST_SELECT).in("id", pinOrder).eq("status", "active").neq("visibility", "wall")).data ?? [] : [];
   const pinnedById = new Map((await hydratePosts(supabase, pinnedRaw as never)).map((x) => [x.id, x]));
   const pinned = pinOrder.map((id) => pinnedById.get(id)).filter(Boolean) as Post[];
   const pinnedIds = new Set(pinned.map((x) => x.id));

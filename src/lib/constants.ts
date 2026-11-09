@@ -38,6 +38,8 @@ export const CREATE_ROUTES: Record<string, PostType> = {
   "picture-wall": "picture", "false-wall": "false_wall",
   // These three only live on private walls: reached from "My private wall", never listed on the public Wall or Discover.
   "ask-me": "ask_me", "hidden-thought": "hidden_thought", "random-prompt": "prompt_response",
+  // A numbered list of questions, stored as an Ask Me wall.
+  "pick-number": "ask_me",
 };
 export const TYPE_TO_ROUTE: Record<PostType, string> = {
   ask_me: "ask-me", hidden_thought: "hidden-thought", picture: "picture-wall", prompt_response: "random-prompt", false_wall: "false-wall",
@@ -135,3 +137,12 @@ export const GIST_MAX = 280;
 /** Post types that belong to private walls only. The public Wall, Discover, search and profiles leave them out. */
 export const PRIVATE_ONLY_TYPES = ["ask_me", "hidden_thought", "prompt_response"] as const;
 export const PRIVATE_ONLY_IN = `(${PRIVATE_ONLY_TYPES.join(",")})`;
+
+/** A "Pick a number" wall is an Ask Me wall whose body starts with this marker, then one question per line. */
+export const PICK_MARK = "#pick\n";
+export const PICK_MAX = 10;
+export function parsePick(body: string | null | undefined): string[] | null {
+  if (!body || !body.startsWith(PICK_MARK)) return null;
+  const qs = body.slice(PICK_MARK.length).split("\n").map((q) => q.trim()).filter(Boolean);
+  return qs.length ? qs : null;
+}

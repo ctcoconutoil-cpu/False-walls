@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getPostsByIds } from "@/lib/data/posts";
-import { PRIVATE_ONLY_TYPES, type BrickKey } from "@/lib/constants";
+import type { BrickKey } from "@/lib/constants";
 import type { WallPost } from "@/lib/data/wall";
 import type { WallColor } from "@/lib/types";
 
@@ -35,21 +35,21 @@ export const getPublicPrivateWall = cache(async (slug: string): Promise<PublicPr
   return { slug: w.slug, brick: w.brick, bg: bgUrl(supabase, w.bg), accepting: w.accepting, owner: w.owner, cards: await attachPosts(w.cards) };
 });
 
-export type OwnerWall = { slug: string; brick: BrickKey; bg: string | null; isActive: boolean; cards: ViewCard[] };
-/** The signed-in member's own wall with a count on every prompt card. Null until they create it. */
-export async function getOwnerWall(userId: string): Promise<OwnerWall | null> {
+export type OwnerWall = { id: string; slug: string; n: number; brick: BrickKey; bg: string | null; isActive: boolean; cards: ViewCard[] };
+export type WallTab = { id: string; slug: string; n: number };
+/** The signed-in member's walls (up to two), and the one asked for by slug, or the first. Null until they create one. */
+export async function getOwnerWalls(userId: string, slug?: string): Promise<{ tabs: WallTab[]; wall: OwnerWall } | null> {
   const supabase = await createClient();
-  const { data: w } = await supabase.from("private_walls").select("slug, brick, bg_path, is_active").eq("owner_id", userId).maybeSingle();
-  if (!w) return null;
-  const [{ data: cards }, { data: counts }] = await Promise.all([
-    supabase.from("wall_cards").select("id, kind, title, icon, color, post_id").eq("owner_id", userId).order("created_at", { ascending: false }),
-    supabase.rpc("private_wall_counts"),
-  ]);
-  const n = new Map(((counts ?? []) as { card_id: string; total: number; unread: number }[]).map((r) => [r.card_id, r]));
-  const withPosts = await attachPosts((cards ?? []) as PCard[]);
+  const { data: rows } = await supabase.from("private_walls").select("id, slug, n, brick, bg_path, is_active").eq("owner_id", userId).order("n");
+  if (!rows?.length) return null;
+  const w = rows.find((r) => r.slug === slug) ?? rows[0];
+  const { data: cards } = await supabase.from("wall_cards").select("id, kind, title, icon, color, post_id").eq("wall_id", w.id).eq("kind", "post").order("created_at", { ascending: false });
   return {
-    slug: w.slug as string, brick: w.brick as BrickKey, bg: w.brick === "custom" ? bgUrl(supabase, w.bg_path as string | null) : null, isActive: w.is_active as boolean,
-    cards: withPosts.map((c) => ({ ...c, total: Number(n.get(c.id)?.total ?? 0), unread: Number(n.get(c.id)?.unread ?? 0) })),
+    tabs: rows.map((r) => ({ id: r.id as string, slug: r.slug as string, n: r.n as number })),
+    wall: {
+      id: w.id as string, slug: w.slug as string, n: w.n as number, brick: w.brick as BrickKey, bg: w.brick === "custom" ? bgUrl(supabase, w.bg_path as string | null) : null,
+      isActive: w.is_active as boolean, cards: await attachPosts((cards ?? []) as PCard[]),
+    },
   };
 }
 
@@ -60,7 +60,7 @@ export async function getInbox(cardId: string): Promise<{ card: PCard; slug: str
   const { data: card } = await supabase.from("wall_cards").select("id, kind, title, icon, color, post_id, owner_id").eq("id", cardId).eq("kind", "prompt").maybeSingle();
   if (!card) return null;
   const [{ data: w }, { data: rows }] = await Promise.all([
-    supabase.from("private_walls").select("slug, brick").eq("owner_id", card.owner_id).maybeSingle(),
+    supabase.from("private_walls").select("slug, brick").eq("owner_id", card.owner_id).order("n").limit(1).maybeSingle(),
     supabase.from("submissions").select("id, body, created_at, read_at").eq("card_id", cardId).order("created_at", { ascending: false }).limit(300),
   ]);
   if (!w) return null;
@@ -68,15 +68,6 @@ export async function getInbox(cardId: string): Promise<{ card: PCard; slug: str
     card: card as PCard, slug: w.slug as string, brick: w.brick as BrickKey,
     messages: ((rows ?? []) as { id: string; body: string; created_at: string; read_at: string | null }[]).map((r) => ({ id: r.id, body: r.body, created_at: r.created_at, isNew: !r.read_at })),
   };
-}
-
-/** Ready-made Ask Me, Hidden Thought and Random Prompt posts an owner can hang on a private wall: the app's samples plus their own. */
-export async function getTemplatePosts(userId: string): Promise<WallPost[]> {
-  const supabase = await createClient();
-  const { data } = await supabase.from("posts").select("id").in("type", [...PRIVATE_ONLY_TYPES]).eq("status", "active").eq("visibility", "public")
-    .or(`is_sample.eq.true,author_id.eq.${userId}`).order("created_at", { ascending: false }).limit(30);
-  const ids = (data ?? []).map((r) => r.id as string);
-  return (await getPostsByIds(ids)).map(asWallPost);
 }
 
 /** Public address of an uploaded wall background. */
